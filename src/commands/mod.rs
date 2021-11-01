@@ -1,0 +1,16 @@
+use serenity::async_trait;
+use serenity::client::Context;
+use serenity::model::prelude::application_command::ApplicationCommandInteraction;
+
+pub mod council;
+
+#[async_trait]
+pub trait Command {
+    fn name(&self) -> String;
+    async fn register(&self, ctx: &Context) -> crate::Result<()>;
+    async fn run(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> crate::Result<()>;
+}
