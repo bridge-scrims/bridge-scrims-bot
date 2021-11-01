@@ -1,6 +1,6 @@
 # Bridge Scrims Bot RustLand Remake
 
 
-##TODO:
+## TODO:
   - SlashCommands Handler | https://github.com/kangalioo/poise
   - Recreate the commands from the old bot
