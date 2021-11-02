@@ -13,4 +13,7 @@ pub trait Command {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()>;
+    fn new() -> Box<Self>
+    where
+        Self: Sized;
 }

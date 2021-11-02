@@ -1,3 +1,4 @@
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::http::Http;
 use serenity::model::id::GuildId;
 use serenity::Client;
@@ -25,6 +26,7 @@ async fn main() -> Result<()> {
     let mut client = Client::builder(&std::env::var("BOT_TOKEN")?)
         .application_id(application_id)
         .event_handler(Handler::new())
+        .intents(GatewayIntents::empty())
         .await?;
     let shard_manager = client.shard_manager.clone();
     let http = client.cache_and_http.http.clone();
