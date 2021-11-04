@@ -7,6 +7,7 @@ use serenity::model::gateway::Ready;
 use serenity::model::interactions::Interaction;
 
 use crate::commands::council::Council;
+use crate::commands::suggest::Suggestion;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 
@@ -16,7 +17,7 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands: Vec<Command> = vec![Council::new()];
+        let commands: Vec<Command> = vec![Council::new(), Suggestion::new()];
         let commands = commands
             .into_iter()
             .fold(HashMap::new(), |mut map, command| {
