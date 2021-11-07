@@ -11,11 +11,12 @@ use serenity::utils::Color;
 
 use crate::commands::Command;
 
-const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(906748493039816764);
+const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(905110434410016778);
 
 pub struct Suggestion;
 
 #[async_trait]
+#[allow(unused_must_use)]
 impl Command for Suggestion {
     fn name(&self) -> String {
         "suggestion".to_string()
@@ -62,12 +63,27 @@ impl Command for Suggestion {
                 })
             })
             .await?;
-
+        let x = &command.user;
         let s = match &command.data.options[0].resolved {
             Some(ApplicationCommandInteractionDataOptionValue::String(s)) => s.clone(),
             _ => panic!("expected a string value"),
         };
-        SUGGESTIONS_CHANNEL.say(ctx, format!("received suggestion: {}", s)).await?;
+//        SUGGESTIONS_CHANNEL.say(ctx, format!("received suggestion: {}", s)).await?;
+        SUGGESTIONS_CHANNEL.send_message(&ctx.http, |m| {
+            m.content("_ _");
+            m.embed(|e| {
+                e.title("Recieved a new suggestion! from: ");
+                e.description(x.to_string());
+                e.field("Suggestion:", s.to_string(), false);
+                e.color(Color::new(0x74a8ee));
+                e.footer(|f| {
+                    f.text("Bridge Scrims");
+                    f
+                })
+            })
+        })
+        .await;
+
         Ok(())
     }
 
