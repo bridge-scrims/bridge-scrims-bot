@@ -1,27 +1,19 @@
-use std::sync::Arc;
-
 use serenity::async_trait;
 use serenity::client::Context;
-use serenity::http::Http;
+use serenity::model::id::ChannelId;
 use serenity::model::interactions::application_command::{
     ApplicationCommandInteraction, ApplicationCommandOptionType,
 };
-use serenity::model::id::ChannelId;
+use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOptionValue;
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use serenity::utils::Color;
-use tokio::time::Duration;
-use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOptionValue;
+
 use crate::commands::Command;
 
-const SUGGESTIONS_CHANNEL: u64 = 905110434410016778;
+const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(906748493039816764);
 
-pub struct Suggestion {
-    inner: Arc<Inner>,
-}
-
-struct Inner {
-}
+pub struct Suggestion;
 
 #[async_trait]
 impl Command for Suggestion {
@@ -33,15 +25,14 @@ impl Command for Suggestion {
         crate::GUILD
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
-                    .description("Suggest bridge scrims a suggestion")
+                    .description("Create a suggestion")
                     .create_option(|o| {
-                        o.name("suggestion:")
+                        o.name("suggestion").description("Put your suggestion here")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String)
                     })
             })
             .await?;
-        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
         Ok(())
     }
 
@@ -55,11 +46,11 @@ impl Command for Suggestion {
                 r.interaction_response_data(|d| {
                     d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                 })
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
 
-        
+
         // Embed
 
         command
@@ -72,35 +63,18 @@ impl Command for Suggestion {
             })
             .await?;
 
-        let s = match &command.data.options[0].resolved{
-          Some(ApplicationCommandInteractionDataOptionValue::String(s)) => s.clone(),
-          _ => panic!("expected a string value"),
+        let s = match &command.data.options[0].resolved {
+            Some(ApplicationCommandInteractionDataOptionValue::String(s)) => s.clone(),
+            _ => panic!("expected a string value"),
         };
-        ChannelId(SUGGESTIONS_CHANNEL).say(ctx, format!("received suggestion: {}", s)).await?;
+        SUGGESTIONS_CHANNEL.say(ctx, format!("received suggestion: {}", s)).await?;
         Ok(())
     }
 
     fn new() -> Box<Self>
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
-        Box::new(Suggestion {
-            inner: Arc::new(Inner {
-            }),
-        })
-    }
-}
-
-async fn update_loop(inner: Arc<Inner>, http: Arc<Http>) {
-    loop {
-        inner.update(http.clone()).await;
-        tokio::time::sleep(Duration::from_secs(21600)).await;
-    }
-}
-
-impl Inner {
-    async fn update(&self, http: Arc<Http>) {
-        tracing::info!("Updating something");
-
+        Box::new(Suggestion)
     }
 }
