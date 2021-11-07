@@ -11,7 +11,7 @@ use serenity::utils::Color;
 
 use crate::commands::Command;
 
-const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(905110434410016778);
+const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(UPDATE CHANEL ID);
 
 pub struct Suggestion;
 
