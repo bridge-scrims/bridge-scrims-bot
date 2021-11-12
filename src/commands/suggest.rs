@@ -1,14 +1,14 @@
+use crate::commands::Command;
 use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
+use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOptionValue;
 use serenity::model::interactions::application_command::{
     ApplicationCommandInteraction, ApplicationCommandOptionType,
 };
-use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOptionValue;
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use serenity::utils::Color;
-use crate::commands::Command;
 
 const SUGGESTIONS_CHANNEL: ChannelId = ChannelId(0);
 pub struct Suggestion;
@@ -26,7 +26,8 @@ impl Command for Suggestion {
                 c.name(self.name())
                     .description("Create a suggestion")
                     .create_option(|o| {
-                        o.name("suggestion").description("Put your suggestion here")
+                        o.name("suggestion")
+                            .description("Put your suggestion here")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String)
                     })
@@ -45,12 +46,9 @@ impl Command for Suggestion {
                 r.interaction_response_data(|d| {
                     d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                 })
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-
-
-        // Embed
 
         command
             .edit_original_interaction_response(&ctx, |r| {
@@ -62,47 +60,29 @@ impl Command for Suggestion {
             })
             .await?;
 
-
-
-
         let user = command.user.tag();
         let suggestion = match &command.data.options[0].resolved {
             Some(ApplicationCommandInteractionDataOptionValue::String(s)) => s.clone(),
             _ => panic!("expected a string value"),
         };
 
-
         SUGGESTIONS_CHANNEL
-        .send_message(&ctx.http, |m| {
-            m.content("aaaaaaa");
-            m.embed(|e| { 
-                // e.title(format!("{}", user));
-
-
-                e.author(|a| {
-                    a.icon_url(&command.user.face()).name(&command.user.tag())
-                });
-
-
-                e.field(suggestion.to_string(), "_ _", false);
-
-
-                e.color(Color::new(0x74a8ee));
-                e.footer(|f| {
-                    f.text("Bridge Scrims");
-                    f
+            .send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.author(|a| a.icon_url(&command.user.face()).name(&command.user.tag()))
+                        .field(suggestion.to_string(), "_ _", false)
+                        .color(Color::new(0x74a8ee))
+                        .footer(|f| f.text("Bridge Scrims"))
                 })
             })
-        })
-        .await;
+            .await;
 
         Ok(())
-
     }
 
     fn new() -> Box<Self>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         Box::new(Suggestion)
     }
