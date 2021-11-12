@@ -2,5 +2,9 @@
 
 
 ## TODO:
-  - SlashCommands Handler | https://github.com/kangalioo/poise
-  - Recreate the commands from the old bot
+  - Ban command
+  - Mute command
+  - Roles Ping command
+  - Suggestions command :heavy_check_mark:
+  - List Council command :heavy_check_mark:
+  
