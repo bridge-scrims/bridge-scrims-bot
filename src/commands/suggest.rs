@@ -80,7 +80,7 @@ impl Command for Suggestion {
 
 
                 e.author(|a| {
-                    a.icon_url(&command.user.face()).name(&command.user.name)
+                    a.icon_url(&command.user.face()).name(&command.user.tag())
                 });
 
 
