@@ -57,7 +57,7 @@ impl Command for Ban {
                 .value
                 .as_ref()
                 .unwrap()
-                .to_string()
+                .as_string()
                 .parse()?,
         )
         .to_user(&ctx.http)
