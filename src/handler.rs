@@ -9,7 +9,7 @@ use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
 use crate::commands::council::Council;
-use crate::GUILD;
+use crate::consts::GUILD;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 
