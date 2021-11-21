@@ -6,7 +6,6 @@ use serenity::futures::stream::BoxStream;
 use serenity::futures::StreamExt;
 use serenity::http::Http;
 use serenity::model::guild::Member;
-use serenity::model::id::RoleId;
 use serenity::model::interactions::application_command::{
     ApplicationCommandInteraction, ApplicationCommandOptionType,
 };
@@ -18,19 +17,13 @@ use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 use crate::commands::Command;
-use crate::consts::GUILD;
+use crate::consts::*;
 
 pub struct Council {
     inner: Arc<Inner>,
 }
 
 struct Inner {
-    prime_council_role: RoleId,
-    prime_head_role: RoleId,
-    private_council_role: RoleId,
-    private_head_role: RoleId,
-    premium_council_role: RoleId,
-    premium_head_role: RoleId,
     prime_council: Mutex<String>,
     private_council: Mutex<String>,
     premium_council: Mutex<String>,
@@ -129,42 +122,6 @@ impl Command for Council {
     {
         Box::new(Council {
             inner: Arc::new(Inner {
-                prime_council_role: RoleId(
-                    std::env::var("PRIME_COUNCIL")
-                        .expect("PRIME_COUNCIL not found")
-                        .parse()
-                        .unwrap(),
-                ),
-                prime_head_role: RoleId(
-                    std::env::var("PRIME_HEAD")
-                        .expect("PRIME_HEAD not found")
-                        .parse()
-                        .unwrap(),
-                ),
-                private_council_role: RoleId(
-                    std::env::var("PRIVATE_COUNCIL")
-                        .expect("PRIVATE_COUNCIL not found")
-                        .parse()
-                        .unwrap(),
-                ),
-                private_head_role: RoleId(
-                    std::env::var("PRIVATE_HEAD")
-                        .expect("PRIVATE_HEAD not found")
-                        .parse()
-                        .unwrap(),
-                ),
-                premium_council_role: RoleId(
-                    std::env::var("PREMIUM_COUNCIL")
-                        .expect("PREMIUM_COUNCIL not found")
-                        .parse()
-                        .unwrap(),
-                ),
-                premium_head_role: RoleId(
-                    std::env::var("PREMIUM_HEAD")
-                        .expect("PREMIUM_HEAD not found")
-                        .parse()
-                        .unwrap(),
-                ),
                 prime_council: Mutex::new("".into()),
                 private_council: Mutex::new("".into()),
                 premium_council: Mutex::new("".into()),
@@ -197,19 +154,19 @@ impl Inner {
             .filter_map(|r| async move { r.ok() })
             .boxed();
         while let Some(member) = members.next().await {
-            if member.roles.contains(&self.prime_head_role) {
+            if member.roles.contains(&PRIME_HEAD) {
                 prime_head = member.user.mention().to_string()
-            } else if member.roles.contains(&self.prime_council_role) {
+            } else if member.roles.contains(&PRIME_COUNCIL) {
                 prime_council.push(member.user.mention().to_string())
             }
-            if member.roles.contains(&self.private_head_role) {
+            if member.roles.contains(&PRIVATE_HEAD) {
                 private_head = member.user.mention().to_string()
-            } else if member.roles.contains(&self.private_council_role) {
+            } else if member.roles.contains(&PRIVATE_COUNCIL) {
                 private_council.push(member.user.mention().to_string())
             }
-            if member.roles.contains(&self.premium_head_role) {
+            if member.roles.contains(&PREMIUM_HEAD) {
                 premium_head = member.user.mention().to_string()
-            } else if member.roles.contains(&self.premium_council_role) {
+            } else if member.roles.contains(&PREMIUM_COUNCIL) {
                 premium_council.push(member.user.mention().to_string())
             }
         }
