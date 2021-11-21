@@ -9,20 +9,19 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 mod commands;
 mod consts;
 mod handler;
-
-// Bridge scrims guild id
+#[macro_use]
+mod macros;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    dotenv::dotenv()?;
     tracing_subscriber::fmt().init();
     let application_id =
-        Http::new_with_token(&std::env::var("BOT_TOKEN").expect("BOT_TOKEN not set"))
+        Http::new_with_token(&dotenv!("BOT_TOKEN"))
             .get_current_application_info()
             .await?
             .id
             .0;
-    let mut client = Client::builder(&std::env::var("BOT_TOKEN")?)
+    let mut client = Client::builder(dotenv!("BOT_TOKEN"))
         .application_id(application_id)
         .event_handler(Handler::new())
         .intents(GatewayIntents::GUILD_MESSAGES)
