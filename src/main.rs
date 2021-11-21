@@ -1,17 +1,16 @@
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::http::Http;
-use serenity::model::id::GuildId;
 use serenity::Client;
-
+use crate::consts::GUILD;
 use crate::handler::Handler;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 mod commands;
 mod handler;
+mod consts;
 
 // Bridge scrims guild id
-const GUILD: GuildId = GuildId(759894401957888031);
 
 #[tokio::main]
 async fn main() -> Result<()> {

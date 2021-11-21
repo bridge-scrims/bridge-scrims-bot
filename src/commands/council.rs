@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 use crate::commands::Command;
-use crate::GUILD;
+use crate::consts::GUILD;
 
 pub struct Council {
     inner: Arc<Inner>,
