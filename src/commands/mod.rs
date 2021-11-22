@@ -2,7 +2,6 @@ use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
 
-pub mod ban;
 pub mod council;
 
 #[async_trait]
