@@ -3,7 +3,7 @@ use serenity::client::Context;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
 
 pub mod council;
-
+pub mod purge;
 #[async_trait]
 pub trait Command {
     fn name(&self) -> String;
