@@ -7,10 +7,14 @@ use serenity::model::channel::{Message, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
-
+use serenity::model::prelude::Member;
 use crate::commands::council::Council;
+use crate::commands::purge::Purge;
 use crate::consts::GUILD;
-
+use serenity::model::prelude::GuildId;
+use serenity::model::prelude::RoleId;
+use serenity::futures::StreamExt;
+use serenity::model::prelude::ChannelId;
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 
 pub struct Handler {
@@ -19,7 +23,7 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands: Vec<Command> = vec![Council::new()];
+        let commands: Vec<Command> = vec![Council::new(), Purge::new()];
         let commands = commands
             .into_iter()
             .fold(HashMap::new(), |mut map, command| {
@@ -79,4 +83,34 @@ impl EventHandler for Handler {
             }
         }
     }
+
+
+
+    #[allow(unused_variables)]
+    #[allow(unused_must_use)]
+    #[allow(unused_assignments)]
+async fn guild_member_addition(&self, ctx: Context, _guild_id: GuildId, _member: Member) {
+    
+    let channel: ChannelId = ChannelId(901821871056629803);
+    let member_role_id = 904856692787937400;
+    let guild = GuildId(901821870582665247);
+    let mut counter = 0;
+
+    let _members = guild
+        .members_iter(&ctx.http)
+        .filter(|u| {
+            let has_role = if let Ok(u) = u {
+                u.roles.contains(&RoleId(member_role_id))
+            } else {
+                false
+            };
+            async move { has_role }
+        }).for_each(|_| async move {
+            counter += 1;
+        }).await;
+
+    channel.edit(&ctx.http, |c| c.name(counter.to_string())).await.unwrap();
+}
+
+    
 }
