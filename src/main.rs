@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     let mut client = Client::builder(dotenv!("BOT_TOKEN"))
         .application_id(application_id)
         .event_handler(Handler::new())
-        .intents(GatewayIntents::GUILD_MESSAGES)
+        .intents(GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS)
         .await?;
     let shard_manager = client.shard_manager.clone();
     let http = client.cache_and_http.http.clone();
