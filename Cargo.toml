@@ -10,6 +10,12 @@ dotenv = "0.15.0"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
 lazy_static = "1.4.0"
+sqlite = "0.26.0"
+dirs = "4.0.0"
+
+[dependencies.time]
+version = "0.3.5"
+features = ["local-offset"]
 
 [dependencies.serenity]
 version = "0.10.9"
