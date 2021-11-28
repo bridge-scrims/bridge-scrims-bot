@@ -14,12 +14,9 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, db::Database, interact_opts::InteractOpts};
+use crate::{commands::Command, interact_opts::InteractOpts};
 
-pub struct Ban {
-    pub database: Database,
-}
-
+pub struct Ban;
 #[async_trait]
 impl Command for Ban {
     fn name(&self) -> String {
@@ -98,17 +95,24 @@ impl Command for Ban {
         let do_dmd = command.get_bool("dmd").unwrap_or(false);
         let dmd = if do_dmd { 7 } else { 0 };
 
-        let result = crate::GUILD
-            .ban_with_reason(&ctx.http, to_ban.id, dmd, reason.clone())
-            .await;
-        let db_result = self.database.add_unban(*to_ban.id.as_u64(), unban_date);
-
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} recieved a ban", to_ban.tag()));
         embed.field("User", format!("<@{}>", to_ban.id), false);
         embed.field("Duration", format!("`{} days`", amount_days), false);
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
+
+        embed.description("Appeal at https://dyno.gg/form/31ac5763");
+        let dm_result = to_ban.dm(&ctx.http, |msg| msg.set_embed(embed.clone())).await;
+        if let Err(e) = dm_result {
+            tracing::error!("Could not DM user {} about their ban: {}", to_ban.tag(), e);
+        }
+        embed.description("");
+
+        let result = crate::GUILD
+            .ban_with_reason(&ctx.http, to_ban.id, dmd, reason.clone())
+            .await;
+        let db_result = crate::consts::DATABASE.add_unban(*to_ban.id.as_u64(), unban_date);
 
         command
             .create_interaction_response(&ctx.http, |resp| {
@@ -128,7 +132,7 @@ impl Command for Ban {
 
         if result.is_ok() {
             crate::consts::SUPPORT_BANS
-                .send_message(&ctx.http, |msg| msg.set_embed(embed))
+                .send_message(&ctx.http, |msg| msg.set_embed(embed.clone()))
                 .await?;
         }
 
@@ -137,14 +141,12 @@ impl Command for Ban {
     }
 
     fn new() -> Box<Self> {
-        let database = Database::init();
-
-        Box::new(Self { database })
+        Box::new(Self)
     }
 }
 
 async fn update_loop(ctx: Arc<Http>) {
-    let database = Database::init();
+    let database = &crate::consts::DATABASE;
 
     loop {
         let unbans = database.fetch_unbans().await;
@@ -227,6 +229,7 @@ impl Command for Unban {
         .user;
 
         let result = crate::GUILD.unban(&ctx.http, to_unban.id).await;
+        let _ = crate::consts::DATABASE.remove_unban(to_unban.id.0);
 
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} was unbanned", to_unban.tag()));
