@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use crate::db::Database;
 use crate::dotenv;
+use serenity::model::id::ChannelId;
 use serenity::model::id::GuildId;
 use serenity::model::id::RoleId;
 
@@ -27,4 +28,7 @@ lazy_static::lazy_static! {
     pub static ref DATABASE_PATH: PathBuf = dirs::cache_dir()
         .unwrap_or_else(|| std::env::current_dir().unwrap());
     pub static ref DATABASE: Database = Database::init();
+
+    // Channel ids
+    pub static ref SUPPORT_BANS: ChannelId = ChannelId(dotenv!("SUPPORT_BANS").parse().unwrap());
 }

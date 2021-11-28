@@ -1,10 +1,10 @@
 use serenity::{
     async_trait,
-    builder::CreateApplicationCommand,
+    builder::CreateEmbed,
     client::Context,
     http::Http,
     model::{
-        id::{RoleId, UserId},
+        id::UserId,
         interactions::application_command::{
             ApplicationCommandInteraction, ApplicationCommandOptionType,
             ApplicationCommandPermissionType,
@@ -14,33 +14,9 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, db::Database};
-
-fn ban_opts(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-    command
-        .create_option(|o| {
-            o.name("user")
-                .description("The user to ban")
-                .required(true)
-                .kind(ApplicationCommandOptionType::User)
-        })
-        .create_option(|o| {
-            o.name("duration")
-                .description("The ban duration in days")
-                .required(false)
-                .kind(ApplicationCommandOptionType::Integer)
-        })
-        .create_option(|o| {
-            o.name("reason")
-                .description("Reason for the ban")
-                .required(false)
-                .kind(ApplicationCommandOptionType::String)
-        })
-}
+use crate::{commands::Command, db::Database, interact_opts::InteractOpts};
 
 pub struct Ban {
-    pub support_role_id: RoleId,
-    pub staff_role_id: RoleId,
     pub database: Database,
 }
 
@@ -53,27 +29,46 @@ impl Command for Ban {
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         let command = crate::GUILD
             .create_application_command(&ctx, |c| {
-                ban_opts(c.name(self.name()).description(
-                    "Bans the given user from the server. This is not meant for screenshare bans.",
-                ).default_permission(false))
-                .create_option(|o| {
-                    o.name("dmd")
-                        .description("Should the last 7d of messages be removed?")
-                        .required(false)
-                        .kind(ApplicationCommandOptionType::Boolean)
-                })
+                c
+                    .name(self.name())
+                    .description("Bans the given user from the server. This is not meant for screenshare bans.")
+                    .default_permission(false)
+                    .create_option(|o| {
+                        o.name("user")
+                            .description("The user to ban")
+                            .required(true)
+                            .kind(ApplicationCommandOptionType::User)
+                    })
+                    .create_option(|o| {
+                        o.name("duration")
+                            .description("The ban duration in days")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Integer)
+                    })
+                    .create_option(|o| {
+                        o.name("reason")
+                            .description("Reason for the ban")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::String)
+                    })
+                    .create_option(|o| {
+                        o.name("dmd")
+                            .description("Should the last 7d of messages be removed?")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Boolean)
+                    })
             })
-            .await?;
+        .await?;
         crate::GUILD
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(self.support_role_id.0)
+                        .id(crate::consts::SUPPORT.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(self.staff_role_id.0)
+                        .id(crate::consts::STAFF.0)
                         .permission(true)
                 })
             })
@@ -87,98 +82,180 @@ impl Command for Ban {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        let to_ban = UserId(
-            command.data.options[0]
-                .value
-                .as_ref()
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .parse()?,
-        )
-        .to_user(&ctx.http)
-        .await?;
+        let to_ban = UserId(command.get_str("user").unwrap().parse()?)
+            .to_user(&ctx.http)
+            .await?;
 
         let now = OffsetDateTime::now_utc();
-        let duration = Duration::from_secs(
-            86400 *
-            command
-                .data
-                .options
-                .iter()
-                .find(|x| x.name.as_str() == "duration")
-                .map_or(Some(30), |x| x.value.as_ref().map(|x| x.as_u64().unwrap()))
-                .unwrap(),
-        );
+        let amount_days = command.get_u64("duration").unwrap_or(30);
+        let duration = Duration::from_secs(86400 * amount_days);
         let unban_date = now + duration;
+
         let reason = command
-            .data
-            .options
-            .iter()
-            .find(|x| x.name.as_str() == "reason")
-            .map(|x| x.value.as_ref().unwrap().to_string())
-            .unwrap_or_default();
-        let do_dmd = command
-            .data
-            .options
-            .iter()
-            .find(|x| x.name.as_str() == "dmd")
-            .map_or(Some(false), |x| {
-                x.value.as_ref().map(|x| x.as_bool().unwrap())
-            })
-            .unwrap();
+            .get_str("reason")
+            .unwrap_or_else(|| String::from("No reason given."));
+
+        let do_dmd = command.get_bool("dmd").unwrap_or(false);
         let dmd = if do_dmd { 7 } else { 0 };
 
         let result = crate::GUILD
-            .ban_with_reason(&ctx.http, to_ban.id, dmd, reason)
+            .ban_with_reason(&ctx.http, to_ban.id, dmd, reason.clone())
             .await;
-        self.database.add_unban(*to_ban.id.as_u64(), unban_date);
+        let db_result = self.database.add_unban(*to_ban.id.as_u64(), unban_date);
+
+        let mut embed = CreateEmbed::default();
+        embed.title(format!("{} recieved a ban", to_ban.tag()));
+        embed.field("User", format!("<@{}>", to_ban.id), false);
+        embed.field("Duration", format!("`{} days`", amount_days), false);
+        embed.field("Reason", format!("`{}`", reason), false);
+        embed.field("Staff", format!("<@{}>", command.user.id), false);
 
         command
             .create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| {
-                    if let Err(ref e) = result.as_ref() {
-                        data.content(format!("Could not ban {}: {}", to_ban.tag(), e))
-                    } else {
-                        // TODO: better message, see notes
-                        data.create_embed(|em| {
-                            em.description(format!("Successfully banned {}", to_ban.tag()))
-                        })
+                resp.interaction_response_data(|data| match (result.as_ref(), db_result.as_ref()) {
+                    (Err(e), _) => data.content(format!("Could not ban {}: {}", to_ban.tag(), e)),
+                    (Ok(_), Err(e)) => {
+                        embed.description(format!(
+                            "WARNING: the database responded with an error: {}",
+                            e
+                        ));
+                        data.add_embed(embed.clone())
                     }
+                    _ => data.add_embed(embed.clone()),
                 })
             })
             .await?;
+
+        if result.is_ok() {
+            crate::consts::SUPPORT_BANS
+                .send_message(&ctx.http, |msg| msg.set_embed(embed))
+                .await?;
+        }
+
         result?;
         Ok(())
     }
 
     fn new() -> Box<Self> {
-        let support_role_id = *crate::consts::SUPPORT;
-        let staff_role_id = *crate::consts::STAFF;
         let database = Database::init();
 
-        Box::new(Self {
-            support_role_id,
-            staff_role_id,
-            database,
-        })
+        Box::new(Self { database })
     }
 }
 
 async fn update_loop(ctx: Arc<Http>) {
-    let mut database = Database::init();
+    let database = Database::init();
 
     loop {
-        database.fetch_unbans().await;
+        let unbans = database.fetch_unbans().await;
         let now = OffsetDateTime::now_utc();
 
-        for unban in database.cache.0.iter() {
+        for unban in unbans {
             if unban.1 < now {
                 let _ = crate::GUILD.unban(&ctx, unban.0).await;
-                database.remove_unban(unban.0);
+                let _ = database.remove_unban(unban.0);
             }
         }
 
         tokio::time::sleep(Duration::from_secs(5 * 60)).await;
+    }
+}
+
+pub struct Unban;
+
+#[async_trait]
+impl Command for Unban {
+    fn name(&self) -> String {
+        String::from("unban")
+    }
+
+    async fn register(&self, ctx: &Context) -> crate::Result<()> {
+        let command = crate::GUILD
+            .create_application_command(&ctx, |c| {
+                c
+                    .name(self.name())
+                    .description("Removes a ban from the given user in this server. This does not affect the \"Banned\" Role")
+                    .default_permission(false)
+                    .create_option(|o| {
+                        o.name("user")
+                            .description("The user to unban")
+                            .required(true)
+                            .kind(ApplicationCommandOptionType::String)
+                    })
+            })
+        .await?;
+        crate::GUILD
+            .create_application_command_permission(&ctx, command.id, |c| {
+                c.create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(crate::consts::SUPPORT.0)
+                        .permission(true)
+                })
+                .create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(crate::consts::STAFF.0)
+                        .permission(true)
+                })
+            })
+            .await?;
+        Ok(())
+    }
+
+    async fn run(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> crate::Result<()> {
+        let user = command.get_str("user").unwrap();
+        let user_id = UserId(user.parse().unwrap_or_default());
+        let bans = crate::GUILD.bans(&ctx.http).await?;
+        let to_unban = &match bans.iter().find(|x| {
+            x.user.id == user_id || user.starts_with(&x.user.tag())
+        }) {
+            Some(u) => u,
+            None => {
+                command
+                    .create_interaction_response(&ctx.http, |resp| {
+                        resp.interaction_response_data(|data| {
+                            data.content(format!("Could not find {} in your bans", user))
+                        })
+                    })
+                    .await?;
+                return Ok(());
+            }
+        }
+        .user;
+
+        let result = crate::GUILD.unban(&ctx.http, to_unban.id).await;
+
+        let mut embed = CreateEmbed::default();
+        embed.title(format!("{} was unbanned", to_unban.tag()));
+        embed.field("User", format!("<@{}>", to_unban.id), false);
+        embed.field("Staff", format!("<@{}>", command.user.id), false);
+
+        command
+            .create_interaction_response(&ctx.http, |resp| {
+                resp.interaction_response_data(|data| {
+                    if let Err(ref e) = result.as_ref() {
+                        data.content(format!("Could not unban {}: {}", to_unban.tag(), e))
+                    } else {
+                        data.add_embed(embed.clone())
+                    }
+                })
+            })
+            .await?;
+
+        if result.is_ok() {
+            crate::consts::SUPPORT_BANS
+                .send_message(&ctx.http, |msg| msg.set_embed(embed))
+                .await?;
+        }
+
+        result?;
+        Ok(())
+    }
+
+    fn new() -> Box<Self> {
+        Box::new(Self)
     }
 }

@@ -8,10 +8,11 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 mod commands;
 mod consts;
-mod handler;
 mod db;
+mod handler;
 #[macro_use]
 mod macros;
+mod interact_opts;
 
 #[tokio::main]
 async fn main() -> Result<()> {
