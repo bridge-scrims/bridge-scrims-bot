@@ -10,12 +10,13 @@ dotenv = "0.15.0"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
 lazy_static = "1.4.0"
+serde_json = "1.0.59"
+serde = "1.0.117"
 
 [dependencies.serenity]
 version = "0.10.9"
 default-features = false
 features = ["builder", "cache", "client", "gateway", "model", "http", "utils", "unstable_discord_api", "rustls_backend"]
-
 [dependencies.tokio]
 version = "1.13.0"
 features = ["full"]
