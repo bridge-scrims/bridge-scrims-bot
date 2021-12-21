@@ -72,7 +72,36 @@ impl Command for Prefab {
         i.next_back();
         let i = i.as_str();
         let m: Messages = self.inner.prefabs[i].clone();
+        let member = ctx
+            .http
+            .get_member(crate::GUILD.0, command.user.id.0)
+            .await
+            .unwrap();
+        let mut x = false;
+        for role in vec![
+            *crate::consts::SUPPORT_ROLE,
+            *crate::consts::TRIAL_SUPPORT_ROLE,
+            *crate::consts::STAFF_ROLE,
+        ] {
+            if member.roles.contains(&role) {
+                x = true;
+            }
+        }
+        if !x {
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title("Missing Permissions")
+                            .description(
+                                "You currently do **NOT** have permissions to do this command.",
+                            )
+                            .color(Color::DARK_RED)
+                    })
+                })
+                .await?;
 
+            return Ok(());
+        }
         for message in &m["messages"] {
             let _ = &ctx
                 .http

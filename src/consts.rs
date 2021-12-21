@@ -12,4 +12,8 @@ lazy_static::lazy_static! {
     pub static ref PRIVATE_HEAD: RoleId = RoleId(dotenv!("PRIVATE_HEAD").parse().unwrap());
     pub static ref PREMIUM_COUNCIL: RoleId = RoleId(dotenv!("PREMIUM_COUNCIL").parse().unwrap());
     pub static ref PREMIUM_HEAD: RoleId = RoleId(dotenv!("PREMIUM_HEAD").parse().unwrap());
+
+    pub static ref SUPPORT_ROLE: RoleId = RoleId(dotenv!("SUPPORT_ROLE").parse().unwrap());
+    pub static ref TRIAL_SUPPORT_ROLE: RoleId = RoleId(dotenv!("TRIAL_SUPPORT_ROLE").parse().unwrap());
+    pub static ref STAFF_ROLE: RoleId = RoleId(dotenv!("STAFF_ROLE").parse().unwrap());
 }
