@@ -5,7 +5,10 @@ use serenity::{
     async_trait,
     model::{
         interactions::{
-            application_command::{ApplicationCommandInteraction, ApplicationCommandOptionType},
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandOptionType,
+                ApplicationCommandPermissionType,
+            },
             InteractionResponseType,
         },
         prelude::InteractionApplicationCommandCallbackDataFlags,
@@ -35,7 +38,7 @@ impl Command for Prefab {
         "prefab".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        crate::GUILD
+        let cmd = crate::GUILD
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Sends a given prefab.")
@@ -49,8 +52,25 @@ impl Command for Prefab {
                         }
                         o
                     })
+                    .default_permission(false)
             })
             .await?;
+        let _ = crate::GUILD
+            .create_application_command_permission(&ctx, cmd.id, |p| {
+                for role in vec![
+                    *crate::consts::SUPPORT_ROLE,
+                    *crate::consts::TRIAL_SUPPORT_ROLE,
+                    *crate::consts::STAFF_ROLE,
+                ] {
+                    p.create_permission(|perm| {
+                        perm.kind(ApplicationCommandPermissionType::Role)
+                            .id(role.0)
+                            .permission(true)
+                    });
+                }
+                p
+            })
+            .await;
         Ok(())
     }
     async fn run(
