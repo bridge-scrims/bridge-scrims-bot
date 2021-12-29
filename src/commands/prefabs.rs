@@ -18,14 +18,13 @@ use serenity::{
 };
 use std::collections::HashMap;
 use std::fs;
-use std::sync::Arc;
 
 type Message = HashMap<String, Value>;
 type Messages = HashMap<String, Vec<Message>>;
 type Prefabs = HashMap<String, Messages>;
 
 pub struct Prefab {
-    inner: Arc<Inner>,
+    inner: Inner,
 }
 
 struct Inner {
@@ -86,12 +85,13 @@ impl Command for Prefab {
                 .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-        let s = command.data.options[0].value.clone().unwrap().to_string();
-        let mut i = s.chars();
-        i.next();
-        i.next_back();
-        let i = i.as_str();
-        let m: Messages = self.inner.prefabs[i].clone();
+        let s = command.data.options[0]
+            .value
+            .as_ref()
+            .unwrap()
+            .as_str()
+            .unwrap();
+        let m: Messages = self.inner.prefabs[s].clone();
         let member = ctx
             .http
             .get_member(crate::GUILD.0, command.user.id.0)
@@ -132,7 +132,7 @@ impl Command for Prefab {
             .edit_original_interaction_response(&ctx, |r| {
                 r.create_embed(|e| {
                     e.title("Prefab Sent")
-                        .description(format!("The prefab `{}` has been sent.", i))
+                        .description(format!("The prefab `{}` has been sent.", s))
                         .color(Color::MAGENTA)
                 })
             })
@@ -155,7 +155,7 @@ impl Command for Prefab {
             prefabs.insert(prefab_name, d);
         }
         Box::new(Prefab {
-            inner: Arc::new(Inner { prefabs }),
+            inner: Inner { prefabs },
         })
     }
 }
