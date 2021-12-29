@@ -24,10 +24,6 @@ type Messages = HashMap<String, Vec<Message>>;
 type Prefabs = HashMap<String, Messages>;
 
 pub struct Prefab {
-    inner: Inner,
-}
-
-struct Inner {
     prefabs: Prefabs,
 }
 
@@ -46,7 +42,7 @@ impl Command for Prefab {
                             .description("Select the prefab that you would like to send.")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String);
-                        for (name, _) in &self.inner.prefabs {
+                        for (name, _) in &self.prefabs {
                             o.add_string_choice(name, name);
                         }
                         o
@@ -91,7 +87,7 @@ impl Command for Prefab {
             .unwrap()
             .as_str()
             .unwrap();
-        let m: Messages = self.inner.prefabs[s].clone();
+        let m: Messages = self.prefabs[s].clone();
         let member = ctx
             .http
             .get_member(crate::GUILD.0, command.user.id.0)
@@ -154,8 +150,6 @@ impl Command for Prefab {
             let d = serde_json::from_str::<Messages>(&s).unwrap();
             prefabs.insert(prefab_name, d);
         }
-        Box::new(Prefab {
-            inner: Inner { prefabs },
-        })
+        Box::new(Prefab { prefabs })
     }
 }
