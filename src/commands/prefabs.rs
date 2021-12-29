@@ -129,7 +129,7 @@ impl Command for Prefab {
                 r.create_embed(|e| {
                     e.title("Prefab Sent")
                         .description(format!("The prefab `{}` has been sent.", s))
-                        .color(Color::MAGENTA)
+                        .color(Color::new(0x1abc9c))
                 })
             })
             .await?;
