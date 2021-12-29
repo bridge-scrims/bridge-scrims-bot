@@ -55,7 +55,7 @@ impl Command for Prefab {
                     .default_permission(false)
             })
             .await?;
-        let _ = crate::GUILD
+        let perms = crate::GUILD
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in vec![
                     *crate::consts::SUPPORT_ROLE,
@@ -71,7 +71,10 @@ impl Command for Prefab {
                 p
             })
             .await;
-        Ok(())
+        match perms {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Box::new(err)),
+        }
     }
     async fn run(
         &self,
