@@ -42,7 +42,7 @@ impl Command for Prefab {
                             .description("Select the prefab that you would like to send.")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String);
-                        for (name, _) in &self.prefabs {
+                        for name in self.prefabs.keys() {
                             o.add_string_choice(name, name);
                         }
                         o
@@ -52,7 +52,7 @@ impl Command for Prefab {
             .await?;
         crate::GUILD
             .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in vec![
+                for role in &[
                     *crate::consts::SUPPORT_ROLE,
                     *crate::consts::TRIAL_SUPPORT_ROLE,
                     *crate::consts::STAFF_ROLE,
@@ -94,12 +94,12 @@ impl Command for Prefab {
             .await
             .unwrap();
         let mut x = false;
-        for role in vec![
+        for role in &[
             *crate::consts::SUPPORT_ROLE,
             *crate::consts::TRIAL_SUPPORT_ROLE,
             *crate::consts::STAFF_ROLE,
         ] {
-            if member.roles.contains(&role) {
+            if member.roles.contains(role) {
                 x = true;
             }
         }
