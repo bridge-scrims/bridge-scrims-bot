@@ -174,24 +174,24 @@ impl Command for Ban {
                             .required(true)
                             .kind(ApplicationCommandOptionType::User)
                     })
-                .create_option(|o| {
-                    o.name("duration")
-                        .description("The ban duration in days")
-                        .required(false)
-                        .kind(ApplicationCommandOptionType::Integer)
-                })
-                .create_option(|o| {
-                    o.name("reason")
-                        .description("Reason for the ban")
-                        .required(false)
-                        .kind(ApplicationCommandOptionType::String)
-                })
-                .create_option(|o| {
-                    o.name("dmd")
-                        .description("Should the last 7d of messages be removed?")
-                        .required(false)
-                        .kind(ApplicationCommandOptionType::Boolean)
-                })
+                    .create_option(|o| {
+                        o.name("reason")
+                            .description("Reason for the ban")
+                            .required(true)
+                            .kind(ApplicationCommandOptionType::String)
+                    })
+                    .create_option(|o| {
+                        o.name("duration")
+                            .description("The ban duration in days")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Integer)
+                    })
+                    .create_option(|o| {
+                        o.name("dmd")
+                            .description("Should the last 7d of messages be removed?")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Boolean)
+                    })
             })
         .await?;
         crate::GUILD
@@ -267,16 +267,16 @@ impl Command for ScrimBan {
                             .kind(ApplicationCommandOptionType::User)
                     })
                     .create_option(|o| {
+                        o.name("reason")
+                            .description("Reason for the ban")
+                            .required(true)
+                            .kind(ApplicationCommandOptionType::String)
+                    })
+                    .create_option(|o| {
                         o.name("duration")
                             .description("The ban duration in days")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
-                    })
-                    .create_option(|o| {
-                        o.name("reason")
-                            .description("Reason for the ban")
-                            .required(false)
-                            .kind(ApplicationCommandOptionType::String)
                     })
                     .create_option(|o| {
                         o.name("dmd")
