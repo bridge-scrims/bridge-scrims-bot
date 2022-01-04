@@ -44,6 +44,45 @@ impl EventHandler for Handler {
                 tracing::error!("Could not register command {}: {}", name, err);
             }
         }
+                let channel = ChannelId(905110419742552086);
+
+        let button = match channel.send_message(_ctx, |m|{
+
+            m.content("_ _".to_string());
+            m.components(|c|{
+                c.create_action_row(|a|{
+                    a.create_button(|b|{
+                        b.style(ButtonStyle::Success);
+                        b.label("Create A Ticket!");
+                        b.custom_id("ticket_button")
+                    })             
+                })
+            })
+
+
+        }).await {
+            Ok(msg) => msg,
+            Err(e) => {
+                println!("There was an error: {}", e);
+                return;
+            }
+        };
+
+        while let Some(interaction) = serenity::CollectComponentInteraction::new(&ctx)
+        .channel_id(channel)
+        .message_id(button.id)
+        .timeout()
+        .await 
+            {
+               let ticket_channel = GuildId(901821870582665247).create_channel(&_ctx, |c| 
+                
+                
+                
+                c.name("my-test-channel").kind(ChannelType::Text))
+                
+               .await;
+            }
+
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {
