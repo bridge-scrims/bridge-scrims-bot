@@ -104,7 +104,8 @@ impl BanType {
 
                 let mut result = None;
                 let mut removed_roles = Vec::new();
-                for role in member.roles(&cache)
+                for role in member
+                    .roles(&cache)
                     .await
                     .unwrap_or_default()
                     .iter()

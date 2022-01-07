@@ -39,6 +39,18 @@ impl Database {
         )
         .expect("Could not initialize database");
 
+        conn.execute(
+            "create table if not exists Notes (
+                id integer primary key,
+                userid integer,
+                created_at integer,
+                note text,
+            )",
+        )
+        .expect("Could not initialize database");
+
+
+
         Self {
             sqlite: Mutex::new(conn),
         }
@@ -131,6 +143,14 @@ impl Database {
         }
     }
 
+    pub fn add_note(
+        &self, 
+        userid: u64,
+        created_at: OffsetDateTime,
+        note: String,
+        creator: u64
+    )
+
     pub fn remove_entry(&self, table: &str, i: u64) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
@@ -155,6 +175,14 @@ pub struct ScrimUnban {
     pub id: u64,
     pub date: OffsetDateTime,
     pub roles: BanRoles,
+}
+
+pub struct Note {
+    pub id: u32, // the unique identifier of the note 
+    pub userid: u64, // the id of the person that the note belongs to
+    pub created_at: OffsetDateTime, // the date that the note was created at
+    pub note: String, // the text that the note contains
+    pub creator: u64, // the id of the person who added the note
 }
 
 pub struct BanRoles(pub Vec<RoleId>);

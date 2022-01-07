@@ -8,8 +8,9 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
-use crate::commands::ban::{Ban, ScrimBan, Unban, ScrimUnban};
+use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
+use crate::commands::notes::Notes;
 use crate::consts::GUILD;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
@@ -26,6 +27,7 @@ impl Handler {
             ScrimBan::new(),
             Unban::new(),
             ScrimUnban::new(),
+            Notes::new(),
         ];
         let commands = commands
             .into_iter()
