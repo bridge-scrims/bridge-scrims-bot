@@ -60,7 +60,7 @@ impl BanType {
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
 
-        embed.description("Appeal at https://dyno.gg/form/31ac5763");
+        embed.description("Appeal at http://appeal.bridgescrims.com/");
         let dm_result = user.dm(&http, |msg| msg.set_embed(embed.clone())).await;
         if let Err(e) = dm_result {
             tracing::error!("Could not DM user {} about their ban: {}", user.tag(), e);
