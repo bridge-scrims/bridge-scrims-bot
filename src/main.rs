@@ -8,23 +8,28 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 mod commands;
 mod consts;
+mod db;
 mod handler;
 #[macro_use]
 mod macros;
+mod interact_opts;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
-    let application_id =
-        Http::new_with_token(&dotenv!("BOT_TOKEN"))
-            .get_current_application_info()
-            .await?
-            .id
-            .0;
+    let application_id = Http::new_with_token(&dotenv!("BOT_TOKEN"))
+        .get_current_application_info()
+        .await?
+        .id
+        .0;
+    let mut intents = GatewayIntents::empty();
+    intents.toggle(GatewayIntents::GUILD_MESSAGES);
+    intents.toggle(GatewayIntents::GUILD_MEMBERS);
+
     let mut client = Client::builder(dotenv!("BOT_TOKEN"))
         .application_id(application_id)
         .event_handler(Handler::new())
-        .intents(GatewayIntents::GUILD_MESSAGES)
+        .intents(intents)
         .await?;
     let shard_manager = client.shard_manager.clone();
     let http = client.cache_and_http.http.clone();

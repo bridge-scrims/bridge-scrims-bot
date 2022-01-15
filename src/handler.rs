@@ -8,6 +8,7 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
+use crate::commands::ban::{Ban, ScrimBan, Unban, ScrimUnban};
 use crate::commands::council::Council;
 use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
@@ -20,7 +21,15 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands: Vec<Command> = vec![Council::new(), Prefab::new()];
+
+        let commands: Vec<Command> = vec![
+            Council::new(),
+            Ban::new(),
+            ScrimBan::new(),
+            Unban::new(),
+            ScrimUnban::new(),
+            Prefab::new()
+        ];
         let commands = commands
             .into_iter()
             .fold(HashMap::new(), |mut map, command| {
