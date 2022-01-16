@@ -21,7 +21,6 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
-
         let commands: Vec<Command> = vec![
             Council::new(),
             Ban::new(),
