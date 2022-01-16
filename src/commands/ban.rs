@@ -45,9 +45,6 @@ impl BanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
 
-        let do_dmd = command.get_bool("dmd").unwrap_or(false);
-        let dmd = if do_dmd { 7 } else { 0 };
-
         let now = OffsetDateTime::now_utc();
         let days = command.get_u64("duration").unwrap_or(30);
         let duration = Duration::from_secs(86400 * days);
@@ -69,6 +66,8 @@ impl BanType {
 
         match self {
             Self::Server => {
+                let do_dmd = command.get_bool("dmd").unwrap_or(false);
+                let dmd = if do_dmd { 7 } else { 0 };
                 let db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
                 let result = crate::GUILD
                     .ban_with_reason(&http, id, dmd, reason.clone())
@@ -278,12 +277,6 @@ impl Command for ScrimBan {
                             .description("The ban duration in days")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
-                    })
-                    .create_option(|o| {
-                        o.name("dmd")
-                            .description("Should the last 7d of messages be removed?")
-                            .required(false)
-                            .kind(ApplicationCommandOptionType::Boolean)
                     })
             })
             .await?;
