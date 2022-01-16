@@ -104,7 +104,8 @@ impl BanType {
 
                 let mut result = None;
                 let mut removed_roles = Vec::new();
-                for role in member.roles(&cache)
+                for role in member
+                    .roles(&cache)
                     .await
                     .unwrap_or_default()
                     .iter()
@@ -322,13 +323,13 @@ async fn scrim_update_loop(ctx: Arc<Http>) {
         let now = OffsetDateTime::now_utc();
 
         for unban in unbans {
-            if unban.date < now {
+            if unban.date > now {
+                continue;
+            }
+            let member = crate::GUILD.member(&ctx, unban.id).await;
+            if let Ok(mut member) = member {
                 let _ = database.remove_entry("ScheduledScrimUnbans", unban.id);
-                let member = crate::GUILD.member(&ctx, unban.id).await;
-
-                if let Ok(mut member) = member {
-                    let _ = member.add_roles(&ctx, &unban.roles.0).await;
-                }
+                let _ = member.add_roles(&ctx, &unban.roles.0).await;
             }
         }
 
