@@ -16,6 +16,7 @@ lazy_static::lazy_static! {
     pub static ref PRIVATE_COUNCIL: RoleId = RoleId(dotenv!("PRIVATE_COUNCIL").parse().unwrap());
     pub static ref PRIVATE_HEAD: RoleId = RoleId(dotenv!("PRIVATE_HEAD").parse().unwrap());
     pub static ref PREMIUM_COUNCIL: RoleId = RoleId(dotenv!("PREMIUM_COUNCIL").parse().unwrap());
+
     pub static ref PREMIUM_HEAD: RoleId = RoleId(dotenv!("PREMIUM_COUNCIL").parse().unwrap());
 
     // Ban and mute related
@@ -23,6 +24,7 @@ lazy_static::lazy_static! {
     pub static ref SS_SUPPORT: RoleId = RoleId(dotenv!("SS_SUPPORT").parse().unwrap());
     pub static ref STAFF: RoleId = RoleId(dotenv!("STAFF").parse().unwrap());
     pub static ref SUPPORT: RoleId = RoleId(dotenv!("SUPPORT").parse().unwrap());
+    pub static ref TRIAL_SUPPORT: RoleId = RoleId(dotenv!("TRIAL_SUPPORT").parse().unwrap());
     pub static ref BOOSTER: RoleId = RoleId(dotenv!("BOOSTER").parse().unwrap());
 
     // Database related

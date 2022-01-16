@@ -10,6 +10,7 @@ use serenity::model::interactions::Interaction;
 
 use crate::commands::ban::{Ban, ScrimBan, Unban, ScrimUnban};
 use crate::commands::council::Council;
+use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
@@ -20,12 +21,14 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
+
         let commands: Vec<Command> = vec![
             Council::new(),
             Ban::new(),
             ScrimBan::new(),
             Unban::new(),
             ScrimUnban::new(),
+            Prefab::new()
         ];
         let commands = commands
             .into_iter()
