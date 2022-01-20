@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
     let mut intents = GatewayIntents::empty();
     intents.toggle(GatewayIntents::GUILD_MESSAGES);
     intents.toggle(GatewayIntents::GUILD_MEMBERS);
+    intents.toggle(GatewayIntents::GUILDS);
 
     let mut client = Client::builder(dotenv!("BOT_TOKEN"))
         .application_id(application_id)
