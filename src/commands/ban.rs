@@ -50,7 +50,7 @@ impl BanType {
 
         let now = OffsetDateTime::now_utc();
         let days = command.get_u64("duration").unwrap_or(30);
-        let duration = Duration::from_secs(24 * days);
+        let duration = Duration::from_secs(24 * 60 * 60 * days);
         let unban_date = now + duration;
 
         let mut member = crate::GUILD.member(&http, id).await?;
