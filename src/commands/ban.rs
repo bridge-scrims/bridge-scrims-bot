@@ -136,7 +136,7 @@ impl BanType {
                 let db_result = crate::consts::DATABASE.add_scrim_unban(
                     *id.as_u64(),
                     unban_date,
-                    BanRoles(removed_roles),
+                    &BanRoles(removed_roles),
                 );
                 crate::consts::SUPPORT_BANS
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))
@@ -247,8 +247,10 @@ async fn update_loop(ctx: Arc<Http>) {
 
         for unban in unbans {
             if unban.date < now {
-                let _ = crate::GUILD.unban(&ctx, unban.id).await;
-                let _ = database.remove_entry("ScheduledUnbans", unban.id);
+                let _ = crate::GUILD
+                    .unban(&ctx, unban.id)
+                    .await
+                    .map(|_| database.remove_entry("ScheduledUnbans", unban.id));
             }
         }
 
@@ -339,7 +341,7 @@ async fn scrim_update_loop(ctx: Arc<Http>) {
                     )
                     .await;
                 if let Err(err) = res {
-                    tracing::error!("Failed to unban {} appon expiration: {}", member, err)
+                    tracing::error!("Failed to unban {} appon expiration: {}", member, err);
                 }
             }
         }
@@ -437,7 +439,16 @@ impl UnbanType {
         match self {
             Self::Server => {
                 let result = crate::GUILD.unban(&http, to_unban.id).await;
-                let _ = crate::consts::DATABASE.remove_entry("ScheduledUnbans", to_unban.id.0);
+                if result.is_ok() {
+                    crate::consts::DATABASE
+                        .remove_entry("ScheduledUnbans", to_unban.id.0)
+                        .unwrap_or_else(|_| {
+                            tracing::error!(
+                                "Could not remove {} from the ban database.",
+                                to_unban.tag()
+                            )
+                        });
+                }
                 match result {
                     Ok(_) => {
                         let _ = crate::consts::SUPPORT_BANS
@@ -450,11 +461,10 @@ impl UnbanType {
             }
             Self::Scrim => {
                 let mut result = None;
-                let mut member;
-                match crate::GUILD.member(&http, to_unban.id).await {
-                    Ok(memb) => member = memb,
+                let mut member = match crate::GUILD.member(&http, to_unban.id).await {
+                    Ok(memb) => memb,
                     Err(e) => return Err(Box::new(e)),
-                }
+                };
                 let unban = crate::consts::DATABASE
                     .fetch_scrim_unbans()
                     .into_iter()

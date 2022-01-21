@@ -63,7 +63,7 @@ impl EventHandler for Handler {
         if msg
             .content
             .to_ascii_lowercase()
-            .replace(" ", "")
+            .replace(' ', "")
             .contains("shmill")
         {
             if let Err(err) = msg

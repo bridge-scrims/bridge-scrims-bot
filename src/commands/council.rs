@@ -155,19 +155,19 @@ impl Inner {
             .boxed();
         while let Some(member) = members.next().await {
             if member.roles.contains(&PRIME_HEAD) {
-                prime_head = member.user.mention().to_string()
+                prime_head = member.user.mention().to_string();
             } else if member.roles.contains(&PRIME_COUNCIL) {
-                prime_council.push(member.user.mention().to_string())
+                prime_council.push(member.user.mention().to_string());
             }
             if member.roles.contains(&PRIVATE_HEAD) {
-                private_head = member.user.mention().to_string()
+                private_head = member.user.mention().to_string();
             } else if member.roles.contains(&PRIVATE_COUNCIL) {
-                private_council.push(member.user.mention().to_string())
+                private_council.push(member.user.mention().to_string());
             }
             if member.roles.contains(&PREMIUM_HEAD) {
-                premium_head = member.user.mention().to_string()
+                premium_head = member.user.mention().to_string();
             } else if member.roles.contains(&PREMIUM_COUNCIL) {
-                premium_council.push(member.user.mention().to_string())
+                premium_council.push(member.user.mention().to_string());
             }
         }
         *prime_council_lock = format!(

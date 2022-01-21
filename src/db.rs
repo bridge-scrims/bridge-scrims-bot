@@ -19,7 +19,7 @@ impl Database {
             std::fs::File::create(&path).expect("Cannot create database file");
         }
 
-        let conn = Connection::open(path.to_path_buf()).unwrap();
+        let conn = Connection::open(&path).unwrap();
 
         // Tables
         conn.execute(
@@ -54,7 +54,7 @@ impl Database {
                 let mut cursor = stmt.into_cursor();
 
                 while let Ok(Some(row)) = cursor.next() {
-                    let _ = predicate(row);
+                    predicate(row);
                 }
             }
         });
@@ -110,17 +110,17 @@ impl Database {
         &self,
         id: u64,
         unban_date: OffsetDateTime,
-        roles: BanRoles,
+        roles: &BanRoles,
     ) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
             .lock()
             .map(|db| {
                 db.execute(format!(
-                    "INSERT INTO 'ScheduledScrimUnbans' (id,time,roles) values ({},{},{:?})",
+                    "INSERT INTO 'ScheduledScrimUnbans' (id,time,roles) values ({},{},\"{}\")",
                     id,
                     unban_date.unix_timestamp(),
-                    roles.to_string(),
+                    roles,
                 ))
             })
             .ok();
@@ -165,7 +165,7 @@ impl Display for BanRoles {
         for i in 0..self.0.len() {
             let sep = if i == self.0.len() - 1 { "" } else { "," };
 
-            write!(f, "{}{}", self.0[i], sep)?
+            write!(f, "{}{}", self.0[i], sep)?;
         }
         Ok(())
     }
