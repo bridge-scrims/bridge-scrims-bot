@@ -341,7 +341,7 @@ async fn scrim_update_loop(ctx: Arc<Http>) {
                     )
                     .await;
                 if let Err(err) = res {
-                    tracing::error!("Failed to unban {} appon expiration: {}", member, err);
+                    tracing::error!("Failed to unban {} upon expiration: {}", member, err);
                 }
             }
         }
