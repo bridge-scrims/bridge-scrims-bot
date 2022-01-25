@@ -11,6 +11,7 @@ use serenity::{
         },
     },
 };
+
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
@@ -18,7 +19,7 @@ use crate::{commands::Command, db::BanRoles, interact_opts::InteractOpts};
 
 fn format_db_error(e: &sqlite::Error) -> String {
     if let Some(19) = e.code {
-        format!("WARNING: this ban already exists.",)
+        "WARNING: this ban already exists.".to_string()
     } else {
         format!("WARNING: the database responded with an error: {}", e)
     }
@@ -36,6 +37,8 @@ impl BanType {
         cache: &Cache,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
+        let cmd_member = command.clone().member.unwrap();
+
         let user = UserId(command.get_str("user").unwrap().parse()?)
             .to_user(&http)
             .await?;
@@ -45,13 +48,28 @@ impl BanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
 
-        let do_dmd = command.get_bool("dmd").unwrap_or(false);
-        let dmd = if do_dmd { 7 } else { 0 };
-
         let now = OffsetDateTime::now_utc();
         let days = command.get_u64("duration").unwrap_or(30);
-        let duration = Duration::from_secs(86400 * days);
+        let duration = Duration::from_secs(24 * 60 * 60 * days);
         let unban_date = now + duration;
+
+        let mut member = crate::GUILD.member(&http, id).await?;
+        let roles = member.roles(&cache).await.unwrap_or_default();
+        let cmd_roles = cmd_member.roles(&cache).await.unwrap_or_default();
+
+        let top_role = roles.iter().max();
+        let cmd_top_role = cmd_roles.iter().max();
+
+        if top_role >= cmd_top_role || user.bot {
+            command
+                .create_interaction_response(&http, |resp| {
+                    resp.interaction_response_data(|data| {
+                        data.content(format!("You do not have permission to ban {}", user.tag()))
+                    })
+                })
+                .await?;
+            return Ok(());
+        }
 
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} recieved a ban", user.tag()));
@@ -59,16 +77,18 @@ impl BanType {
         embed.field("Duration", format!("`{} days`", days), false);
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
-
-        embed.description("Appeal at https://dyno.gg/form/31ac5763");
+        if matches!(self, BanType::Server) {
+            embed.description("Appeal at http://appeal.bridgescrims.com/");
+        }
         let dm_result = user.dm(&http, |msg| msg.set_embed(embed.clone())).await;
         if let Err(e) = dm_result {
             tracing::error!("Could not DM user {} about their ban: {}", user.tag(), e);
         }
         embed.description("");
-
         match self {
             Self::Server => {
+                let do_dmd = command.get_bool("dmd").unwrap_or(false);
+                let dmd = if do_dmd { 7 } else { 0 };
                 let db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
                 let result = crate::GUILD
                     .ban_with_reason(&http, id, dmd, reason.clone())
@@ -100,22 +120,12 @@ impl BanType {
                 result?;
             }
             Self::Scrim => {
-                let mut member = crate::GUILD.member(&http, id).await?;
-
                 let mut result = None;
                 let mut removed_roles = Vec::new();
-                for role in member
-                    .roles(&cache)
-                    .await
-                    .unwrap_or_default()
-                    .iter()
-                    .filter(|x| !x.managed)
-                {
+                for role in roles.iter().filter(|x| !x.managed) {
                     dbg!(&role);
                     if let Err(e) = member.remove_role(&http, role).await {
-                        if role.id.0 != crate::consts::BOOSTER.0 {
-                            let _ = result.get_or_insert(Err(e));
-                        }
+                        let _ = result.get_or_insert(Err(e));
                     } else {
                         removed_roles.push(role.id);
                         dbg!(&role);
@@ -126,7 +136,7 @@ impl BanType {
                 let db_result = crate::consts::DATABASE.add_scrim_unban(
                     *id.as_u64(),
                     unban_date,
-                    BanRoles(removed_roles),
+                    &BanRoles(removed_roles),
                 );
                 crate::consts::SUPPORT_BANS
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))
@@ -218,9 +228,7 @@ impl Command for Ban {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        BanType::Server
-            .exec(&ctx.http, &ctx.cache, &command)
-            .await?;
+        BanType::Server.exec(&ctx.http, &ctx.cache, command).await?;
 
         Ok(())
     }
@@ -239,8 +247,10 @@ async fn update_loop(ctx: Arc<Http>) {
 
         for unban in unbans {
             if unban.date < now {
-                let _ = crate::GUILD.unban(&ctx, unban.id).await;
-                let _ = database.remove_entry("ScheduledUnbans", unban.id);
+                let _ = crate::GUILD
+                    .unban(&ctx, unban.id)
+                    .await
+                    .map(|_| database.remove_entry("ScheduledUnbans", unban.id));
             }
         }
 
@@ -279,12 +289,6 @@ impl Command for ScrimBan {
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
                     })
-                    .create_option(|o| {
-                        o.name("dmd")
-                            .description("Should the last 7d of messages be removed?")
-                            .required(false)
-                            .kind(ApplicationCommandOptionType::Boolean)
-                    })
             })
             .await?;
         crate::GUILD
@@ -305,7 +309,7 @@ impl Command for ScrimBan {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        BanType::Scrim.exec(&ctx.http, &ctx.cache, &command).await?;
+        BanType::Scrim.exec(&ctx.http, &ctx.cache, command).await?;
 
         Ok(())
     }
@@ -323,12 +327,21 @@ async fn scrim_update_loop(ctx: Arc<Http>) {
         let now = OffsetDateTime::now_utc();
 
         for unban in unbans {
-            if unban.date < now {
-                let _ = database.remove_entry("ScheduledScrimUnbans", unban.id);
-                let member = crate::GUILD.member(&ctx, unban.id).await;
-
-                if let Ok(mut member) = member {
-                    let _ = member.add_roles(&ctx, &unban.roles.0).await;
+            if unban.date > now {
+                continue;
+            }
+            let member = crate::GUILD.member(&ctx, unban.id).await;
+            if let Ok(member) = member {
+                let res = UnbanType::Scrim
+                    .unban(
+                        &ctx,
+                        None,
+                        UnbanEntry::Scrim(unban),
+                        "Ban Expired".to_string(),
+                    )
+                    .await;
+                if let Err(err) = res {
+                    tracing::error!("Failed to unban {} upon expiration: {}", member, err);
                 }
             }
         }
@@ -343,6 +356,11 @@ pub enum UnbanType {
     Server,
 }
 
+pub enum UnbanEntry {
+    Scrim(crate::db::ScrimUnban),
+    Server(serenity::model::guild::Ban),
+}
+
 impl UnbanType {
     pub async fn exec(
         &self,
@@ -350,6 +368,9 @@ impl UnbanType {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let user = command.get_str("user").unwrap();
+        let reason = command
+            .get_str("reason")
+            .unwrap_or_else(|| String::from("No reason given."));
         let user_id = UserId(user.parse().unwrap_or_default());
         let bans = crate::GUILD.bans(&http).await?;
 
@@ -364,7 +385,6 @@ impl UnbanType {
             UnbanType::Scrim => scrim_entry.is_some(),
             UnbanType::Server => server_entry.is_some(),
         };
-
         if !exists {
             command
                 .create_interaction_response(&http, |resp| {
@@ -376,57 +396,82 @@ impl UnbanType {
             tracing::error!("Could not find {} in {:?}", user, self);
             return Ok(());
         }
-        let to_unban = match self {
-            UnbanType::Scrim => {
-                crate::GUILD
-                    .member(&http, scrim_entry.unwrap().id)
-                    .await
-                    .unwrap()
-                    .user
-            }
-            UnbanType::Server => server_entry.unwrap().user.clone(),
+
+        let entry = match self {
+            UnbanType::Scrim => UnbanEntry::Scrim(scrim_entry.unwrap()),
+            UnbanType::Server => UnbanEntry::Server(server_entry.unwrap().clone()),
+        };
+        async move {
+            let res = self.unban(http, Some(command.user.id), entry, reason).await;
+            let _ = command
+                .create_interaction_response(&http, |resp| {
+                    resp.interaction_response_data(|data| match res {
+                        Err(err) => data.content(format!("Could not unban {}: {}", user_id, err)),
+                        Ok(embed) => data.embeds([embed]),
+                    })
+                })
+                .await;
+        }
+        .await;
+        Ok(())
+    }
+    pub async fn unban(
+        &self,
+        http: &Http,
+        staff_id: Option<UserId>, // If staff id is not provided, it is assumed that the ban expired
+        unban_entry: UnbanEntry,
+        reason: String,
+    ) -> Result<CreateEmbed, Box<dyn std::error::Error + Sync + Send>> {
+        let to_unban = match unban_entry {
+            UnbanEntry::Scrim(entry) => crate::GUILD.member(&http, entry.id).await.unwrap().user,
+            UnbanEntry::Server(entry) => entry.user.clone(),
         };
 
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} was unbanned", to_unban.tag()));
         embed.field("User", format!("<@{}>", to_unban.id), false);
-        embed.field("Staff", format!("<@{}>", command.user.id), false);
+        if staff_id.is_some() {
+            embed.field("Staff", format!("<@{}>", staff_id.unwrap()), false);
+        }
+
+        embed.field("Reason", format!("`{}`", reason), false);
 
         match self {
             Self::Server => {
                 let result = crate::GUILD.unban(&http, to_unban.id).await;
-                let _ = crate::consts::DATABASE.remove_entry("ScheduledUnbans", to_unban.id.0);
-
                 if result.is_ok() {
-                    crate::consts::BANS
-                        .send_message(&http, |msg| msg.set_embed(embed.clone()))
-                        .await?;
+                    crate::consts::DATABASE
+                        .remove_entry("ScheduledUnbans", to_unban.id.0)
+                        .unwrap_or_else(|_| {
+                            tracing::error!(
+                                "Could not remove {} from the ban database.",
+                                to_unban.tag()
+                            )
+                        });
                 }
-
-                command
-                    .create_interaction_response(&http, |resp| {
-                        resp.interaction_response_data(|data| {
-                            if let Err(ref e) = result.as_ref() {
-                                data.content(format!("Could not ban {}: {}", to_unban.tag(), e))
-                            } else {
-                                data.add_embed(embed)
-                            }
-                        })
-                    })
-                    .await?;
-
-                result?;
+                match result {
+                    Ok(_) => {
+                        let _ = crate::consts::SUPPORT_BANS
+                            .send_message(&http, |msg| msg.set_embed(embed.clone()))
+                            .await;
+                        return Ok(embed);
+                    }
+                    Err(err) => return Err(Box::new(err)),
+                }
             }
             Self::Scrim => {
                 let mut result = None;
-                let mut member = crate::GUILD.member(&http, to_unban.id).await?;
+                let mut member = match crate::GUILD.member(&http, to_unban.id).await {
+                    Ok(memb) => memb,
+                    Err(e) => return Err(Box::new(e)),
+                };
                 let unban = crate::consts::DATABASE
                     .fetch_scrim_unbans()
                     .into_iter()
                     .find(|x| x.id == to_unban.id.0)
                     .unwrap();
                 if let Err(e) = member.add_roles(&http, &unban.roles.0).await {
-                    let _ = result.get_or_insert(Err(e));
+                    return Err(Box::new(e)); // If roles cannot be added, don't remove the unban from the database either
                 }
 
                 let _ =
@@ -434,33 +479,18 @@ impl UnbanType {
 
                 let db_result =
                     crate::consts::DATABASE.remove_entry("ScheduledScrimUnbans", to_unban.id.0);
-                crate::consts::SUPPORT_BANS
+                let _ = crate::consts::SUPPORT_BANS
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))
-                    .await?;
-
-                command
-                    .create_interaction_response(&http, |resp| {
-                        resp.interaction_response_data(|data| {
-                            match (result.as_ref(), db_result.as_ref()) {
-                                (Some(Err(e)), _) => {
-                                    data.content(format!("Could not ban {}: {}", to_unban.tag(), e))
-                                }
-                                (_, Err(e)) => {
-                                    embed.description(format!(
-                                        "WARNING: the database responded with an error: {}",
-                                        e
-                                    ));
-                                    data.add_embed(embed.clone())
-                                }
-                                _ => data.add_embed(embed.clone()),
-                            }
-                        })
-                    })
-                    .await?;
+                    .await;
+                if let Err(e) = db_result.as_ref() {
+                    embed.description(format!(
+                        "WARNING: the database responded with an error: {}",
+                        e
+                    ));
+                }
             }
         }
-
-        Ok(())
+        Ok(embed)
     }
 }
 
@@ -485,6 +515,13 @@ impl Command for Unban {
                             .required(true)
                             .kind(ApplicationCommandOptionType::String)
                     })
+                    .create_option(|o| {
+                        o.name("reason")
+                            .description("The reason to remove this user's ban")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(false)
+                    })
+
             })
         .await?;
         crate::GUILD
@@ -509,7 +546,7 @@ impl Command for Unban {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        UnbanType::Server.exec(&ctx.http, &command).await?;
+        UnbanType::Server.exec(&ctx.http, command).await?;
         Ok(())
     }
 
@@ -538,6 +575,12 @@ impl Command for ScrimUnban {
                             .required(true)
                             .kind(ApplicationCommandOptionType::User)
                     })
+                    .create_option(|o| {
+                        o.name("reason")
+                            .description("The reason to remove this user's ban")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(false)
+                    })
             })
             .await?;
         crate::GUILD
@@ -557,7 +600,7 @@ impl Command for ScrimUnban {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        UnbanType::Scrim.exec(&ctx.http, &command).await?;
+        UnbanType::Scrim.exec(&ctx.http, command).await?;
         Ok(())
     }
 

@@ -11,6 +11,7 @@ use serenity::model::interactions::Interaction;
 use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
 use crate::commands::notes::Notes;
+use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
@@ -28,6 +29,7 @@ impl Handler {
             Unban::new(),
             ScrimUnban::new(),
             Notes::new(),
+            Prefab::new()
         ];
         let commands = commands
             .into_iter()
@@ -63,7 +65,7 @@ impl EventHandler for Handler {
         if msg
             .content
             .to_ascii_lowercase()
-            .replace(" ", "")
+            .replace(' ', "")
             .contains("shmill")
         {
             if let Err(err) = msg

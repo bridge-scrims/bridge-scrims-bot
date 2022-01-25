@@ -24,7 +24,6 @@ lazy_static::lazy_static! {
     pub static ref SS_SUPPORT: RoleId = RoleId(dotenv!("SS_SUPPORT").parse().unwrap());
     pub static ref STAFF: RoleId = RoleId(dotenv!("STAFF").parse().unwrap());
     pub static ref SUPPORT: RoleId = RoleId(dotenv!("SUPPORT").parse().unwrap());
-    pub static ref BOOSTER: RoleId = RoleId(dotenv!("BOOSTER").parse().unwrap());
     pub static ref TRIAL_SUPPORT: RoleId = RoleId(dotenv!("TRIAL_SUPPORT").parse().unwrap());
 
     // Database related
@@ -34,5 +33,4 @@ lazy_static::lazy_static! {
 
     // Channel ids
     pub static ref SUPPORT_BANS: ChannelId = ChannelId(dotenv!("SUPPORT_BANS").parse().unwrap());
-    pub static ref BANS: ChannelId = ChannelId(dotenv!("BANS").parse().unwrap());
 }

@@ -65,6 +65,5 @@ fn get_map<T>(aci: &ACI, query: impl AsRef<str>, map: impl FnOnce(Value) -> T) -
         .options
         .iter()
         .find(|x| x.name.as_str() == query.as_ref())
-        .map(|x| x.value.clone().map(map))
-        .flatten()
+        .and_then(|x| x.value.clone().map(map))
 }
