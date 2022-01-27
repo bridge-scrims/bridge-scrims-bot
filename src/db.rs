@@ -14,7 +14,6 @@ impl Database {
         let mut path = crate::consts::DATABASE_PATH.clone();
         let _ = std::fs::create_dir_all(&path);
         path.push("bridge-scrims.sqlite");
-
         if !path.as_path().exists() {
             std::fs::File::create(&path).expect("Cannot create database file");
         }
@@ -41,27 +40,26 @@ impl Database {
 
         conn.execute(
             "create table if not exists Notes (
-                id integer primary key,
                 userid integer,
+                id integer,
                 created_at integer,
                 note text,
+                creator integer
             )",
         )
         .expect("Could not initialize database");
-
-
 
         Self {
             sqlite: Mutex::new(conn),
         }
     }
 
-    pub fn fetch_rows<F>(&self, table: &str, mut predicate: F)
+    pub fn fetch_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
     where
         F: FnMut(&[sqlite::Value]),
     {
         let _lock = self.sqlite.lock().map(|db| {
-            let stmt = db.prepare(format!("SELECT * FROM '{}'", table));
+            let stmt = db.prepare(format!("SELECT * FROM '{}' {}", table, condition));
             if let Ok(stmt) = stmt {
                 let mut cursor = stmt.into_cursor();
 
@@ -72,10 +70,26 @@ impl Database {
         });
     }
 
+    pub fn count_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
+    where
+        F: FnMut(&[sqlite::Value]),
+    {
+        let _lock = self.sqlite.lock().map(|db| {
+            let stmt = db.prepare(format!("select count(*) from '{}' {}", table, condition));
+            if let Ok(stmt) = stmt {
+                let mut cursor = stmt.into_cursor();
+
+                if let Ok(Some(row)) = cursor.next() {
+                    predicate(row);
+                }
+            }
+        });
+    }
+
     pub fn fetch_unbans(&self) -> Vec<Unban> {
         tracing::info!("Fetching bans");
         let mut result = Vec::new();
-        self.fetch_rows("ScheduledUnbans", |row| {
+        self.fetch_rows("ScheduledUnbans", "", |row| {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
             let time = row.get(1).unwrap().as_integer().unwrap();
             let date = OffsetDateTime::from_unix_timestamp(time).unwrap();
@@ -87,7 +101,7 @@ impl Database {
     pub fn fetch_scrim_unbans(&self) -> Vec<ScrimUnban> {
         tracing::info!("Fetching scrim bans");
         let mut result = Vec::new();
-        self.fetch_rows("ScheduledScrimUnbans", |row| {
+        self.fetch_rows("ScheduledScrimUnbans", "", |row| {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
             let time = row.get(1).unwrap().as_integer().unwrap();
             let date = OffsetDateTime::from_unix_timestamp(time).unwrap();
@@ -95,6 +109,27 @@ impl Database {
                 BanRoles::try_from(row.get(2).unwrap().as_string().unwrap().to_owned()).unwrap();
 
             result.push(ScrimUnban { id, date, roles });
+        });
+        result
+    }
+
+    pub fn fetch_notes_for(&self, userid: u64) -> Vec<Note> {
+        let mut result = Vec::new();
+        self.fetch_rows("Notes", &format!("where userid = {}", userid), |row| {
+            let userid = row.get(0).unwrap().as_integer().unwrap() as u64;
+            let id = row.get(1).unwrap().as_integer().unwrap() as u64;
+            let time = row.get(2).unwrap().as_integer().unwrap();
+            let created_at = OffsetDateTime::from_unix_timestamp(time).unwrap();
+            let note = row.get(3).unwrap().as_string().unwrap().to_string();
+            let creator = row.get(4).unwrap().as_integer().unwrap() as u64;
+
+            result.push(Note {
+                userid,
+                id,
+                created_at,
+                note,
+                creator,
+            });
         });
         result
     }
@@ -144,12 +179,62 @@ impl Database {
     }
 
     pub fn add_note(
-        &self, 
+        &self,
         userid: u64,
         created_at: OffsetDateTime,
-        note: String,
-        creator: u64
-    )
+        note: &str,
+        creator: u64,
+    ) -> Result<i64, std::sync::PoisonError<std::sync::MutexGuard<sqlite::Connection>>> {
+        let mut count: Option<i64> = None;
+        self.count_rows("Notes", &format!("where userid = {}", userid), |val| {
+            if let sqlite::Value::Integer(co) = val[0] {
+                count = Some(co);
+            }
+        });
+        let count = count.unwrap_or_default();
+        let result = self
+            .sqlite
+            .lock()
+            .map(|db| {
+                db.execute(format!(
+                    "INSERT INTO 'Notes' (userid,id,created_at,note,creator) values ({},{},\"{}\",\"{}\",{})",
+                    userid,
+                    count+1,
+                    created_at.unix_timestamp(),
+                    note,
+                    creator
+                ))
+            })
+            .ok();
+        if let Some(Ok(_)) = result {
+            Ok(count + 1)
+        } else {
+            tracing::error!("{:?}", result);
+            Ok(-1)
+        }
+    }
+
+    pub fn remove_note(&self, userid: u64, id: u64) -> Result<(), sqlite::Error> {
+        let result = self
+            .sqlite
+            .lock()
+            .map(|db| {
+                db.execute(format!(
+                    "DELETE FROM 'Notes' WHERE userid = {} AND id = {}",
+                    userid, id
+                ))?;
+                db.execute(format!(
+                    "UPDATE 'Notes' SET id = id - 1 WHERE userid = {} AND id >= {}",
+                    userid, id
+                ))
+            })
+            .ok();
+        if let Some(result) = result {
+            result
+        } else {
+            Ok(())
+        }
+    }
 
     pub fn remove_entry(&self, table: &str, i: u64) -> Result<(), sqlite::Error> {
         let result = self
@@ -177,12 +262,13 @@ pub struct ScrimUnban {
     pub roles: BanRoles,
 }
 
+#[derive(Debug)]
 pub struct Note {
-    pub id: u32, // the unique identifier of the note 
-    pub userid: u64, // the id of the person that the note belongs to
+    pub userid: u64,                // the id of the person that the note belongs to
+    pub id: u64,                    // the note id
     pub created_at: OffsetDateTime, // the date that the note was created at
-    pub note: String, // the text that the note contains
-    pub creator: u64, // the id of the person who added the note
+    pub note: String,               // the text that the note contains
+    pub creator: u64,               // the id of the person who added the note
 }
 
 pub struct BanRoles(pub Vec<RoleId>);

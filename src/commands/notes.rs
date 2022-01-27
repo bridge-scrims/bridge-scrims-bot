@@ -1,16 +1,20 @@
-use crate::commands::Command;
+use crate::{commands::Command, interact_opts::InteractOpts};
 use serenity::{
     async_trait,
-    model::interactions::{
-        application_command::{
-            ApplicationCommandInteraction, ApplicationCommandOptionType,
-            ApplicationCommandPermissionType,
+    model::{
+        id::UserId,
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandOptionType,
+                ApplicationCommandPermissionType,
+            },
+            InteractionResponseType,
         },
-        InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
     },
     prelude::Context,
     utils::Color,
 };
+use time::OffsetDateTime;
 
 pub struct Notes;
 
@@ -56,8 +60,14 @@ impl Command for Notes {
                     })
                     .create_option(|del| {
                         del.kind(ApplicationCommandOptionType::SubCommand)
-                            .name("delete")
+                            .name("remove")
                             .description("Delete a note from a user.")
+                            .create_sub_option(|opt| {
+                                opt.kind(ApplicationCommandOptionType::User)
+                                    .name("user")
+                                    .description("The user to remove a note from.")
+                                    .required(true)
+                            })
                             .create_sub_option(|opt| {
                                 opt.kind(ApplicationCommandOptionType::Integer)
                                     .name("noteid")
@@ -130,31 +140,149 @@ impl Command for Notes {
         let cmd = &command.data.options[0];
         match cmd.name.as_str() {
             "list" => {
-                // implement the list command
-                println!("list command says hello")
+                let user = UserId(cmd.get_str("user").unwrap().parse()?)
+                    .to_user(&ctx.http)
+                    .await?;
+                let user_id = user.id;
+                let notes = crate::consts::DATABASE.fetch_notes_for(user_id.0);
+
+                if notes.is_empty() {
+                    command
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.create_embed(|e| {
+                                e.title("No notes found!")
+                                    .description(format!(
+                                        "<@{}> currently has no notes.",
+                                        user_id.0
+                                    ))
+                                    .color(Color::BLURPLE)
+                            })
+                        })
+                        .await?;
+                    return Ok(());
+                }
+                for (i, chunk) in notes.chunks(10).enumerate() {
+                    if i == 0 {
+                        command
+                            .edit_original_interaction_response(&ctx, |r| {
+                                r.create_embed(|e| {
+                                    e.title(format!(
+                                        "Page {} of {}",
+                                        i + 1,
+                                        (notes.len() / 10) + 1
+                                    ))
+                                    .description(format!(
+                                        "<@{}> currently the following notes:",
+                                        user_id.0
+                                    ))
+                                    .color(Color::BLURPLE);
+                                    for note in chunk {
+                                        e.field(
+                                            format!("Note {}:", note.id),
+                                            format!(
+                                                "<t:{}>: `{}` by <@!{}>",
+                                                note.created_at.unix_timestamp(),
+                                                note.note,
+                                                note.creator
+                                            ),
+                                            false,
+                                        );
+                                    }
+                                    e
+                                })
+                            })
+                            .await?;
+                    } else {
+                        command
+                            .create_followup_message(&ctx, |r| {
+                                r.create_embed(|e| {
+                                    e.title(format!(
+                                        "Page {} of {}",
+                                        i + 1,
+                                        (notes.len() / 10) + 1
+                                    ))
+                                    .color(Color::BLURPLE);
+                                    for note in chunk {
+                                        e.field(
+                                            format!("Note {}:", note.id),
+                                            format!(
+                                                "<t:{}>: `{}` by <@!{}>",
+                                                note.created_at.unix_timestamp(),
+                                                note.note,
+                                                note.creator
+                                            ),
+                                            false,
+                                        );
+                                    }
+                                    e
+                                })
+                            })
+                            .await?;
+                    }
+                }
             }
             "add" => {
-                println!("add command says hello")
-                // implement the add command
-            }
-            "delete" => {
-                println!("delete command says hello")
-                // implement the delete command
-            }
-            _ => {
-                // Tell them something went wrong
+                let user = UserId(cmd.get_str("user").unwrap().parse()?)
+                    .to_user(&ctx.http)
+                    .await?;
+                let user_id = user.id;
+
+                let now = OffsetDateTime::now_utc();
+                let note = cmd.get_str("note").unwrap();
+
+                let noteid =
+                    crate::consts::DATABASE.add_note(user_id.0, now, &note, command.user.id.0)?;
+                if noteid == -1 {
+                    command
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.create_embed(|e| {
+                                e.title("Database Error!")
+                                    .description(
+                                        "There was an error when communicating with the database.",
+                                    )
+                                    .color(Color::DARK_RED)
+                            })
+                        })
+                        .await?;
+                }
                 command
                     .edit_original_interaction_response(&ctx, |r| {
                         r.create_embed(|e| {
-                            e.title("Something broke")
+                            e.title("Note Added")
                                 .description(format!(
-                                    "You selected a sub command that doesn't exsist: {}",
-                                    cmd.name
+                                    "The note `{}` has been added to <@{}> with id {}.",
+                                    note, user_id.0, noteid
                                 ))
-                                .color(Color::DARK_RED)
+                                .color(Color::BLURPLE)
                         })
                     })
                     .await?;
+            }
+            "remove" => {
+                let user = UserId(cmd.get_str("user").unwrap().parse()?)
+                    .to_user(&ctx.http)
+                    .await?;
+                let user_id = user.id;
+
+                let noteid = cmd.get_u64("noteid").unwrap();
+
+                crate::consts::DATABASE.remove_note(user_id.0, noteid)?;
+
+                command
+                    .edit_original_interaction_response(&ctx, |r| {
+                        r.create_embed(|e| {
+                            e.title("Note Removed")
+                                .description(format!(
+                                    "The note has been deleted from <@{}> with id {}.",
+                                    user_id.0, noteid
+                                ))
+                                .color(Color::BLURPLE)
+                        })
+                    })
+                    .await?;
+            }
+            _ => {
+                // Do nothing since this wont happen.
             }
         }
 
