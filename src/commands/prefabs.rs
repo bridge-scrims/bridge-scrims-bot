@@ -53,9 +53,9 @@ impl Command for Prefab {
         crate::GUILD
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in &[
-                    *crate::consts::SUPPORT_ROLE,
-                    *crate::consts::TRIAL_SUPPORT_ROLE,
-                    *crate::consts::STAFF_ROLE,
+                    *crate::consts::SUPPORT,
+                    *crate::consts::TRIAL_SUPPORT,
+                    *crate::consts::STAFF,
                 ] {
                     p.create_permission(|perm| {
                         perm.kind(ApplicationCommandPermissionType::Role)
@@ -95,9 +95,9 @@ impl Command for Prefab {
             .unwrap();
         let mut x = false;
         for role in &[
-            *crate::consts::SUPPORT_ROLE,
-            *crate::consts::TRIAL_SUPPORT_ROLE,
-            *crate::consts::STAFF_ROLE,
+            *crate::consts::SUPPORT,
+            *crate::consts::TRIAL_SUPPORT,
+            *crate::consts::STAFF,
         ] {
             if member.roles.contains(role) {
                 x = true;

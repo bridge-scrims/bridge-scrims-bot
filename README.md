@@ -5,7 +5,8 @@
   - Ban command
   - Mute command
   - Roles Ping command
-  - Prefabs for support :heavy_check_mark: 
+  - Notes command
+  - Refabs for support :heavy_check_mark: 
   - Suggestions command :heavy_check_mark:
   - List Council command :heavy_check_mark:
   
