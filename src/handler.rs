@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::commands::Command as _;
+use crate::commands::ban::{Ban, Unban, ScrimBan, ScrimUnban};
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::{Message, ReactionType};
@@ -8,7 +9,6 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
-use crate::commands::ban::{Ban, ScrimBan, Unban, ScrimUnban};
 use crate::commands::council::Council;
 use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
@@ -24,8 +24,8 @@ impl Handler {
         let commands: Vec<Command> = vec![
             Council::new(),
             Ban::new(),
-            ScrimBan::new(),
             Unban::new(),
+            ScrimBan::new(),
             ScrimUnban::new(),
             Prefab::new()
         ];
