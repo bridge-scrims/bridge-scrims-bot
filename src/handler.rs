@@ -20,7 +20,10 @@ pub struct Handler {
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands: Vec<Command> = vec![Council::new(), Prefab::new()];
+        let commands: Vec<Command> = vec![
+            Council::new(),
+            Prefab::new()
+        ];
         let commands = commands
             .into_iter()
             .fold(HashMap::new(), |mut map, command| {
@@ -55,7 +58,7 @@ impl EventHandler for Handler {
         if msg
             .content
             .to_ascii_lowercase()
-            .replace(" ", "")
+            .replace(' ', "")
             .contains("shmill")
         {
             if let Err(err) = msg
