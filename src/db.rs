@@ -264,11 +264,16 @@ pub struct ScrimUnban {
 
 #[derive(Debug)]
 pub struct Note {
-    pub userid: u64,                // the id of the person that the note belongs to
-    pub id: u64,                    // the note id
-    pub created_at: OffsetDateTime, // the date that the note was created at
-    pub note: String,               // the text that the note contains
-    pub creator: u64,               // the id of the person who added the note
+    /// the id of the person that the note belongs to
+    pub userid: u64,
+    /// the note id
+    pub id: u64,
+    /// the date that the note was created at
+    pub created_at: OffsetDateTime,
+    /// the text that the note contains
+    pub note: String,
+    /// the id of the person who added the note
+    pub creator: u64,
 }
 
 pub struct BanRoles(pub Vec<RoleId>);
