@@ -11,6 +11,8 @@ use serenity::model::interactions::Interaction;
 use crate::commands::council::Council;
 use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
+use crate::consts::POLLS;
+use crate::consts::CLIPS;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 
@@ -82,7 +84,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id == 759992463032188988 {
+        if msg.channel_id.as_u64() == CLIPS.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
             }
@@ -90,7 +92,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id == 858486862212235274 {
+        if msg.channel_id.as_u64() == POLLS.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
             }
