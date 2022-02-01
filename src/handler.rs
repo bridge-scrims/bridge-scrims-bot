@@ -82,5 +82,21 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+        if msg.channel_id == 759992463032188988 {
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
+                tracing::error!("{}", err);
+            }
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👎".into())).await {
+                tracing::error!("{}", err);
+            }
+        }
+        if msg.channel_id == 858486862212235274 {
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
+                tracing::error!("{}", err);
+            }
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("❌".into())).await {
+                tracing::error!("{}", err);
+            }
+        }
     }
 }
