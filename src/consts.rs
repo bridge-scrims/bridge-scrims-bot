@@ -18,7 +18,6 @@ lazy_static::lazy_static! {
     pub static ref PREMIUM_COUNCIL: RoleId = RoleId(dotenv!("PREMIUM_COUNCIL").parse().unwrap());
     pub static ref PREMIUM_HEAD: RoleId = RoleId(dotenv!("PREMIUM_HEAD").parse().unwrap());
 
-
     // Ban and mute related
     pub static ref BANNED: RoleId = RoleId(dotenv!("BANNED").parse().unwrap());
     pub static ref SS_SUPPORT: RoleId = RoleId(dotenv!("SS_SUPPORT").parse().unwrap());
@@ -33,6 +32,7 @@ lazy_static::lazy_static! {
 
     // Channel ids
     pub static ref SUPPORT_BANS: ChannelId = ChannelId(dotenv!("SUPPORT_BANS").parse().unwrap());
+
     pub static ref POLLS: ChannelId = ChannelId(dotenv!("POLLS").parse().unwrap());
     pub static ref CLIPS: ChannelId = ChannelId(dotenv!("CLIPS").parse().unwrap());
 }

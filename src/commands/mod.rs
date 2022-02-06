@@ -5,6 +5,9 @@ use serenity::model::prelude::application_command::ApplicationCommandInteraction
 pub mod council;
 pub mod prefabs;
 pub mod notes;
+pub mod timeout;
+pub mod ban;
+
 
 #[async_trait]
 pub trait Command {
