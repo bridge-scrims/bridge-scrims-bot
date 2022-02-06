@@ -10,6 +10,7 @@ use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
 use crate::commands::council::Council;
+use crate::commands::timeout::Timeout;
 use crate::commands::prefabs::Prefab;
 use crate::consts::GUILD;
 use crate::consts::POLLS;
@@ -25,6 +26,8 @@ impl Handler {
     pub fn new() -> Handler {
         let commands: Vec<Command> = vec![
             Council::new(),
+            Prefab::new(),
+            Timeout::new(),
             Ban::new(),
             Unban::new(),
             ScrimBan::new(),
