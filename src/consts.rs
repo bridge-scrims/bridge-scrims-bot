@@ -32,4 +32,7 @@ lazy_static::lazy_static! {
 
     // Channel ids
     pub static ref SUPPORT_BANS: ChannelId = ChannelId(dotenv!("SUPPORT_BANS").parse().unwrap());
+
+    pub static ref POLLS: ChannelId = ChannelId(dotenv!("POLLS").parse().unwrap());
+    pub static ref CLIPS: ChannelId = ChannelId(dotenv!("CLIPS").parse().unwrap());
 }
