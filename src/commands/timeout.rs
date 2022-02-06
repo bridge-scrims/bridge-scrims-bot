@@ -15,7 +15,6 @@ use serenity::{
             },
             InteractionResponseType,
         },
-        prelude::InteractionApplicationCommandCallbackDataFlags,
     },
     prelude::Context,
     utils::Color,
