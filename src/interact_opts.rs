@@ -2,6 +2,7 @@ use serde_json::{Map, Value};
 use serenity::model::interactions::application_command::ApplicationCommandInteraction as ACI;
 use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOption as ACIDO;
 
+
 /// Extracts options from an `ApplicationCommandInteraction`
 /// Delegates [`serde_json::Value`] methods
 pub trait InteractOpts: Sized {
@@ -18,6 +19,7 @@ pub trait InteractOpts: Sized {
 impl InteractOpts for ACI {
     fn get_array(&self, query: impl AsRef<str>) -> Option<Vec<Value>> {
         get_map(ResponseType::Aci(self.clone()), query, |x| {
+
             if let Value::Array(v) = x {
                 Some(v)
             } else {
@@ -52,6 +54,7 @@ impl InteractOpts for ACI {
 
     fn get_str(&self, query: impl AsRef<str>) -> Option<String> {
         get_map(ResponseType::Aci(self.clone()), query, |x| {
+
             if let Value::String(v) = x {
                 Some(v)
             } else {
