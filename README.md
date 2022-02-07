@@ -2,7 +2,7 @@
 
 
 ## TODO:
-  - Ban command
+  - Ban command ✔️
   - Mute command
   - Roles Ping command
   - Notes command
@@ -10,3 +10,8 @@
   - Suggestions command :heavy_check_mark:
   - List Council command :heavy_check_mark:
   
+## Screenshare bot rewrite
+  - Screenshare command
+  - Close command
+  - Freeze command
+  - Unfreeze command
