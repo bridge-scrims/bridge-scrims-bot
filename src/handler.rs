@@ -104,7 +104,7 @@ impl EventHandler for Handler {
             }
 
             if let Err(err) = msg.channel_id.create_public_thread(&ctx, msg.id, |thread| {
-                thread.name(format!("{}'s clip!", msg.author.name)) // threads can't actually have apostrophes in their name
+                thread.name(format!("Clip by {}!", msg.author.name))
             }).await {
                 tracing::error!("{}", err);
             }
