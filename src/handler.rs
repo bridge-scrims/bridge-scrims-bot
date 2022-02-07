@@ -102,6 +102,12 @@ impl EventHandler for Handler {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👎".into())).await {
                 tracing::error!("{}", err);
             }
+
+            if let Err(err) = msg.channel_id.create_public_thread(&ctx, msg.id, |thread| {
+                thread.name(format!("{}'s clip!", msg.author.name)) // threads can't actually have apostrophes in their name
+            }).await {
+                tracing::error!("{}", err);
+            }
         }
         if msg.channel_id.as_u64() == POLLS.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
