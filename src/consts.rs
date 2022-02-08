@@ -15,6 +15,8 @@ pub struct Config {
 
     pub guild: GuildId,
 
+    pub queue_channels: Vec<ChannelId>,
+
     pub prime_council: RoleId,
     pub prime_head: RoleId,
     pub private_council: RoleId,

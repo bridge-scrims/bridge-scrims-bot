@@ -7,6 +7,7 @@ pub mod prefabs;
 pub mod notes;
 pub mod timeout;
 pub mod ban;
+pub mod roll;
 
 
 #[async_trait]
