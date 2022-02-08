@@ -4,24 +4,27 @@ use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
+use crate::commands::roll::Roll;
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
 
+use crate::consts::CONFIG;
+use rand::seq::SliceRandom;
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
-use serenity::model::channel::{Message, ReactionType};
+use serenity::model::channel::{Channel, Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
-use serenity::model::channel::MessageType;
-
-use crate::consts::CONFIG;
+use serenity::utils::Color;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
+use regex::Regex;
 
 pub struct Handler {
     commands: HashMap<String, Command>,
 }
+
 
 impl Handler {
     pub fn new() -> Handler {
@@ -34,6 +37,7 @@ impl Handler {
             Unban::new(),
             ScrimBan::new(),
             ScrimUnban::new(),
+            Roll::new(),
         ];
         let commands = commands
             .into_iter()
@@ -66,6 +70,9 @@ impl EventHandler for Handler {
         }
     }
     async fn message(&self, ctx: Context, msg: Message) {
+        if msg.author.bot {
+            return;
+        }
         if msg
             .content
             .to_ascii_lowercase()
@@ -86,7 +93,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.content.to_ascii_lowercase() == "ratio" {
+        if msg.content.to_ascii_lowercase().contains("ratio") {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
             }
@@ -94,6 +101,59 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+
+        let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
+
+        if roll_commands.is_match(&msg.content) {
+            let member = msg.author.clone();
+
+            let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+
+            let voice_state = guild.voice_states.get(&member.id);
+
+            if voice_state.is_none() || voice_state.unwrap().channel_id.is_none() {
+                let _ = msg.reply(&ctx, "Please join a queue before using this command.")
+                    .await;
+                return;
+            }
+
+            let channel_id = voice_state.unwrap().channel_id.unwrap();
+
+            if !CONFIG.queue_channels.contains(&channel_id) {
+                let _ = msg.reply(&ctx, "Please join a queue before using this command.")
+                    .await;
+                return;
+            }
+
+            let channel = channel_id.to_channel_cached(&ctx.cache).await.unwrap();
+
+            if let Channel::Guild(vc) = channel {
+                let mut members = vc.members(&ctx.cache).await.unwrap();
+
+                let user_limit: usize = vc.user_limit.unwrap_or(4).try_into().unwrap();
+
+                if members.len() < user_limit {
+                    let _ = msg.reply(&ctx.http, "This queue is not full yet.").await;
+                    return;
+                }
+
+                members.shuffle(&mut rand::thread_rng());
+
+                let _ = msg.channel_id
+                    .send_message(&ctx, |r| {
+                        r.add_embed(|e| {
+                            e.title("Team Captains:")
+                                .field("First Captain", members[0].display_name(), true)
+                                .field("Second Captain", members[1].display_name(), true)
+                                .color(Color::new(0x1abc9c))
+                        })
+                        .reference_message(&msg)
+                        .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
+                    })
+                    .await;
+            }
+        }
+
         if msg.channel_id.as_u64() == CONFIG.clips.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);

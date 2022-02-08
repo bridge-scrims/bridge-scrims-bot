@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
         .id
         .0;
     let intents =
-        GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS | GatewayIntents::GUILDS;
+        GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES;
 
     let mut client = Client::builder(&CONFIG.bot_token)
         .application_id(application_id)
