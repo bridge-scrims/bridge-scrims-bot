@@ -16,6 +16,7 @@ serde_json = "1.0.71"
 sqlite = "0.26.0"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
+toml = "0.5.8"
 
 [dependencies.time]
 features = ["local-offset"]

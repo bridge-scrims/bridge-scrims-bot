@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 use crate::commands::Command;
-use crate::consts::*;
+use crate::consts::CONFIG;
 
 pub struct Council {
     inner: Arc<Inner>,
@@ -36,7 +36,7 @@ impl Command for Council {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        crate::GUILD
+        CONFIG.guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Lists the council members for a given council")
@@ -149,24 +149,24 @@ impl Inner {
         let mut prime_council = Vec::new();
         let mut private_council = Vec::new();
         let mut premium_council = Vec::new();
-        let mut members: BoxStream<Member> = GUILD
+        let mut members: BoxStream<Member> = CONFIG.guild
             .members_iter(&http)
             .filter_map(|r| async move { r.ok() })
             .boxed();
         while let Some(member) = members.next().await {
-            if member.roles.contains(&PRIME_HEAD) {
+            if member.roles.contains(&CONFIG.prime_head) {
                 prime_head = member.user.mention().to_string();
-            } else if member.roles.contains(&PRIME_COUNCIL) {
+            } else if member.roles.contains(&CONFIG.prime_council) {
                 prime_council.push(member.user.mention().to_string());
             }
-            if member.roles.contains(&PRIVATE_HEAD) {
+            if member.roles.contains(&CONFIG.private_head) {
                 private_head = member.user.mention().to_string();
-            } else if member.roles.contains(&PRIVATE_COUNCIL) {
+            } else if member.roles.contains(&CONFIG.private_council) {
                 private_council.push(member.user.mention().to_string());
             }
-            if member.roles.contains(&PREMIUM_HEAD) {
+            if member.roles.contains(&CONFIG.premium_head) {
                 premium_head = member.user.mention().to_string();
-            } else if member.roles.contains(&PREMIUM_COUNCIL) {
+            } else if member.roles.contains(&CONFIG.premium_council) {
                 premium_council.push(member.user.mention().to_string());
             }
         }

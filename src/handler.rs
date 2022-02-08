@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::commands::Command as _;
-use crate::commands::notes::Notes;
-use crate::commands::ban::{Ban, Unban, ScrimBan, ScrimUnban};
+use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
-use crate::commands::timeout::Timeout;
+use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
+use crate::commands::timeout::Timeout;
+use crate::commands::Command as _;
 
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
@@ -14,9 +14,7 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
 
-use crate::consts::GUILD;
-use crate::consts::POLLS;
-use crate::consts::CLIPS;
+use crate::consts::CONFIG;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 
@@ -35,7 +33,6 @@ impl Handler {
             Unban::new(),
             ScrimBan::new(),
             ScrimUnban::new(),
-            Prefab::new()
         ];
         let commands = commands
             .into_iter()
@@ -77,7 +74,8 @@ impl EventHandler for Handler {
             if let Err(err) = msg
                 .react(
                     &ctx,
-                    GUILD
+                    CONFIG
+                        .guild
                         .emoji(&ctx, EmojiId(860966032952262716))
                         .await
                         .unwrap(),
@@ -95,7 +93,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id.as_u64() == CLIPS.as_u64() {
+        if msg.channel_id.as_u64() == CONFIG.clips.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
             }
@@ -103,13 +101,17 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
 
-            if let Err(err) = msg.channel_id.create_public_thread(&ctx, msg.id, |thread| {
-                thread.name(format!("Clip by {}!", msg.author.name))
-            }).await {
+            if let Err(err) = msg
+                .channel_id
+                .create_public_thread(&ctx, msg.id, |thread| {
+                    thread.name(format!("Clip by {}!", msg.author.name))
+                })
+                .await
+            {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id.as_u64() == POLLS.as_u64() {
+        if msg.channel_id.as_u64() == CONFIG.polls.as_u64() {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
             }

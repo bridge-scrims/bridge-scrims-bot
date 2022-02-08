@@ -15,7 +15,7 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, db::BanRoles, interact_opts::InteractOpts};
+use crate::{commands::Command, consts::CONFIG, db::BanRoles, interact_opts::InteractOpts};
 
 fn format_db_error(e: &sqlite::Error) -> String {
     if let Some(19) = e.code {
@@ -53,7 +53,7 @@ impl BanType {
         let duration = Duration::from_secs(24 * 60 * 60 * days);
         let unban_date = now + duration;
 
-        let mut member = crate::GUILD.member(&http, id).await?;
+        let mut member = CONFIG.guild.member(&http, id).await?;
         let roles = member.roles(&cache).await.unwrap_or_default();
         let cmd_roles = cmd_member.roles(&cache).await.unwrap_or_default();
 
@@ -90,12 +90,14 @@ impl BanType {
                 let do_dmd = command.get_bool("dmd").unwrap_or(false);
                 let dmd = if do_dmd { 7 } else { 0 };
                 let db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
-                let result = crate::GUILD
+                let result = CONFIG
+                    .guild
                     .ban_with_reason(&http, id, dmd, reason.clone())
                     .await;
 
                 if result.is_ok() {
-                    crate::consts::SUPPORT_BANS
+                    CONFIG
+                        .support_bans
                         .send_message(&http, |msg| msg.set_embed(embed.clone()))
                         .await?;
                 }
@@ -131,14 +133,15 @@ impl BanType {
                         dbg!(&role);
                     }
                 }
-                result.get_or_insert(member.add_role(&http, crate::consts::BANNED.0).await);
+                result.get_or_insert(member.add_role(&http, CONFIG.banned.0).await);
 
                 let db_result = crate::consts::DATABASE.add_scrim_unban(
                     *id.as_u64(),
                     unban_date,
                     &BanRoles(removed_roles),
                 );
-                crate::consts::SUPPORT_BANS
+                CONFIG
+                    .support_bans
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))
                     .await?;
 
@@ -173,7 +176,7 @@ impl Command for Ban {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::GUILD
+        let command = CONFIG.guild
             .create_application_command(&ctx, |c| {
                 c
                     .name(self.name())
@@ -205,16 +208,17 @@ impl Command for Ban {
                     })
             })
         .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::SUPPORT.0)
+                        .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::STAFF.0)
+                        .id(CONFIG.staff.0)
                         .permission(true)
                 })
             })
@@ -247,7 +251,8 @@ async fn update_loop(ctx: Arc<Http>) {
 
         for unban in unbans {
             if unban.date < now {
-                let _ = crate::GUILD
+                let _ = CONFIG
+                    .guild
                     .unban(&ctx, unban.id)
                     .await
                     .map(|_| database.remove_entry("ScheduledUnbans", unban.id));
@@ -266,7 +271,8 @@ impl Command for ScrimBan {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::GUILD
+        let command = CONFIG
+            .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Screenshare-bans the given user.")
@@ -291,11 +297,12 @@ impl Command for ScrimBan {
                     })
             })
             .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::SS_SUPPORT.0)
+                        .id(CONFIG.ss_support.0)
                         .permission(true)
                 })
             })
@@ -330,7 +337,7 @@ async fn scrim_update_loop(ctx: Arc<Http>) {
             if unban.date > now {
                 continue;
             }
-            let member = crate::GUILD.member(&ctx, unban.id).await;
+            let member = CONFIG.guild.member(&ctx, unban.id).await;
             if let Ok(member) = member {
                 let res = UnbanType::Scrim
                     .unban(
@@ -372,7 +379,7 @@ impl UnbanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
         let user_id = UserId(user.parse().unwrap_or_default());
-        let bans = crate::GUILD.bans(&http).await?;
+        let bans = CONFIG.guild.bans(&http).await?;
 
         let server_entry = bans
             .iter()
@@ -423,7 +430,7 @@ impl UnbanType {
         reason: String,
     ) -> Result<CreateEmbed, Box<dyn std::error::Error + Sync + Send>> {
         let to_unban = match unban_entry {
-            UnbanEntry::Scrim(entry) => crate::GUILD.member(&http, entry.id).await.unwrap().user,
+            UnbanEntry::Scrim(entry) => CONFIG.guild.member(&http, entry.id).await.unwrap().user,
             UnbanEntry::Server(entry) => entry.user.clone(),
         };
 
@@ -438,7 +445,7 @@ impl UnbanType {
 
         match self {
             Self::Server => {
-                let result = crate::GUILD.unban(&http, to_unban.id).await;
+                let result = CONFIG.guild.unban(&http, to_unban.id).await;
                 if result.is_ok() {
                     crate::consts::DATABASE
                         .remove_entry("ScheduledUnbans", to_unban.id.0)
@@ -451,7 +458,8 @@ impl UnbanType {
                 }
                 match result {
                     Ok(_) => {
-                        let _ = crate::consts::SUPPORT_BANS
+                        let _ = CONFIG
+                            .support_bans
                             .send_message(&http, |msg| msg.set_embed(embed.clone()))
                             .await;
                         return Ok(embed);
@@ -461,7 +469,7 @@ impl UnbanType {
             }
             Self::Scrim => {
                 let mut result = None;
-                let mut member = match crate::GUILD.member(&http, to_unban.id).await {
+                let mut member = match CONFIG.guild.member(&http, to_unban.id).await {
                     Ok(memb) => memb,
                     Err(e) => return Err(Box::new(e)),
                 };
@@ -474,12 +482,12 @@ impl UnbanType {
                     return Err(Box::new(e)); // If roles cannot be added, don't remove the unban from the database either
                 }
 
-                let _ =
-                    result.get_or_insert(member.remove_role(&http, crate::consts::BANNED.0).await);
+                let _ = result.get_or_insert(member.remove_role(&http, CONFIG.banned.0).await);
 
                 let db_result =
                     crate::consts::DATABASE.remove_entry("ScheduledScrimUnbans", to_unban.id.0);
-                let _ = crate::consts::SUPPORT_BANS
+                let _ = CONFIG
+                    .support_bans
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))
                     .await;
                 if let Err(e) = db_result.as_ref() {
@@ -503,7 +511,7 @@ impl Command for Unban {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::GUILD
+        let command = CONFIG.guild
             .create_application_command(&ctx, |c| {
                 c
                     .name(self.name())
@@ -524,16 +532,17 @@ impl Command for Unban {
 
             })
         .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::SUPPORT.0)
+                        .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::STAFF.0)
+                        .id(CONFIG.staff.0)
                         .permission(true)
                 })
             })
@@ -564,7 +573,8 @@ impl Command for ScrimUnban {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::GUILD
+        let command = CONFIG
+            .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Screenshare-unbans the given user.")
@@ -583,11 +593,12 @@ impl Command for ScrimUnban {
                     })
             })
             .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
-                        .id(crate::consts::SS_SUPPORT.0)
+                        .id(CONFIG.ss_support.0)
                         .permission(true)
                 })
             })

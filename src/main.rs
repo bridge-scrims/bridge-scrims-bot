@@ -1,4 +1,4 @@
-use crate::consts::GUILD;
+use crate::consts::CONFIG;
 use crate::handler::Handler;
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::http::Http;
@@ -37,9 +37,13 @@ async fn main() -> Result<()> {
             .await
             .expect("Could not listen for ctrl+c");
         tracing::info!("Shutting down");
-        if let Ok(commands) = GUILD.get_application_commands(&http).await {
+        if let Ok(commands) = CONFIG.guild.get_application_commands(&http).await {
             for command in commands {
-                if let Err(err) = GUILD.delete_application_command(&http, command.id).await {
+                if let Err(err) = CONFIG
+                    .guild
+                    .delete_application_command(&http, command.id)
+                    .await
+                {
                     tracing::error!("Could not delete '{}': {}", command.name, err);
                 }
             }
