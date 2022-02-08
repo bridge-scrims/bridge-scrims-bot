@@ -13,6 +13,7 @@ use serenity::model::channel::{Message, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
+use serenity::model::channel::MessageType;
 
 use crate::consts::GUILD;
 use crate::consts::POLLS;
@@ -114,6 +115,11 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("❌".into())).await {
+                tracing::error!("{}", err);
+            }
+        }
+        if msg.kind == MessageType::MemberJoin {
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {
                 tracing::error!("{}", err);
             }
         }
