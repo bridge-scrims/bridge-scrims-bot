@@ -20,6 +20,8 @@ use serenity::{
     utils::Color,
 };
 
+use crate::consts::CONFIG;
+
 pub struct Timeout {}
 
 #[async_trait]
@@ -28,7 +30,8 @@ impl Command for Timeout {
         "timeout".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = crate::GUILD
+        let cmd = CONFIG
+            .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Times a user out.")
@@ -57,13 +60,10 @@ impl Command for Timeout {
                     .default_permission(false)
             })
             .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[
-                    *crate::consts::SUPPORT,
-                    *crate::consts::TRIAL_SUPPORT,
-                    *crate::consts::STAFF,
-                ] {
+                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
                         perm.kind(ApplicationCommandPermissionType::Role)
                             .id(role.0)
@@ -99,10 +99,25 @@ impl Command for Timeout {
 
         let end = now + duration;
 
-        let mut member = ctx
-            .http
-            .get_member(crate::consts::GUILD.0, user.id.0)
-            .await?;
+        let mut member = ctx.http.get_member(CONFIG.guild.0, user.id.0).await?;
+        let cmd_member = command.clone().member.unwrap();
+
+        let roles = member.roles(&ctx.cache).await.unwrap_or_default();
+        let cmd_roles = cmd_member.roles(&ctx.cache).await.unwrap_or_default();
+
+        let top_role = roles.iter().max();
+        let cmd_top_role = cmd_roles.iter().max();
+
+        if top_role >= cmd_top_role || member.user.bot {
+            command
+                .create_interaction_response(&ctx.http, |resp| {
+                    resp.interaction_response_data(|data| {
+                        data.content(format!("You do not have permission to ban {}", user.tag()))
+                    })
+                })
+                .await?;
+            return Ok(());
+        }
 
         let resp = member
             .disable_communication_until_datetime(&ctx.http, end)

@@ -16,6 +16,8 @@ use serenity::{
 };
 use time::OffsetDateTime;
 
+use crate::consts::CONFIG;
+
 pub struct Notes;
 
 #[async_trait]
@@ -24,7 +26,8 @@ impl Command for Notes {
         "notes".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = crate::GUILD
+        let cmd = CONFIG
+            .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("A way for staff to set notes for users.")
@@ -78,13 +81,10 @@ impl Command for Notes {
                     .default_permission(false)
             })
             .await?;
-        crate::GUILD
+        CONFIG
+            .guild
             .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[
-                    *crate::consts::SUPPORT,
-                    *crate::consts::TRIAL_SUPPORT,
-                    *crate::consts::STAFF,
-                ] {
+                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
                         perm.kind(ApplicationCommandPermissionType::Role)
                             .id(role.0)
@@ -107,36 +107,6 @@ impl Command for Notes {
                     .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-        let member = ctx
-            .http
-            .get_member(crate::GUILD.0, command.user.id.0)
-            .await
-            .unwrap();
-        let mut x = false;
-        for role in &[
-            *crate::consts::SUPPORT,
-            *crate::consts::TRIAL_SUPPORT,
-            *crate::consts::STAFF,
-        ] {
-            if member.roles.contains(role) {
-                x = true;
-            }
-        }
-        if !x {
-            command
-                .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
-                        e.title("Missing Permissions")
-                            .description(
-                                "You currently do **NOT** have permissions to do this command.",
-                            )
-                            .color(Color::DARK_RED)
-                    })
-                })
-                .await?;
-
-            return Ok(());
-        }
         let cmd = &command.data.options[0];
         match cmd.name.as_str() {
             "list" => {
