@@ -25,7 +25,6 @@ pub struct Handler {
     commands: HashMap<String, Command>,
 }
 
-
 impl Handler {
     pub fn new() -> Handler {
         let commands: Vec<Command> = vec![
@@ -104,7 +103,9 @@ impl EventHandler for Handler {
 
         let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
 
-        if roll_commands.is_match(&msg.content) {
+        if roll_commands.is_match(&msg.content)
+            && CONFIG.queue_text_channels.contains(&msg.channel_id)
+        {
             let member = msg.author.clone();
 
             let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
@@ -112,15 +113,17 @@ impl EventHandler for Handler {
             let voice_state = guild.voice_states.get(&member.id);
 
             if voice_state.is_none() || voice_state.unwrap().channel_id.is_none() {
-                let _ = msg.reply(&ctx, "Please join a queue before using this command.")
+                let _ = msg
+                    .reply(&ctx, "Please join a queue before using this command.")
                     .await;
                 return;
             }
 
             let channel_id = voice_state.unwrap().channel_id.unwrap();
 
-            if !CONFIG.queue_channels.contains(&channel_id) {
-                let _ = msg.reply(&ctx, "Please join a queue before using this command.")
+            if !CONFIG.queue_voice_channels.contains(&channel_id) {
+                let _ = msg
+                    .reply(&ctx, "Please join a queue before using this command.")
                     .await;
                 return;
             }
@@ -139,7 +142,8 @@ impl EventHandler for Handler {
 
                 members.shuffle(&mut rand::thread_rng());
 
-                let _ = msg.channel_id
+                let _ = msg
+                    .channel_id
                     .send_message(&ctx, |r| {
                         r.add_embed(|e| {
                             e.title("Team Captains:")
