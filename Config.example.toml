@@ -23,8 +23,7 @@ clips = 759992463032188988
 polls = 858486862212235274
 
 # Queue channels for rolling
-queue_channels = [913134187131838466, 1234, 1235]
-
+queue_categories = [913134187131838466, 1234, 1235]
 
 member_count = 940907252099997747
 
