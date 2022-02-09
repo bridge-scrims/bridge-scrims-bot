@@ -2,29 +2,30 @@
 # This is the config file for general stuff
 bot_token = "my token"
 
-guild = 911760601926217819
+guild = 759894401957888031
 
-premium_council = 123
-premium_head = 123
-prime_council = 123
-prime_head = 123
-private_council = 123
-private_head = 123
+premium_council = 803319607350788146
+premium_head = 851540595155271690
+prime_council = 850029321635495937
+prime_head = 850037363878264912
+private_council = 819766802926010378
+private_head = 837741017221824532
 
-ss_support = 912031147867906158
-staff = 123
-support = 913084031191633920
-trial_support = 123
+ss_support = 774457162759012412
+staff = 759949547882545154
+support = 834247683484024893
+trial_support = 917185016012890202
 
-banned = 913083926422118460
-support_bans = 914180562745434223
+banned = 818149603475456030
+support_bans = 883846880835039312
 
-clips = 123
-polls = 123
+clips = 759992463032188988
+polls = 858486862212235274
 
 # Queue channels for rolling
 queue_text_channels = [123, 1234, 1235]
 queue_voice_channels = [123, 1234, 1235]
+
 
 
 # Prefabs
