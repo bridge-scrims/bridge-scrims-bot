@@ -6,7 +6,8 @@ use serenity::{
     model::{
         channel::Channel,
         interactions::{
-            application_command::ApplicationCommandInteraction, InteractionResponseType,
+            application_command::ApplicationCommandInteraction,
+            InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
         },
     },
     prelude::Context,
@@ -37,6 +38,18 @@ impl Command for Roll {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
+        if !CONFIG.queue_text_channels.contains(&command.channel_id) {
+            command
+                .create_interaction_response(&ctx, |r| {
+                    r.interaction_response_data(|m| {
+                        m.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .content("This command is disabled in this channel!")
+                    })
+                })
+                .await?;
+            return Ok(());
+        }
+
         command
             .create_interaction_response(&ctx, |r| {
                 r.kind(InteractionResponseType::DeferredChannelMessageWithSource)
@@ -60,7 +73,7 @@ impl Command for Roll {
 
         let channel_id = voice_state.unwrap().channel_id.unwrap();
 
-        if !CONFIG.queue_channels.contains(&channel_id) {
+        if !CONFIG.queue_voice_channels.contains(&channel_id) {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.content("Please join a queue before using this command.")
