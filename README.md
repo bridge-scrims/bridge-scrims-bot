@@ -9,6 +9,7 @@
   - Refabs for support :heavy_check_mark: 
   - Suggestions command :heavy_check_mark:
   - List Council command :heavy_check_mark:
+  - Auto-React (polls, clips, welcome messages) ✔️(LordOfTheCube)
   
 ## Screenshare bot rewrite
   - Screenshare command
