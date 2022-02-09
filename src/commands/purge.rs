@@ -1,33 +1,19 @@
-use std::sync::Arc;
-
 use serenity::async_trait;
 use serenity::client::Context;
-use serenity::futures::stream::BoxStream;
 use serenity::futures::StreamExt;
-use serenity::http::Http;
-use serenity::model::guild::Member;
+use serenity::model::id::UserId;
 use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandOptionType,
+    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
 };
 use serenity::model::interactions::InteractionResponseType;
-use serenity::model::misc::Mentionable;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 
-use tokio::sync::Mutex;
-use tokio::time::Duration;
+use crate::interact_opts::InteractOpts;
 
 use crate::commands::Command;
-use crate::consts::*;
+use crate::consts::CONFIG;
 
-pub struct Purge {
-    inner: Arc<Inner>,
-}
-
-struct Inner {
-    prime_council: Mutex<String>,
-    private_council: Mutex<String>,
-    premium_council: Mutex<String>,
-}
+pub struct Purge;
 
 #[async_trait]
 impl Command for Purge {
@@ -36,19 +22,38 @@ impl Command for Purge {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        crate::GUILD
+        let cmd = CONFIG
+            .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Purges a specific amount of messages from the channel")
                     .create_option(|o| {
-                        o.name("number")
+                        o.name("amount")
                             .description("Amount of messages to purge")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::Number)
+                            .kind(ApplicationCommandOptionType::Integer)
+                    })
+                    .create_option(|o| {
+                        o.name("user")
+                            .description("When specified, only purges messages from a given user.")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::User)
                     })
             })
             .await?;
-        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
+        CONFIG
+            .guild
+            .create_application_command_permission(&ctx, cmd.id, |p| {
+                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
+                    p.create_permission(|perm| {
+                        perm.kind(ApplicationCommandPermissionType::Role)
+                            .id(role.0)
+                            .permission(true)
+                    });
+                }
+                p
+            })
+            .await?;
         Ok(())
     }
 
@@ -65,42 +70,37 @@ impl Command for Purge {
                 .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-        command
-            .edit_original_interaction_response(&ctx.http, |r|{
-            r.content("Purge Successfull!".to_string())
-            })
-            .await?;
-
-
-
 
         let channel = command.channel_id;
         let mut messages = channel.messages_iter(&ctx.http).boxed();
-        
-        let mut astr = command.data.options[0].value.as_ref().unwrap().as_i64().unwrap();
 
+        let max_purge = command.get_i64("amount").unwrap();
 
+        let user_id = command.get_str("user");
+        let mut user: Option<UserId> = None;
+        if let Some(id) = user_id {
+            user = Some(UserId(id.parse()?))
+        }
+        let mut i = 0;
+        while let Some(Ok(message)) = messages.next().await {
+            i += 1;
 
-        while let Some(message_result) = messages.next().await {
-
-
-            if astr.to_string() ==  "0" {
-              break;
+            if i > max_purge {
+                break;
             }
 
-            match message_result {
-                Ok(message) =>{ 
-                
-                    
-                    message.delete(&ctx.http).await?;
-                    astr -= 1;
-                },
-
-                Err(why) => println!("Failed to get messages: {:?}", why),
+            if let Some(u) = user {
+                if message.author.id != u {
+                    continue;
+                }
             }
-            
-          }
-        
+            message.delete(&ctx.http).await?;
+        }
+        command
+            .edit_original_interaction_response(&ctx.http, |r| {
+                r.content("Purge Successfull!".to_string())
+            })
+            .await?;
         Ok(())
     }
 
@@ -108,70 +108,6 @@ impl Command for Purge {
     where
         Self: Sized,
     {
-        Box::new(Purge {
-            inner: Arc::new(Inner {
-                prime_council: Mutex::new("".into()),
-                private_council: Mutex::new("".into()),
-                premium_council: Mutex::new("".into()),
-            }),
-        })
-    }
-}
-
-async fn update_loop(inner: Arc<Inner>, http: Arc<Http>) {
-    loop {
-        inner.update(http.clone()).await;
-        tokio::time::sleep(Duration::from_secs(21600)).await;
-    }
-}
-
-impl Inner {
-    async fn update(&self, http: Arc<Http>) {
-        tracing::info!("Updating councils");
-        let mut prime_council_lock = self.prime_council.lock().await;
-        let mut private_council_lock = self.private_council.lock().await;
-        let mut premium_council_lock = self.premium_council.lock().await;
-        let mut prime_head = "".to_string();
-        let mut private_head = "".to_string();
-        let mut premium_head = "".to_string();
-        let mut prime_council = Vec::new();
-        let mut private_council = Vec::new();
-        let mut premium_council = Vec::new();
-        let mut members: BoxStream<Member> = GUILD
-            .members_iter(&http)
-            .filter_map(|r| async move { r.ok() })
-            .boxed();
-        while let Some(member) = members.next().await {
-            if member.roles.contains(&PRIME_HEAD) {
-                prime_head = member.user.mention().to_string()
-            } else if member.roles.contains(&PRIME_COUNCIL) {
-                prime_council.push(member.user.mention().to_string())
-            }
-            if member.roles.contains(&PRIVATE_HEAD) {
-                private_head = member.user.mention().to_string()
-            } else if member.roles.contains(&PRIVATE_COUNCIL) {
-                private_council.push(member.user.mention().to_string())
-            }
-            if member.roles.contains(&PREMIUM_HEAD) {
-                premium_head = member.user.mention().to_string()
-            } else if member.roles.contains(&PREMIUM_COUNCIL) {
-                premium_council.push(member.user.mention().to_string())
-            }
-        }
-        *prime_council_lock = format!(
-            "{} - Council Head\n{}",
-            prime_head,
-            prime_council.join("\n")
-        );
-        *private_council_lock = format!(
-            "{} - Council Head\n{}",
-            private_head,
-            private_council.join("\n")
-        );
-        *premium_council_lock = format!(
-            "{} - Council Head\n{}",
-            premium_head,
-            premium_council.join("\n")
-        );
+        Box::new(Purge {})
     }
 }
