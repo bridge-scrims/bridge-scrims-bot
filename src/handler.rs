@@ -13,7 +13,7 @@ use crate::consts::CONFIG;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
-use serenity::model::channel::{Channel, Message, MessageType, ReactionType};
+use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
@@ -110,8 +110,11 @@ impl EventHandler for Handler {
 
         let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
 
+        let category = msg.category_id(&ctx.cache).await;
+
         if roll_commands.is_match(&msg.content)
-            && CONFIG.queue_text_channels.contains(&msg.channel_id)
+            && category.is_some()
+            && CONFIG.queue_categories.contains(&category.unwrap())
         {
             let member = msg.author.clone();
 
@@ -127,42 +130,46 @@ impl EventHandler for Handler {
             }
 
             let channel_id = voice_state.unwrap().channel_id.unwrap();
-
-            if !CONFIG.queue_voice_channels.contains(&channel_id) {
+            let channel = channel_id
+                .to_channel_cached(&ctx.cache)
+                .await
+                .unwrap()
+                .guild()
+                .unwrap();
+            if !CONFIG
+                .queue_categories
+                .contains(&channel.category_id.unwrap())
+            {
                 let _ = msg
                     .reply(&ctx, "Please join a queue before using this command.")
                     .await;
                 return;
             }
 
-            let channel = channel_id.to_channel_cached(&ctx.cache).await.unwrap();
+            let mut members = channel.members(&ctx.cache).await.unwrap();
 
-            if let Channel::Guild(vc) = channel {
-                let mut members = vc.members(&ctx.cache).await.unwrap();
+            let user_limit: usize = channel.user_limit.unwrap_or(4).try_into().unwrap();
 
-                let user_limit: usize = vc.user_limit.unwrap_or(4).try_into().unwrap();
-
-                if members.len() < user_limit {
-                    let _ = msg.reply(&ctx.http, "This queue is not full yet.").await;
-                    return;
-                }
-
-                members.shuffle(&mut rand::thread_rng());
-
-                let _ = msg
-                    .channel_id
-                    .send_message(&ctx, |r| {
-                        r.add_embed(|e| {
-                            e.title("Team Captains:")
-                                .field("First Captain", members[0].display_name(), true)
-                                .field("Second Captain", members[1].display_name(), true)
-                                .color(Color::new(0x1abc9c))
-                        })
-                        .reference_message(&msg)
-                        .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
-                    })
-                    .await;
+            if members.len() < user_limit {
+                let _ = msg.reply(&ctx.http, "This queue is not full yet.").await;
+                return;
             }
+
+            members.shuffle(&mut rand::thread_rng());
+
+            let _ = msg
+                .channel_id
+                .send_message(&ctx, |r| {
+                    r.add_embed(|e| {
+                        e.title("Team Captains:")
+                            .field("First Captain", members[0].display_name(), true)
+                            .field("Second Captain", members[1].display_name(), true)
+                            .color(Color::new(0x1abc9c))
+                    })
+                    .reference_message(&msg)
+                    .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
+                })
+                .await;
         }
 
         if msg.channel_id.as_u64() == CONFIG.clips.as_u64() {
