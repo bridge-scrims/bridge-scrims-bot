@@ -31,8 +31,7 @@ pub struct Config {
 
     pub guild: GuildId,
 
-    pub queue_text_channels: Vec<ChannelId>,
-    pub queue_voice_channels: Vec<ChannelId>,
+    pub queue_categories: Vec<ChannelId>,
 
     pub prime_council: RoleId,
     pub prime_head: RoleId,
