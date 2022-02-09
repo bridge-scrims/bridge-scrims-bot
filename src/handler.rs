@@ -4,6 +4,7 @@ use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
+use crate::commands::purge::Purge;
 use crate::commands::roll::Roll;
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
@@ -16,7 +17,12 @@ use serenity::model::channel::{Channel, Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
+
+use serenity::model::prelude::Member;
 use serenity::utils::Color;
+
+use serenity::model::id::GuildId;
+use serenity::model::user::User;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 use regex::Regex;
@@ -37,6 +43,7 @@ impl Handler {
             ScrimBan::new(),
             ScrimUnban::new(),
             Roll::new(),
+            Purge::new(),
         ];
         let commands = commands
             .into_iter()
@@ -188,6 +195,23 @@ impl EventHandler for Handler {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {
                 tracing::error!("{}", err);
             }
+        }
+    }
+
+    async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, _member: Member) {
+        if let Err(err) = CONFIG.member_count.update(ctx, guild_id).await {
+            tracing::error!("Error when updating member count: {}", err)
+        }
+    }
+    async fn guild_member_removal(
+        &self,
+        ctx: Context,
+        guild_id: GuildId,
+        _user: User,
+        _optional_member: Option<Member>,
+    ) {
+        if let Err(err) = CONFIG.member_count.update(ctx, guild_id).await {
+            tracing::error!("Error when updating member count: {}", err)
         }
     }
 }

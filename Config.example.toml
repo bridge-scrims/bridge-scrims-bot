@@ -26,7 +26,7 @@ polls = 858486862212235274
 queue_text_channels = [123, 1234, 1235]
 queue_voice_channels = [123, 1234, 1235]
 
-
+member_count = 940907252099997747
 
 # Prefabs
 [prefabs]
