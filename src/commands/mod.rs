@@ -8,7 +8,7 @@ pub mod notes;
 pub mod timeout;
 pub mod ban;
 pub mod roll;
-
+pub mod purge;
 
 #[async_trait]
 pub trait Command {

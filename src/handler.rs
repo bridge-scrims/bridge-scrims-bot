@@ -4,6 +4,7 @@ use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
+use crate::commands::purge::Purge;
 use crate::commands::roll::Roll;
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
@@ -16,7 +17,14 @@ use serenity::model::channel::{Channel, Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::Interaction;
+
+use serenity::model::prelude::Member;
 use serenity::utils::Color;
+
+use serenity::futures::StreamExt;
+use serenity::model::prelude::ChannelId;
+use serenity::model::prelude::GuildId;
+use serenity::model::prelude::RoleId;
 
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 use regex::Regex;
@@ -37,6 +45,7 @@ impl Handler {
             ScrimBan::new(),
             ScrimUnban::new(),
             Roll::new(),
+            Purge::new(),
         ];
         let commands = commands
             .into_iter()
@@ -189,5 +198,35 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+    }
+
+    #[allow(unused_variables)]
+    #[allow(unused_must_use)]
+    #[allow(unused_assignments)]
+    async fn guild_member_addition(&self, ctx: Context, _guild_id: GuildId, _member: Member) {
+        let channel: ChannelId = ChannelId(901821871056629803);
+        let member_role_id = 904856692787937400;
+        let guild = GuildId(901821870582665247);
+        let mut counter = 0;
+
+        let _members = guild
+            .members_iter(&ctx.http)
+            .filter(|u| {
+                let has_role = if let Ok(u) = u {
+                    u.roles.contains(&RoleId(member_role_id))
+                } else {
+                    false
+                };
+                async move { has_role }
+            })
+            .for_each(|_| async move {
+                counter += 1;
+            })
+            .await;
+
+        channel
+            .edit(&ctx.http, |c| c.name(counter.to_string()))
+            .await
+            .unwrap();
     }
 }
