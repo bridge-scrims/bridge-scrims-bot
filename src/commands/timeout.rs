@@ -112,7 +112,7 @@ impl Command for Timeout {
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
-                        data.content(format!("You do not have permission to ban {}", user.tag()))
+                        data.content(format!("You do not have permission to timeout {}", user.tag()))
                     })
                 })
                 .await?;
