@@ -110,10 +110,11 @@ impl Command for Timeout {
 
         if top_role >= cmd_top_role || member.user.bot {
             command
-                .create_interaction_response(&ctx.http, |resp| {
-                    resp.interaction_response_data(|data| {
-                        data.content(format!("You do not have permission to timeout {}", user.tag()))
-                    })
+                .edit_original_interaction_response(&ctx.http, |resp| {
+                    resp.content(format!(
+                        "You do not have permission to timeout {}",
+                        user.tag()
+                    ))
                 })
                 .await?;
             return Ok(());
