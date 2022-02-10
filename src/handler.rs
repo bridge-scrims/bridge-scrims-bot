@@ -174,6 +174,9 @@ impl EventHandler for Handler {
                             .field("First Captain", members[0].display_name(), true)
                             .field("Second Captain", members[1].display_name(), true)
                             .color(Color::new(0x1abc9c))
+                            .footer(|f| {
+                                f.text("Hint: use the /roll command to roll!")
+                            })
                     })
                     .reference_message(&msg)
                     .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
