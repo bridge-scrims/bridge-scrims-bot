@@ -39,6 +39,7 @@ impl Command for Purge {
                             .required(false)
                             .kind(ApplicationCommandOptionType::User)
                     })
+                    .default_permission(false)
             })
             .await?;
         CONFIG
