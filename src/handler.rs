@@ -99,7 +99,9 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.content.to_ascii_lowercase().contains("ratio") {
+        if msg.content.to_ascii_lowercase() == "ratio"
+            || msg.content.to_ascii_lowercase().replace(" ", "") == "counterratio"
+        {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
             }
