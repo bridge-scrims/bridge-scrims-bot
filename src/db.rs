@@ -209,39 +209,20 @@ impl Database {
     }
 
     pub fn remove_note(&self, userid: u64, id: u64) -> SqliteResult {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "DELETE FROM 'Notes' WHERE userid = {} AND id = {}",
-                    userid, id
-                ))?;
-                db.execute(format!(
-                    "UPDATE 'Notes' SET id = id - 1 WHERE userid = {} AND id >= {}",
-                    userid, id
-                ))
-            })
-            .ok();
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
+        self.get_lock(|db| {
+            db.execute(format!(
+                "DELETE FROM 'Notes' WHERE userid = {} AND id = {}",
+                userid, id
+            ))?;
+            db.execute(format!(
+                "UPDATE 'Notes' SET id = id - 1 WHERE userid = {} AND id >= {}",
+                userid, id
+            ))
+        })
     }
 
     pub fn remove_entry(&self, table: &str, i: u64) -> SqliteResult {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
-            .ok();
-
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
+        self.get_lock(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
     }
 }
 
