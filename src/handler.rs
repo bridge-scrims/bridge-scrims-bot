@@ -112,11 +112,18 @@ impl EventHandler for Handler {
 
         let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
 
-        let category = msg.category_id(&ctx.cache).await;
-
+        let channel = msg
+            .channel_id
+            .to_channel_cached(&ctx.cache)
+            .await
+            .unwrap()
+            .guild();
         if roll_commands.is_match(&msg.content)
-            && category.is_some()
-            && CONFIG.queue_categories.contains(&category.unwrap())
+            && channel.as_ref().is_some()
+            && channel.as_ref().unwrap().category_id.is_some()
+            && CONFIG
+                .queue_categories
+                .contains(&channel.unwrap().category_id.unwrap())
         {
             let member = msg.author.clone();
 
