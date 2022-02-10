@@ -25,3 +25,6 @@
   - [ ] Warnings
   - [ ] General way to store punishments
   - [ ] Automoderation
+
+## Suggetions:
+  - [ ] Rewrite database to better data model, such as sqlx or Postgres
