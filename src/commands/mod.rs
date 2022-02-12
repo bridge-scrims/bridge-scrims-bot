@@ -8,6 +8,7 @@ pub mod notes;
 pub mod timeout;
 pub mod ban;
 pub mod roll;
+pub mod reaction;
 
 
 #[async_trait]
