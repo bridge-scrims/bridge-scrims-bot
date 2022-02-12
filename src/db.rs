@@ -302,7 +302,7 @@ impl Database {
             Ok(())
         }
     }
-
+}
 
 
 pub struct Unban {
