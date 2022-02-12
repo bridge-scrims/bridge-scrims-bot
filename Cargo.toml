@@ -25,9 +25,20 @@ features = ["local-offset"]
 version = "0.3.5"
 
 [dependencies.serenity]
-default-features = false
-features = ["builder", "cache", "client", "gateway", "model", "http", "utils", "unstable_discord_api", "rustls_backend"]
 version = "0.10.10"
+default-features = false
+features = [
+    "builder",
+    "cache",
+    "collector",
+    "client",
+    "gateway",
+    "model",
+    "http",
+    "utils",
+    "unstable_discord_api",
+    "rustls_backend",
+]
 
 [dependencies.tokio]
 features = ["full"]

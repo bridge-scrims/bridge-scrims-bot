@@ -1,6 +1,6 @@
+pub use crate::model::*;
 use std::{
-    fmt::Display,
-    num::ParseIntError,
+    str::FromStr,
     sync::{Mutex, MutexGuard},
 };
 
@@ -59,6 +59,24 @@ impl Database {
                 user integer,
                 emoji text,
                 trigger text
+            )",
+        )
+        .expect("Could not initialize database");
+
+        conn.execute(
+            "create table if not exists Screenshares (
+                id integer primary key,
+                creator integer,
+                in_question integer
+            )",
+        )
+        .expect("Could not initialize database");
+
+        conn.execute(
+            "create table if not exists Freezes (
+                id integer,
+                roles text,
+                time integer
             )",
         )
         .expect("Could not initialize database");
@@ -136,8 +154,7 @@ impl Database {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
             let time = row.get(1).unwrap().as_integer().unwrap();
             let date = OffsetDateTime::from_unix_timestamp(time).unwrap();
-            let roles =
-                BanRoles::try_from(row.get(2).unwrap().as_string().unwrap().to_owned()).unwrap();
+            let roles = Ids::try_from(row.get(2).unwrap().as_string().unwrap().to_owned()).unwrap();
 
             result.push(ScrimUnban { id, date, roles });
         });
@@ -213,6 +230,37 @@ impl Database {
         result
     }
 
+    pub fn fetch_screenshares_for(&self, id: u64) -> Option<Screenshare> {
+        let mut result = None;
+        self.fetch_rows("Screenshares", &format!("where id = {}", id), |row| {
+            let creator = row[1].as_integer().unwrap() as u64;
+            let in_question = row[2].as_integer().unwrap() as u64;
+            result.get_or_insert(Screenshare {
+                id,
+                creator,
+                in_question,
+            });
+        });
+        result
+    }
+
+    pub fn fetch_freezes_for(&self, id: u64) -> Option<Freeze> {
+        let mut result = None;
+        self.fetch_rows("Freezes", &format!("where id = {}", id), |row| {
+            let roles = row[1]
+                .as_string()
+                .unwrap_or_default()
+                .split(',')
+                .filter_map(|x| RoleId::from_str(x).ok())
+                .collect();
+            let time =
+                OffsetDateTime::from_unix_timestamp(row[2].as_integer().unwrap())
+                    .unwrap();
+            result.get_or_insert(Freeze { id, roles, time });
+        });
+        result
+    }
+
     pub fn add_unban(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
@@ -249,7 +297,7 @@ impl Database {
         &self,
         id: u64,
         unban_date: OffsetDateTime,
-        roles: &BanRoles,
+        roles: &Ids,
     ) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
@@ -287,6 +335,26 @@ impl Database {
         })
     }
 
+    pub fn add_screenshare(&self, id: u64, creator: u64, in_question: u64) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "INSERT INTO 'Screenshares' (id,creator,in_question) values ({},{},{})",
+                id, creator, in_question
+            ))
+        })
+    }
+
+    pub fn add_freeze(&self, id: u64, roles: Ids, time: OffsetDateTime) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "INSERT INTO 'Freezes' (id,roles,time) values ({},\"{}\",{})",
+                id,
+                roles,
+                time.unix_timestamp(),
+            ))
+        })
+    }
+
     pub fn remove_note(&self, userid: u64, id: u64) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
@@ -314,67 +382,5 @@ impl Database {
         } else {
             Ok(())
         }
-    }
-}
-
-pub struct Unban {
-    pub id: u64,
-    pub date: OffsetDateTime,
-}
-
-pub struct ScrimUnban {
-    pub id: u64,
-    pub date: OffsetDateTime,
-    pub roles: BanRoles,
-}
-
-#[derive(Debug)]
-pub struct Note {
-    /// the id of the person that the note belongs to
-    pub userid: u64,
-    /// the note id
-    pub id: u64,
-    /// the date that the note was created at
-    pub created_at: OffsetDateTime,
-    /// the text that the note contains
-    pub note: String,
-    /// the id of the person who added the note
-    pub creator: u64,
-}
-
-pub struct CustomReaction {
-    pub user: u64,
-    pub trigger: String,
-    pub emoji: String,
-}
-
-pub struct BanRoles(pub Vec<RoleId>);
-
-impl Display for BanRoles {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Avoid allocating a string for each role id
-        for i in 0..self.0.len() {
-            let sep = if i == self.0.len() - 1 { "" } else { "," };
-
-            write!(f, "{}{}", self.0[i], sep)?;
-        }
-        Ok(())
-    }
-}
-
-impl TryFrom<String> for BanRoles {
-    type Error = ParseIntError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.is_empty() {
-            return Ok(Self(Vec::new()));
-        }
-        let mut roles = Vec::new();
-        for role in value.split(',') {
-            let role = role.parse::<u64>()?;
-            roles.push(RoleId(role));
-        }
-
-        Ok(Self(roles))
     }
 }

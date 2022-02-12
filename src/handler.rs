@@ -3,16 +3,20 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
+use crate::commands::close::Close;
 use crate::commands::council::Council;
+use crate::commands::freeze::Freeze;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
 use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
 use crate::commands::roll::{Roll, Teams};
+use crate::commands::screenshare::Screenshare;
 use crate::commands::timeout::Timeout;
 use crate::commands::ping::Ping;
 use crate::commands::Command as _;
 
+use crate::commands::unfreeze::Unfreeze;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
@@ -30,8 +34,9 @@ use serenity::utils::Color;
 use serenity::model::id::GuildId;
 use serenity::model::user::User;
 
-type Command = Box<dyn crate::commands::Command + Send + Sync>;
 use regex::Regex;
+
+type Command = Box<dyn crate::commands::Command>;
 
 pub struct Handler {
     commands: HashMap<String, Command>,
@@ -56,6 +61,10 @@ impl Handler {
             DelReaction::new(),
             ListReactions::new(),
             Ping::new(),
+            Screenshare::new(),
+            Close::new(),
+            Freeze::new(),
+            Unfreeze::new(),
         ];
         let commands = commands
             .into_iter()

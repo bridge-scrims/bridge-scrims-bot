@@ -15,7 +15,7 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, consts::CONFIG, db::BanRoles, interact_opts::InteractOpts};
+use crate::{commands::Command, consts::CONFIG, interact_opts::InteractOpts};
 
 fn format_db_error(e: &sqlite::Error) -> String {
     if let Some(19) = e.code {
@@ -74,7 +74,7 @@ impl BanType {
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} recieved a ban", user.tag()));
         embed.field("User", format!("<@{}>", id), false);
-        embed.field("Duration", format!("`{} days`", days), false);
+        embed.field("Duration", format!("<t:{}:R>", unban_date.unix_timestamp()), false);
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
         if matches!(self, BanType::Server) {
@@ -125,12 +125,10 @@ impl BanType {
                 let mut result = None;
                 let mut removed_roles = Vec::new();
                 for role in roles.iter().filter(|x| !x.managed) {
-                    dbg!(&role);
                     if let Err(e) = member.remove_role(&http, role).await {
                         let _ = result.get_or_insert(Err(e));
                     } else {
                         removed_roles.push(role.id);
-                        dbg!(&role);
                     }
                 }
                 result.get_or_insert(member.add_role(&http, CONFIG.banned.0).await);
@@ -138,7 +136,7 @@ impl BanType {
                 let db_result = crate::consts::DATABASE.add_scrim_unban(
                     *id.as_u64(),
                     unban_date,
-                    &BanRoles(removed_roles),
+                    &removed_roles.into(),
                 );
                 CONFIG
                     .support_bans
@@ -374,7 +372,7 @@ pub enum UnbanType {
 }
 
 pub enum UnbanEntry {
-    Scrim(crate::db::ScrimUnban),
+    Scrim(crate::model::ScrimUnban),
     Server(serenity::model::guild::Ban),
 }
 
@@ -488,7 +486,8 @@ impl UnbanType {
                     .into_iter()
                     .find(|x| x.id == to_unban.id.0)
                     .unwrap();
-                if let Err(e) = member.add_roles(&http, &unban.roles.0).await {
+                let roles: Vec<_> = unban.roles.into();
+                if let Err(e) = member.add_roles(&http, &roles).await {
                     return Err(Box::new(e)); // If roles cannot be added, don't remove the unban from the database either
                 }
 

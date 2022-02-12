@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use crate::db::Database;
 use serde::Deserialize;
 use serenity::model::id::ChannelId;
+use serenity::model::id::EmojiId;
 use serenity::model::id::GuildId;
 use serenity::model::id::RoleId;
 use serenity::prelude::Context;
@@ -53,6 +54,13 @@ pub struct Config {
     pub support: RoleId,
     pub trial_support: RoleId,
     pub support_bans: ChannelId,
+    pub screenshare_requests: ChannelId,
+    pub frozen: RoleId,
+    pub frozen_chat: ChannelId,
+    pub hello_cheaters: ChannelId,
+    pub ss_logs: ChannelId,
+    pub freeze_emoji: EmojiId,
+    pub unfreeze_emoji: EmojiId,
 
     pub polls: ChannelId,
     pub clips: ChannelId,
