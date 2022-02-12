@@ -305,6 +305,16 @@ impl Command for ScrimBan {
                         .id(CONFIG.ss_support.0)
                         .permission(true)
                 })
+                .create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.support.0)
+                        .permission(true)
+                })
+                .create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.staff.0)
+                        .permission(true)
+                })
             })
             .await?;
         tokio::spawn(scrim_update_loop(ctx.http.clone()));
@@ -599,6 +609,16 @@ impl Command for ScrimUnban {
                 c.create_permission(|p| {
                     p.kind(ApplicationCommandPermissionType::Role)
                         .id(CONFIG.ss_support.0)
+                        .permission(true)
+                })
+                .create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.support.0)
+                        .permission(true)
+                })
+                .create_permission(|p| {
+                    p.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.staff.0)
                         .permission(true)
                 })
             })

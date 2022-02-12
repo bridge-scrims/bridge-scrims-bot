@@ -5,9 +5,25 @@ use serde::Deserialize;
 use serenity::model::id::ChannelId;
 use serenity::model::id::GuildId;
 use serenity::model::id::RoleId;
+use serenity::prelude::Context;
 use std::collections::HashMap;
 use std::fs;
 use toml::from_str;
+
+#[derive(Deserialize)]
+pub struct MemberCount(ChannelId);
+
+impl MemberCount {
+    pub async fn update(&self, ctx: Context, guild_id: GuildId) -> crate::Result<()> {
+        let guild = guild_id.to_guild_cached(&ctx.cache).await.unwrap();
+        self.0
+            .edit(&ctx.http, |c| {
+                c.name(format!("Members: {}", guild.member_count))
+            })
+            .await?;
+        Ok(())
+    }
+}
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -15,7 +31,7 @@ pub struct Config {
 
     pub guild: GuildId,
 
-    pub queue_channels: Vec<ChannelId>,
+    pub queue_categories: Vec<ChannelId>,
 
     pub prime_council: RoleId,
     pub prime_head: RoleId,
@@ -36,6 +52,8 @@ pub struct Config {
     pub clips: ChannelId,
 
     pub prefabs: HashMap<String, String>,
+
+    pub member_count: MemberCount,
 }
 
 lazy_static::lazy_static! {

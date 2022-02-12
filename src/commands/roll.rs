@@ -3,11 +3,9 @@ use crate::commands::Command;
 use rand::seq::SliceRandom;
 use serenity::{
     async_trait,
-    model::{
-        channel::Channel,
-        interactions::{
-            application_command::ApplicationCommandInteraction, InteractionResponseType,
-        },
+    model::interactions::{
+        application_command::ApplicationCommandInteraction,
+        InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
     },
     prelude::Context,
     utils::Color,
@@ -37,6 +35,29 @@ impl Command for Roll {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
+        let channel = command
+            .channel_id
+            .to_channel_cached(&ctx.cache)
+            .await
+            .unwrap()
+            .guild();
+        if (&channel).is_none()
+            || channel.as_ref().unwrap().category_id.is_none()
+            || !CONFIG
+                .queue_categories
+                .contains(&channel.unwrap().category_id.unwrap())
+        {
+            command
+                .create_interaction_response(&ctx, |r| {
+                    r.interaction_response_data(|m| {
+                        m.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .content("This command is disabled in this channel!")
+                    })
+                })
+                .await?;
+            return Ok(());
+        }
+
         command
             .create_interaction_response(&ctx, |r| {
                 r.kind(InteractionResponseType::DeferredChannelMessageWithSource)
@@ -59,8 +80,18 @@ impl Command for Roll {
         }
 
         let channel_id = voice_state.unwrap().channel_id.unwrap();
+        let channel = channel_id
+            .to_channel_cached(&ctx.cache)
+            .await
+            .unwrap()
+            .guild()
+            .unwrap();
 
-        if !CONFIG.queue_channels.contains(&channel_id) {
+        if channel.category_id.is_none()
+            || !CONFIG
+                .queue_categories
+                .contains(&channel.category_id.unwrap())
+        {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.content("Please join a queue before using this command.")
@@ -69,35 +100,31 @@ impl Command for Roll {
             return Ok(());
         }
 
-        let channel = channel_id.to_channel_cached(&ctx.cache).await.unwrap();
+        let mut members = channel.members(&ctx.cache).await?;
 
-        if let Channel::Guild(vc) = channel {
-            let mut members = vc.members(&ctx.cache).await?;
+        let user_limit: usize = channel.user_limit.unwrap_or(4).try_into().unwrap();
 
-            let user_limit: usize = vc.user_limit.unwrap_or(4).try_into().unwrap();
-
-            if members.len() < user_limit {
-                command
-                    .edit_original_interaction_response(&ctx, |r| {
-                        r.content("This queue is not full yet.")
-                    })
-                    .await?;
-                return Ok(());
-            }
-
-            members.shuffle(&mut rand::thread_rng());
-
+        if members.len() < user_limit {
             command
                 .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
-                        e.title("Team Captains:")
-                            .field("First Captain", members[0].display_name(), true)
-                            .field("Second Captain", members[1].display_name(), true)
-                            .color(Color::new(0x1abc9c))
-                    })
+                    r.content("This queue is not full yet.")
                 })
                 .await?;
+            return Ok(());
         }
+
+        members.shuffle(&mut rand::thread_rng());
+
+        command
+            .edit_original_interaction_response(&ctx, |r| {
+                r.create_embed(|e| {
+                    e.title("Team Captains:")
+                        .field("First Captain", members[0].display_name(), true)
+                        .field("Second Captain", members[1].display_name(), true)
+                        .color(Color::new(0x1abc9c))
+                })
+            })
+            .await?;
 
         Ok(())
     }

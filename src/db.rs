@@ -1,9 +1,14 @@
-use std::{fmt::Display, num::ParseIntError, sync::Mutex};
+use std::{
+    fmt::Display,
+    num::ParseIntError,
+    sync::{Mutex, MutexGuard},
+};
 
 use serenity::model::id::RoleId;
 use sqlite::Connection;
 use time::OffsetDateTime;
 
+type SqliteResult<T = ()> = Result<T, sqlite::Error>;
 pub struct Database {
     pub sqlite: Mutex<Connection>,
 }
@@ -64,11 +69,26 @@ impl Database {
         }
     }
 
+    pub fn get_lock<T, F>(&self, predicate: F) -> SqliteResult<T>
+    where
+        F: FnOnce(MutexGuard<Connection>) -> SqliteResult<T>,
+    {
+        self.sqlite.lock().map_or_else(
+            |_| {
+                Err(sqlite::Error {
+                    code: Some(6),
+                    message: Some("Could not lock database".to_string()),
+                })
+            },
+            predicate,
+        )
+    }
+
     pub fn fetch_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
     where
         F: FnMut(&[sqlite::Value]),
     {
-        let _lock = self.sqlite.lock().map(|db| {
+        let _lock = self.get_lock(|db| {
             let stmt = db.prepare(format!("SELECT * FROM '{}' {}", table, condition));
             if let Ok(stmt) = stmt {
                 let mut cursor = stmt.into_cursor();
@@ -77,6 +97,7 @@ impl Database {
                     predicate(row);
                 }
             }
+            Ok(())
         });
     }
 
@@ -84,7 +105,7 @@ impl Database {
     where
         F: FnMut(&[sqlite::Value]),
     {
-        let _lock = self.sqlite.lock().map(|db| {
+        let _lock = self.get_lock(|db| {
             let stmt = db.prepare(format!("select count(*) from '{}' {}", table, condition));
             if let Ok(stmt) = stmt {
                 let mut cursor = stmt.into_cursor();
@@ -93,6 +114,7 @@ impl Database {
                     predicate(row);
                 }
             }
+            Ok(())
         });
     }
 
@@ -170,6 +192,16 @@ impl Database {
         result
     }
 
+
+    pub fn add_unban(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "INSERT INTO 'ScheduledUnbans' (id,time) values ({},{})",
+                id,
+                unban_date.unix_timestamp()
+            ))
+        })
+  }
     pub fn add_custom_reaction(&self, id: u64, emoji: &str, trigger: &str) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
@@ -192,48 +224,22 @@ impl Database {
 
 
 
-    pub fn add_unban(&self, id: u64, unban_date: OffsetDateTime) -> Result<(), sqlite::Error> {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "INSERT INTO 'ScheduledUnbans' (id,time) values ({},{})",
-                    id,
-                    unban_date.unix_timestamp()
-                ))
-            })
-            .ok();
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
-    }
+
 
     pub fn add_scrim_unban(
         &self,
         id: u64,
         unban_date: OffsetDateTime,
         roles: &BanRoles,
-    ) -> Result<(), sqlite::Error> {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "INSERT INTO 'ScheduledScrimUnbans' (id,time,roles) values ({},{},\"{}\")",
-                    id,
-                    unban_date.unix_timestamp(),
-                    roles,
-                ))
-            })
-            .ok();
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
+    ) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "INSERT INTO 'ScheduledScrimUnbans' (id,time,roles) values ({},{},\"{}\")",
+                id,
+                unban_date.unix_timestamp(),
+                roles,
+            ))
+        })
     }
 
     pub fn add_note(
@@ -242,7 +248,7 @@ impl Database {
         created_at: OffsetDateTime,
         note: &str,
         creator: u64,
-    ) -> Result<i64, std::sync::PoisonError<std::sync::MutexGuard<sqlite::Connection>>> {
+    ) -> SqliteResult<i64> {
         let mut count: Option<i64> = None;
         self.count_rows("Notes", &format!("where userid = {}", userid), |val| {
             if let sqlite::Value::Integer(co) = val[0] {
@@ -250,50 +256,35 @@ impl Database {
             }
         });
         let count = count.unwrap_or_default();
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "INSERT INTO 'Notes' (userid,id,created_at,note,creator) values ({},{},\"{}\",\"{}\",{})",
-                    userid,
-                    count+1,
-                    created_at.unix_timestamp(),
-                    note,
-                    creator
-                ))
-            })
-            .ok();
-        if let Some(Ok(_)) = result {
-            Ok(count + 1)
-        } else {
-            tracing::error!("{:?}", result);
-            Ok(-1)
-        }
+        self.get_lock(|db| {
+            db.execute(format!(
+                "INSERT INTO 'Notes' (userid,id,created_at,note,creator) values ({},{},\"{}\",\"{}\",{})",
+                userid,
+                count+1,
+                created_at.unix_timestamp(),
+                note,
+                creator
+            )).map(|_| count + 1)
+        })
     }
 
-    pub fn remove_note(&self, userid: u64, id: u64) -> Result<(), sqlite::Error> {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "DELETE FROM 'Notes' WHERE userid = {} AND id = {}",
-                    userid, id
-                ))?;
-                db.execute(format!(
-                    "UPDATE 'Notes' SET id = id - 1 WHERE userid = {} AND id >= {}",
-                    userid, id
-                ))
-            })
-            .ok();
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
+    pub fn remove_note(&self, userid: u64, id: u64) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "DELETE FROM 'Notes' WHERE userid = {} AND id = {}",
+                userid, id
+            ))?;
+            db.execute(format!(
+                "UPDATE 'Notes' SET id = id - 1 WHERE userid = {} AND id >= {}",
+                userid, id
+            ))
+        })
     }
 
+
+    pub fn remove_entry(&self, table: &str, i: u64) -> SqliteResult {
+        self.get_lock(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
+}
     pub fn remove_custom_reaction(&self, user: u64) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
@@ -312,20 +303,7 @@ impl Database {
         }
     }
 
-    pub fn remove_entry(&self, table: &str, i: u64) -> Result<(), sqlite::Error> {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
-            .ok();
 
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
-    }
-}
 
 pub struct Unban {
     pub id: u64,
