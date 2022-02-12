@@ -46,6 +46,7 @@ pub struct Config {
     pub support: RoleId,
     pub trial_support: RoleId,
     pub support_bans: ChannelId,
+    pub server_booster: RoleId,
 
     pub polls: ChannelId,
     pub clips: ChannelId,

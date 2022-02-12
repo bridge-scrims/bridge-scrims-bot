@@ -7,9 +7,11 @@ use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
 use crate::commands::roll::Roll;
 use crate::commands::timeout::Timeout;
+use crate::commands::reaction::{Reaction, DelReaction};
 use crate::commands::Command as _;
 
 use crate::consts::CONFIG;
+use crate::consts::DATABASE as database;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
@@ -27,9 +29,11 @@ use serenity::model::user::User;
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 use regex::Regex;
 
+
 pub struct Handler {
     commands: HashMap<String, Command>,
 }
+
 
 impl Handler {
     pub fn new() -> Handler {
@@ -44,6 +48,8 @@ impl Handler {
             ScrimUnban::new(),
             Roll::new(),
             Purge::new(),
+            Reaction::new(),
+            DelReaction::new()
         ];
         let commands = commands
             .into_iter()
@@ -51,9 +57,11 @@ impl Handler {
                 map.insert(command.name(), command);
                 map
             });
+
         Handler { commands }
     }
 }
+
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -210,6 +218,40 @@ impl EventHandler for Handler {
         if msg.kind == MessageType::MemberJoin {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {
                 tracing::error!("{}", err);
+            }
+        }
+
+
+
+        for reaction in database.fetch_custom_reactions() {
+            if msg
+                .content
+                .to_ascii_lowercase()
+                .replace(' ', "")
+                .contains(&reaction.trigger)
+
+            {
+                if let Err(err) = msg
+                    .react(
+                        &ctx,
+                        ReactionType::Unicode(reaction.emoji)
+                    )
+                    .await
+                {
+                    // if format!("{}", err).to_ascii_lowercase().contains("unknown emoji") {
+                    //     if let Err(err) = msg.reply(&ctx, format!(
+                    //         "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. Remove it with `/reaction remove` and make sure that anything which you add is a default emoji.",
+                    //         &reaction.user)
+                    //         )
+                    //         .await
+                    //         {
+                    //             tracing::error!("{}", err);
+                    //         }
+                    // } else {
+                        tracing::error!("{}", err);
+                    // }
+
+                }
             }
         }
     }
