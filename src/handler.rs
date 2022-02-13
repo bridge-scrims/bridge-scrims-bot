@@ -229,8 +229,7 @@ impl EventHandler for Handler {
             if msg
                 .content
                 .to_ascii_lowercase()
-                .replace(' ', "")
-                .contains(&reaction.trigger)
+                == reaction.trigger
 
             {
                 if let Err(err) = msg

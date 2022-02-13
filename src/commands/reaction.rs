@@ -9,6 +9,7 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::InteractionResponseType;
 use serenity::utils::Color;
 use serenity::model::id::UserId;
+use serenity::model::channel::ReactionType;
 
 use crate::consts::CONFIG;
 
@@ -193,7 +194,27 @@ impl Command for Reaction {
                     let mut code = 0;
                     // -1 = not valid emoji, -2 = already has a reaction, -3 = database error
 
-                    // insert check for valid emoji here
+                    let msg1 = command
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.create_embed(|e| {
+                                e.title("Testing Reaction")
+                                    .description(format!("The bot is currently testing your reaction to see if it is valid."))
+                                    .color(Color::new(0x1abc9c))
+                            })
+                        })
+                        .await?;
+
+                        if let Err(_err) = msg1.react(&ctx, ReactionType::Unicode(String::from(&emoji))).await {
+                            command
+                                .edit_original_interaction_response(&ctx, |r| {
+                                    r.create_embed(|e| {
+                                        e.title("Reaction Could Not Be Added")
+                                            .description(format!("{} is not a valid default emoji", &emoji))
+                                            .color(Color::new(0x8b0000))
+                                    })
+                                }).await?;
+                            code = -1;
+                        }
 
                     if code == 0 {
 
