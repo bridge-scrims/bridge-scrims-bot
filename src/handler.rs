@@ -276,4 +276,22 @@ impl EventHandler for Handler {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
+
+    async fn guild_member_update(
+        &self,
+        _ctx: Context,
+        _old_data: Option<Member>,
+        user: Member
+    ) {
+
+            if !user.roles.contains(&CONFIG.server_booster) {
+
+                // if the user's server boost runs out
+
+                if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
+                    tracing::error!("Error when updating database: {}", err);
+                }
+            }
+
+    }
 }
