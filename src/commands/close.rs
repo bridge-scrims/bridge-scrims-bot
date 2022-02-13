@@ -38,7 +38,7 @@ impl Command for Close {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let channel = command.channel_id;
-        let close = close_ticket(&ctx, command.user.id, channel).await?;
+        let close = close_ticket(ctx, command.user.id, channel).await?;
         if !close {
             command
                 .create_interaction_response(&ctx.http, |resp| {
@@ -62,7 +62,7 @@ impl Button for Close {
         ctx: &Context,
         command: &MessageComponentInteraction,
     ) -> crate::Result<()> {
-        close_ticket(&ctx, command.user.id, command.channel_id).await?;
+        close_ticket(ctx, command.user.id, command.channel_id).await?;
         Ok(())
     }
 }
@@ -79,14 +79,12 @@ pub async fn close_ticket(
     let mut messages = Vec::new();
     let raw_messages: Vec<_> = channel.messages_iter(&ctx.http).collect().await;
 
-    for message in raw_messages {
-        if let Ok(msg) = message {
-            messages.push(format!(
-                "{}: {}",
-                msg.author.tag(),
-                msg.content_safe(&ctx.cache).await
-            ));
-        }
+    for message in raw_messages.into_iter().flatten() {
+        messages.push(format!(
+            "{}: {}",
+            message.author.tag(),
+            message.content_safe(&ctx.cache).await
+        ));
     }
 
     messages.reverse();

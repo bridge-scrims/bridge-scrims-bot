@@ -62,7 +62,7 @@ impl Command for Freeze {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        freeze_user(&ctx, user, command.channel_id).await?;
+        freeze_user(ctx, user, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
         command
             .create_interaction_response(&ctx.http, |resp| {
@@ -105,7 +105,7 @@ impl Button for Freeze {
             .await?;
             return Ok(());
         }
-        freeze_user(&ctx, user, command.channel_id).await?;
+        freeze_user(ctx, user, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
         command
             .create_interaction_response(&ctx.http, |resp| {
@@ -123,7 +123,7 @@ async fn freeze_user(ctx: &Context, user: UserId, channel: ChannelId) -> crate::
     let emoji = crate::CONFIG.guild.emoji(&ctx.http, crate::CONFIG.unfreeze_emoji).await?;
     let is_frozen = crate::consts::DATABASE.fetch_freezes_for(user.0).is_some();
     if is_frozen {
-        already_frozen(&ctx, channel, user).await?;
+        already_frozen(ctx, channel, user).await?;
         return Ok(());
     }
     let user = user.to_user(&ctx.http).await?;

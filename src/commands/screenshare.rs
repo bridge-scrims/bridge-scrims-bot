@@ -232,13 +232,13 @@ not to log aswell as any other info.
                 };
 
                 operation
-                    .click(&ctx, &*reactions)
+                    .click(ctx, &*reactions)
                     .await
                     .map_err(|x| format!("While handling button: {}", x))?;
             } else {
                 // This is so you also can use /freeze
                 if crate::consts::DATABASE.fetch_freezes_for(in_question.0).is_none() {
-                    close::close_ticket(&ctx, command.user.id, channel.id).await?;
+                    close::close_ticket(ctx, command.user.id, channel.id).await?;
                 }
             }
         } else {

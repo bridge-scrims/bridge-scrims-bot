@@ -16,9 +16,9 @@ macro_rules! id_impl {
                 }
             }
 
-            impl Into<Vec<$what>> for $name {
-                fn into(self) -> Vec<$what> {
-                    self.0.into_iter().map(|x| $what(x)).collect()
+            impl From<$name> for Vec<$what> {
+                fn from(v: $name) -> Self {
+                    v.0.into_iter().map(|x| $what(x)).collect()
                 }
             }
         )+

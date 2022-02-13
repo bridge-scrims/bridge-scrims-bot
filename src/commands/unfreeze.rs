@@ -56,7 +56,7 @@ impl Command for Unfreeze {
     ) -> crate::Result<()> {
         let emoji = crate::CONFIG.guild.emoji(&ctx.http, crate::CONFIG.unfreeze_emoji).await?;
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        let unfreeze = unfreeze_user(&ctx, user).await?;
+        let unfreeze = unfreeze_user(ctx, user).await?;
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
