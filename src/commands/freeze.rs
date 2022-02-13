@@ -62,7 +62,7 @@ impl Command for Freeze {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        freeze_user(ctx, user, command.channel_id).await?;
+        freeze_user(ctx, user, command.user.id, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
         command
             .create_interaction_response(&ctx.http, |resp| {
@@ -105,7 +105,7 @@ impl Button for Freeze {
             .await?;
             return Ok(());
         }
-        freeze_user(ctx, user, command.channel_id).await?;
+        freeze_user(ctx, user, command.user.id, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
         command
             .create_interaction_response(&ctx.http, |resp| {
@@ -119,14 +119,14 @@ impl Button for Freeze {
     }
 }
 
-async fn freeze_user(ctx: &Context, user: UserId, channel: ChannelId) -> crate::Result<()> {
+async fn freeze_user(ctx: &Context, target: UserId, staff: UserId, channel: ChannelId) -> crate::Result<()> {
     let emoji = crate::CONFIG.guild.emoji(&ctx.http, crate::CONFIG.unfreeze_emoji).await?;
-    let is_frozen = crate::consts::DATABASE.fetch_freezes_for(user.0).is_some();
+    let is_frozen = crate::consts::DATABASE.fetch_freezes_for(target.0).is_some();
     if is_frozen {
-        already_frozen(ctx, channel, user).await?;
+        already_frozen(ctx, channel, target).await?;
         return Ok(());
     }
-    let user = user.to_user(&ctx.http).await?;
+    let user = target.to_user(&ctx.http).await?;
     let mut member = crate::CONFIG.guild.member(&ctx.http, user.id).await?;
 
     let roles = member.roles(&ctx.cache).await.unwrap_or_default();
@@ -178,9 +178,10 @@ instance of your pc, and revise your processes for cheats.",
     channel
         .send_message(&ctx.http, |msg| {
             msg.content(format!(
-                "{}: {} is now frozen",
+                "{}: {} is now frozen by {}",
                 emoji,
-                user
+                user,
+                staff
             ))
         })
         .await?;
