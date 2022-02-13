@@ -31,9 +31,8 @@ use regex::Regex;
 
 
 pub struct Handler {
-    commands: HashMap<String, Command>,
+    commands: HashMap<String, Command>
 }
-
 
 impl Handler {
     pub fn new() -> Handler {
@@ -58,8 +57,10 @@ impl Handler {
                 map
             });
 
+
         Handler { commands }
     }
+
 }
 
 
@@ -80,6 +81,7 @@ impl EventHandler for Handler {
                 if let Err(err) = command.run(&ctx, &command_interaction).await {
                     tracing::error!("{} command failed: {}", command.name(), err);
                 }
+
             }
         }
     }
@@ -238,18 +240,21 @@ impl EventHandler for Handler {
                     )
                     .await
                 {
-                    // if format!("{}", err).to_ascii_lowercase().contains("unknown emoji") {
-                    //     if let Err(err) = msg.reply(&ctx, format!(
-                    //         "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. Remove it with `/reaction remove` and make sure that anything which you add is a default emoji.",
-                    //         &reaction.user)
-                    //         )
-                    //         .await
-                    //         {
-                    //             tracing::error!("{}", err);
-                    //         }
-                    // } else {
+                    if format!("{}", err).to_ascii_lowercase().contains("unknown emoji") || format!("{}", err).to_ascii_lowercase().contains("invalid form body")  {
+                        if let Err(err) = database.remove_custom_reaction(reaction.user) {
+                            tracing::error!("{}", err);
+                        }
+                        if let Err(err) = msg.reply(&ctx, format!(
+                            "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
+                            &reaction.user)
+                            )
+                            .await
+                            {
+                                tracing::error!("{}", err);
+                            }
+                    } else {
                         tracing::error!("{}", err);
-                    // }
+                    }
 
                 }
             }

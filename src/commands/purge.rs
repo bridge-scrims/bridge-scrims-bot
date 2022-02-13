@@ -99,7 +99,7 @@ impl Command for Purge {
         }
         command
             .edit_original_interaction_response(&ctx.http, |r| {
-                r.content("Purge Successfull!".to_string())
+                r.content("Purge Successful!".to_string())
             })
             .await?;
         Ok(())
