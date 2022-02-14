@@ -1,5 +1,5 @@
 use crate::commands::Command;
-use crate::interact_opts::InteractOpts;
+use bridge_scrims::interact_opts::InteractOpts;
 use chrono::{
     prelude::{DateTime, Utc},
     Duration,

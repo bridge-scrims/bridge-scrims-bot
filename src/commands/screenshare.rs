@@ -17,9 +17,10 @@ use serenity::{
     },
 };
 
-use crate::{commands::close::Close, interact_opts::InteractOpts};
+use crate::commands::close::Close;
+use bridge_scrims::interact_opts::InteractOpts;
 
-use super::{freeze::Freeze, Button, Command, close};
+use super::{close, freeze::Freeze, Button, Command};
 
 #[derive(Clone, Copy)]
 pub enum Operation {
@@ -237,7 +238,10 @@ not to log aswell as any other info.
                     .map_err(|x| format!("While handling button: {}", x))?;
             } else {
                 // This is so you also can use /freeze
-                if crate::consts::DATABASE.fetch_freezes_for(in_question.0).is_none() {
+                if crate::consts::DATABASE
+                    .fetch_freezes_for(in_question.0)
+                    .is_none()
+                {
                     close::close_ticket(ctx, command.user.id, channel.id).await?;
                 }
             }

@@ -1,4 +1,5 @@
-use crate::{commands::Command, interact_opts::InteractOpts};
+use crate::commands::Command;
+use bridge_scrims::interact_opts::InteractOpts;
 use serenity::{
     async_trait,
     model::{

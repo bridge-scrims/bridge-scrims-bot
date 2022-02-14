@@ -14,7 +14,7 @@ use serenity::{
 };
 use time::OffsetDateTime;
 
-use crate::interact_opts::InteractOpts;
+use bridge_scrims::interact_opts::InteractOpts;
 
 use super::{Button, Command};
 

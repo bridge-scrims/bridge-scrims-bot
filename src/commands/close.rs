@@ -12,6 +12,8 @@ use serenity::{
     },
 };
 
+use bridge_scrims::print_embeds::FormatEmbed;
+
 use super::{Button, Command};
 
 pub struct Close;
@@ -81,10 +83,14 @@ pub async fn close_ticket(
 
     for message in raw_messages.into_iter().flatten() {
         messages.push(format!(
-            "{}: {}",
+            "[{}] {}: {}",
+            message.timestamp.format("%c"),
             message.author.tag(),
             message.content_safe(&ctx.cache).await
         ));
+        for embed in message.embeds {
+            messages.push(format!("Embed:\n{}", FormatEmbed(embed.into())));
+        }
     }
 
     messages.reverse();

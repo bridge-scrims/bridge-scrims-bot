@@ -15,7 +15,8 @@ use serenity::{
 use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, consts::CONFIG, interact_opts::InteractOpts};
+use crate::{commands::Command, consts::CONFIG};
+use bridge_scrims::interact_opts::InteractOpts;
 
 fn format_db_error(e: &sqlite::Error) -> String {
     if let Some(19) = e.code {
