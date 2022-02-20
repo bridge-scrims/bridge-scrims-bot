@@ -126,7 +126,7 @@ impl Command for Screenshare {
                         .kind(ChannelType::Text)
                         .permissions(
                             // Iterator black magic
-                            std::iter::repeat((ALLOW_PERMS.clone(), DENY_PERMS.clone()))
+                            std::iter::repeat((*ALLOW_PERMS, *DENY_PERMS))
                                 // Creator, Screensharers and in question
                                 .zip([
                                     PermissionOverwriteType::Member(command.user.id),

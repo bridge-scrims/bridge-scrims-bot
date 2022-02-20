@@ -64,8 +64,8 @@ impl Command for Ticket {
                     .create_permission(
                         &ctx.http,
                         &PermissionOverwrite {
-                            allow: super::screenshare::ALLOW_PERMS.clone(),
-                            deny: super::screenshare::DENY_PERMS.clone(),
+                            allow: *super::screenshare::ALLOW_PERMS,
+                            deny: *super::screenshare::DENY_PERMS,
                             kind: PermissionOverwriteType::Member(who),
                         },
                     )
