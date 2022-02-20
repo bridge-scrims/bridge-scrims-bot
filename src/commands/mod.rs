@@ -15,6 +15,7 @@ pub mod screenshare;
 pub mod close;
 pub mod freeze;
 pub mod unfreeze;
+pub mod ticket;
 
 #[async_trait]
 pub trait Command: Send + Sync {

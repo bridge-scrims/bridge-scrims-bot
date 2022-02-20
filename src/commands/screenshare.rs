@@ -22,6 +22,15 @@ use bridge_scrims::interact_opts::InteractOpts;
 
 use super::{close, freeze::Freeze, Button, Command};
 
+lazy_static::lazy_static! {
+    // allow:
+    // VIEW_CHANNEL, SEND_MESSAGES, ATTACH_FILES, EMBED_LINKS
+    pub static ref ALLOW_PERMS: Permissions = Permissions::from_bits(52224).unwrap();
+    // deny: MENTION_EVERYONE
+    pub static ref DENY_PERMS: Permissions = Permissions::from_bits(131072).unwrap();
+
+}
+
 #[derive(Clone, Copy)]
 pub enum Operation {
     Close,
@@ -117,29 +126,25 @@ impl Command for Screenshare {
                         .kind(ChannelType::Text)
                         .permissions(
                             // Iterator black magic
-                            std::iter::repeat((
-                                // allow:
-                                // VIEW_CHANNEL, SEND_MESSAGES, ATTACH_FILES, EMBED_LINKS
-                                Permissions::from_bits(52224).unwrap(),
-                                // deny: MENTION_EVERYONE
-                                Permissions::from_bits(131072).unwrap(),
-                            ))
-                            // Creator, Screensharers and in question
-                            .zip([
-                                PermissionOverwriteType::Member(command.user.id),
-                                PermissionOverwriteType::Member(in_question),
-                                PermissionOverwriteType::Role(crate::CONFIG.ss_support),
-                            ])
-                            .map(|((allow, deny), kind)| PermissionOverwrite { allow, deny, kind })
-                            .chain(std::iter::once(
-                                PermissionOverwrite {
+                            std::iter::repeat((ALLOW_PERMS.clone(), DENY_PERMS.clone()))
+                                // Creator, Screensharers and in question
+                                .zip([
+                                    PermissionOverwriteType::Member(command.user.id),
+                                    PermissionOverwriteType::Member(in_question),
+                                    PermissionOverwriteType::Role(crate::CONFIG.ss_support),
+                                ])
+                                .map(|((allow, deny), kind)| PermissionOverwrite {
+                                    allow,
+                                    deny,
+                                    kind,
+                                })
+                                .chain(std::iter::once(PermissionOverwrite {
                                     allow: Permissions::empty(),
                                     deny: Permissions::READ_MESSAGES,
                                     kind: PermissionOverwriteType::Role(
                                         crate::CONFIG.guild.0.into(),
                                     ),
-                                },
-                            )),
+                                })),
                         )
                 })
                 .await?;
