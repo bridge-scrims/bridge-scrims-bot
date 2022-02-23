@@ -49,10 +49,17 @@ impl BanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
 
-        let now = OffsetDateTime::now_utc();
-        let days = command.get_u64("duration").unwrap_or(30);
-        let duration = Duration::from_secs(24 * 60 * 60 * days);
-        let unban_date = now + duration;
+        let days = command.get_u64("duration");
+        let days = match (self, days) {
+            (_, Some(d)) => Some(d),
+            (BanType::Server, None) => None,
+            (BanType::Scrim, None) => Some(30),
+        };
+        let unban_date = days.map(|days| {
+            let now = OffsetDateTime::now_utc();
+            let duration = Duration::from_secs(24 * 60 * 60 * days);
+            now + duration
+        });
 
         let mut member = CONFIG.guild.member(&http, id).await?;
         let roles = member.roles(&cache).await.unwrap_or_default();
@@ -75,7 +82,11 @@ impl BanType {
         let mut embed = CreateEmbed::default();
         embed.title(format!("{} recieved a ban", user.tag()));
         embed.field("User", format!("<@{}>", id), false);
-        embed.field("Duration", format!("<t:{}:R>", unban_date.unix_timestamp()), false);
+        if let Some(unban_date) = unban_date {
+            embed.field("Duration", format!("<t:{}:R>", unban_date.unix_timestamp()), false);
+        } else {
+            embed.field("Duration", "forever", false);
+        }
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
         if matches!(self, BanType::Server) {
@@ -90,7 +101,11 @@ impl BanType {
             Self::Server => {
                 let do_dmd = command.get_bool("dmd").unwrap_or(false);
                 let dmd = if do_dmd { 7 } else { 0 };
-                let db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
+                let db_result = if let Some(unban_date) = unban_date {
+                    crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date)
+                } else {
+                    Ok(())
+                };
                 let result = CONFIG
                     .guild
                     .ban_with_reason(&http, id, dmd, reason.clone())
@@ -136,7 +151,8 @@ impl BanType {
 
                 let db_result = crate::consts::DATABASE.add_scrim_unban(
                     *id.as_u64(),
-                    unban_date,
+                    // NOTE: In the case of a `ScrimBan`, this is always `Some`
+                    unban_date.unwrap(),
                     &removed_roles.into(),
                 );
                 CONFIG
