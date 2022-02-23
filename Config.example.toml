@@ -22,8 +22,6 @@ support_bans = 883846880835039312
 clips = 759992463032188988
 polls = 858486862212235274
 
-server_booster = 761339032311169044
-
 # Queue channels for rolling
 queue_categories = [913134187131838466, 1234, 1235]
 

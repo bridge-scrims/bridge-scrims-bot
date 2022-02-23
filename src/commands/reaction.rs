@@ -187,19 +187,22 @@ impl Command for Reaction {
 
             })
             .await?;
-
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                p.create_permission(|perm| {
-                    perm.kind(ApplicationCommandPermissionType::Role)
-                        .id(CONFIG.server_booster.0)
-                        .permission(true)
-                });
-
-                p
-            })
-            .await?;
+        for (id, role) in CONFIG.guild.roles(&ctx.http).await? {
+            if role.tags.premium_subscriber {
+                CONFIG
+                    .guild
+                    .create_application_command_permission(&ctx, cmd.id, |p| {
+                        p.create_permission(|perm| {
+                            perm.kind(ApplicationCommandPermissionType::Role)
+                                .id(id.0)
+                                .permission(true)
+                        });
+                        p
+                    })
+                    .await?;
+                break;
+            }
+        }
 
         Ok(())
     }

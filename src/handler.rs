@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::time::Duration;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
@@ -12,6 +14,7 @@ use crate::commands::Command as _;
 
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
+use crate::db::CustomReaction;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
@@ -31,6 +34,7 @@ use regex::Regex;
 
 pub struct Handler {
     commands: HashMap<String, Command>,
+    reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
@@ -56,7 +60,10 @@ impl Handler {
                 map
             });
 
-        Handler { commands }
+        Handler {
+            commands,
+            reactions: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 }
 
@@ -70,6 +77,7 @@ impl EventHandler for Handler {
                 tracing::error!("Could not register command {}: {}", name, err);
             }
         }
+        tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {
@@ -217,21 +225,23 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-
-        for reaction in database.fetch_custom_reactions() {
-            if msg.content.to_ascii_lowercase() == reaction.trigger {
-                if let Err(err) = msg.react(&ctx, ReactionType::Unicode(reaction.emoji)).await {
-                    if format!("{}", err)
+        let reactions = self.reactions.lock().await;
+        if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
+            if let Err(err) = msg
+                .react(&ctx, ReactionType::Unicode(reaction.emoji.clone()))
+                .await
+            {
+                if format!("{}", err)
+                    .to_ascii_lowercase()
+                    .contains("unknown emoji")
+                    || format!("{}", err)
                         .to_ascii_lowercase()
-                        .contains("unknown emoji")
-                        || format!("{}", err)
-                            .to_ascii_lowercase()
-                            .contains("invalid form body")
-                    {
-                        if let Err(err) = database.remove_custom_reaction(reaction.user) {
-                            tracing::error!("{}", err);
-                        }
-                        if let Err(err) = msg.reply(&ctx, format!(
+                        .contains("invalid form body")
+                {
+                    if let Err(err) = database.remove_custom_reaction(reaction.user) {
+                        tracing::error!("Error in removal of reaction: {}", err);
+                    }
+                    if let Err(err) = msg.reply(&ctx, format!(
                             "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
                             &reaction.user)
                             )
@@ -239,9 +249,8 @@ impl EventHandler for Handler {
                             {
                                 tracing::error!("{}", err);
                             }
-                    } else {
-                        tracing::error!("{}", err);
-                    }
+                } else {
+                    tracing::error!("Error in addition of reaction: {}", err);
                 }
             }
         }
@@ -264,13 +273,40 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_update(&self, _ctx: Context, _old_data: Option<Member>, user: Member) {
-        if !user.roles.contains(&CONFIG.server_booster) {
+    async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
+        let mut x = false;
+        for role in user.roles(&ctx.cache).await.unwrap() {
+            if role.tags.premium_subscriber {
+                x = true;
+            }
+        }
+        if x && !database
+            .fetch_custom_reactions_for(user.user.id.0)
+            .is_empty()
+        {
             // if the user's server boost runs out
 
             if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
                 tracing::error!("Error when updating database: {}", err);
             }
+            // be sure to update the other thing
+            update(self.reactions.clone()).await;
         }
     }
+}
+
+async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
+    loop {
+        update(m.clone()).await;
+        tokio::time::sleep(Duration::from_secs(60 * 60 * 12)).await;
+    }
+}
+
+async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
+    let mut lock = m.lock().await;
+    let mut x = HashMap::new();
+    for reaction in database.fetch_custom_reactions() {
+        x.insert(reaction.trigger.to_ascii_lowercase(), reaction);
+    }
+    *lock = x;
 }
