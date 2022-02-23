@@ -49,15 +49,15 @@ impl BanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
 
-        let days = command.get_u64("duration");
-        let days = match (self, days) {
+        let seconds = command.get_u64("duration");
+        let seconds = match (self, seconds) {
             (_, Some(d)) => Some(d),
             (BanType::Server, None) => None,
-            (BanType::Scrim, None) => Some(30),
+            (BanType::Scrim, None) => Some(30 * 86400),
         };
-        let unban_date = days.map(|days| {
+        let unban_date = seconds.map(|seconds| {
             let now = OffsetDateTime::now_utc();
-            let duration = Duration::from_secs(24 * 60 * 60 * days);
+            let duration = Duration::from_secs(seconds);
             now + duration
         });
 
@@ -306,9 +306,13 @@ impl Command for ScrimBan {
                     })
                     .create_option(|o| {
                         o.name("duration")
-                            .description("The ban duration in days")
+                            .description("The ban duration")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
+                            .add_int_choice("Seconds", 1)
+                            .add_int_choice("Minutes", 60)
+                            .add_int_choice("Hours", 60 * 60)
+                            .add_int_choice("Days", 60 * 60 * 24)
                     })
             })
             .await?;
