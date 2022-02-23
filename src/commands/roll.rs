@@ -252,7 +252,7 @@ impl Command for Teams {
         command
             .edit_original_interaction_response(&ctx, |r| {
                 r.create_embed(|e| {
-                    e.title("Team Captains:")
+                    e.title("Teams:")
                         .field("First Team", x, true)
                         .field("Second Team", y, true)
                         .color(Color::new(0x1abc9c))
