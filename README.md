@@ -12,6 +12,7 @@
   - [x] Auto-React: LordOfTheCube (polls, clips, welcome messages)
   - [ ] Booster-Reacting: LordOfTheCube
   - [ ] Logging: Salvage_Dev
+  - [x] Team/matchmaking: NiteBlock
 
 ## Screenshare bot rewrite: dtomvan
   - [ ] Screenshare command
