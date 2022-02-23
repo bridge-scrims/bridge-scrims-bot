@@ -63,7 +63,6 @@ impl Database {
         )
         .expect("Could not initialize database");
 
-
         Self {
             sqlite: Mutex::new(conn),
         }
@@ -152,7 +151,11 @@ impl Database {
             let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
             let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
 
-            result.push(CustomReaction {user, emoji, trigger });
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
         });
         result
     }
@@ -164,12 +167,14 @@ impl Database {
             let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
             let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
 
-            result.push(CustomReaction {user, emoji, trigger });
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
         });
         result
     }
-
-
 
     pub fn fetch_notes_for(&self, userid: u64) -> Vec<Note> {
         let mut result = Vec::new();
@@ -192,7 +197,6 @@ impl Database {
         result
     }
 
-
     pub fn add_unban(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
@@ -201,17 +205,20 @@ impl Database {
                 unban_date.unix_timestamp()
             ))
         })
-  }
-    pub fn add_custom_reaction(&self, id: u64, emoji: &str, trigger: &str) -> Result<(), sqlite::Error> {
+    }
+    pub fn add_custom_reaction(
+        &self,
+        id: u64,
+        emoji: &str,
+        trigger: &str,
+    ) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
             .lock()
             .map(|db| {
                 db.execute(format!(
                     "INSERT INTO 'Reaction' (user,emoji,trigger) values ({}, \"{}\", \"{}\")",
-                    id,
-                    emoji,
-                    trigger
+                    id, emoji, trigger
                 ))
             })
             .ok();
@@ -221,10 +228,6 @@ impl Database {
             Ok(())
         }
     }
-
-
-
-
 
     pub fn add_scrim_unban(
         &self,
@@ -281,20 +284,14 @@ impl Database {
         })
     }
 
-
     pub fn remove_entry(&self, table: &str, i: u64) -> SqliteResult {
         self.get_lock(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
-}
+    }
     pub fn remove_custom_reaction(&self, user: u64) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
             .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "DELETE FROM 'Reaction' WHERE user = {}",
-                    user
-                ))
-            })
+            .map(|db| db.execute(format!("DELETE FROM 'Reaction' WHERE user = {}", user)))
             .ok();
         if let Some(result) = result {
             result
@@ -303,7 +300,6 @@ impl Database {
         }
     }
 }
-
 
 pub struct Unban {
     pub id: u64,
@@ -335,7 +331,6 @@ pub struct CustomReaction {
     pub trigger: String,
     pub emoji: String,
 }
-
 
 pub struct BanRoles(pub Vec<RoleId>);
 

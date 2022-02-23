@@ -41,7 +41,7 @@ impl Command for Roll {
             .await
             .unwrap()
             .guild();
-        if (&channel).is_none()
+        if channel.is_none()
             || channel.as_ref().unwrap().category_id.is_none()
             || !CONFIG
                 .queue_categories

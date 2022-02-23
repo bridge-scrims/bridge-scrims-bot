@@ -1,20 +1,61 @@
+use std::error::Error;
+use std::fmt::Display;
+
 use crate::commands::Command;
 
+use crate::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::client::Context;
-use crate::interact_opts::InteractOpts;
+use serenity::model::channel::ReactionType;
+use serenity::model::id::UserId;
 use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType
+    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
 };
 use serenity::model::interactions::InteractionResponseType;
 use serenity::utils::Color;
-use serenity::model::id::UserId;
-use serenity::model::channel::ReactionType;
 
 use crate::consts::CONFIG;
 
 pub struct Reaction;
 pub struct DelReaction;
+
+#[derive(Debug)]
+pub struct ReactionError {
+    kind: ErrorKind,
+    db_error: Option<sqlite::Error>,
+}
+
+impl Display for ReactionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self.kind {
+                ErrorKind::InvalidEmoji => "invalid emoji",
+                ErrorKind::AlreadyExists => "reaction already exists",
+                ErrorKind::Database => "database error",
+            }
+        )?;
+        if let Some(ref e) = self.db_error {
+            writeln!(f, ": {}", e)
+        } else {
+            writeln!(f)
+        }
+    }
+}
+
+impl Error for ReactionError {}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ErrorKind {
+    /// Emoji is not valid
+    InvalidEmoji = -1,
+    /// Message already has a reaction
+    AlreadyExists = -2,
+    /// Database error
+    Database = -3,
+}
 
 #[async_trait]
 impl Command for DelReaction {
@@ -22,36 +63,35 @@ impl Command for DelReaction {
         "deletereaction".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-
         let cmd2 = CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name("deletereaction")
-                .description("A Staff Command to delete other users' custom reactions")
-                .default_permission(false)
-                .create_option(|user| {
-                    user.kind(ApplicationCommandOptionType::User)
-                        .name("user")
-                        .description("Whose reaction to delete")
-                        .required(true)
-                })
+                    .description("A Staff Command to delete other users' custom reactions")
+                    .default_permission(false)
+                    .create_option(|user| {
+                        user.kind(ApplicationCommandOptionType::User)
+                            .name("user")
+                            .description("Whose reaction to delete")
+                            .required(true)
+                    })
             })
             .await?;
-            CONFIG
-                .guild
-                .create_application_command_permission(&ctx, cmd2.id, |p| {
-                    for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                        p.create_permission(|perm| {
-                            perm.kind(ApplicationCommandPermissionType::Role)
-                                .id(role.0)
-                                .permission(true)
-                        });
-                    }
-                    p
-                })
-                .await?;
+        CONFIG
+            .guild
+            .create_application_command_permission(&ctx, cmd2.id, |p| {
+                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
+                    p.create_permission(|perm| {
+                        perm.kind(ApplicationCommandPermissionType::Role)
+                            .id(role.0)
+                            .permission(true)
+                    });
+                }
+                p
+            })
+            .await?;
 
-                Ok(())
+        Ok(())
     }
     async fn run(
         &self,
@@ -61,7 +101,7 @@ impl Command for DelReaction {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let cmd = &command.data.options[0];
@@ -70,34 +110,30 @@ impl Command for DelReaction {
             .await?;
         let user_id = user.id;
 
-
-        let mut code = 0;
-        if let Err(_err) = crate::consts::DATABASE.remove_custom_reaction(
-            user_id.0,
-        ) {
+        if let Err(db_error) = crate::consts::DATABASE.remove_custom_reaction(user_id.0) {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
                         e.title("Reaction Could Not Be Removed!")
-                            .description(format!("There was an error with the database! Try again, and if this happens again contact a developer."))
+                            .description("There was an error with the database! Try again, and if this happens again contact a developer.")
                             .color(Color::new(0x8b0000))
                     })
                 })
                 .await?;
-                code = -1;
+            return Err(Box::new(ReactionError {
+                kind: ErrorKind::InvalidEmoji,
+                db_error: Some(db_error),
+            }));
         }
-        if code == 0 {
-            command
-                .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
-                        e.title("Reaction Removed")
-                            .description(format!("<@{}>'s reaction has been removed.", user_id.0))
-                            .color(Color::new(0x1abc9c)) // light green
-                    })
+        command
+            .edit_original_interaction_response(&ctx, |r| {
+                r.create_embed(|e| {
+                    e.title("Reaction Removed")
+                        .description(format!("<@{}>'s reaction has been removed.", user_id.0))
+                        .color(Color::new(0x1abc9c)) // light green
                 })
-                .await?;
-        }
-
+            })
+            .await?;
 
         Ok(())
     }
@@ -152,24 +188,18 @@ impl Command for Reaction {
             })
             .await?;
 
+        CONFIG
+            .guild
+            .create_application_command_permission(&ctx, cmd.id, |p| {
+                p.create_permission(|perm| {
+                    perm.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.server_booster.0)
+                        .permission(true)
+                });
 
-
-            CONFIG
-                .guild
-                .create_application_command_permission(&ctx, cmd.id, |p| {
-
-                    for role in &[CONFIG.server_booster] {
-                        p.create_permission(|perm| {
-                            perm.kind(ApplicationCommandPermissionType::Role)
-                                .id(role.0)
-                                .permission(true)
-                        });
-                    }
-
-                    p
-                })
-                .await?;
-
+                p
+            })
+            .await?;
 
         Ok(())
     }
@@ -181,130 +211,124 @@ impl Command for Reaction {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-            let cmd = &command.data.options[0];
-            match cmd.name.as_str() {
-                "add" => {
-                    // get user input
-                    let emoji = cmd.get_str("emoji").unwrap();
-                    let trigger = cmd.get_str("trigger").unwrap();
+        let cmd = &command.data.options[0];
+        match cmd.name.as_str() {
+            "add" => {
+                // get user input
+                let emoji = cmd.get_str("emoji").unwrap();
+                let trigger = cmd.get_str("trigger").unwrap();
 
-                    let mut code = 0;
-                    // -1 = not valid emoji, -2 = already has a reaction, -3 = database error
-
-                    let msg1 = command
+                let msg1 = command
                         .edit_original_interaction_response(&ctx, |r| {
                             r.create_embed(|e| {
                                 e.title("Testing Reaction")
-                                    .description(format!("The bot is currently testing your reaction to see if it is valid."))
+                                    .description("The bot is currently testing your reaction to see if it is valid.")
                                     .color(Color::new(0x1abc9c))
                             })
                         })
                         .await?;
 
-                        if let Err(_err) = msg1.react(&ctx, ReactionType::Unicode(String::from(&emoji))).await {
-                            command
+                if msg1
+                    .react(&ctx, ReactionType::Unicode(String::from(&emoji)))
+                    .await
+                    .is_err()
+                {
+                    command
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.create_embed(|e| {
+                                e.title("Reaction Could Not Be Added")
+                                    .description(format!("{} is not a valid default emoji", &emoji))
+                                    .color(Color::new(0x8b0000))
+                            })
+                        })
+                        .await?;
+                    return Err(Box::new(ReactionError {
+                        kind: ErrorKind::InvalidEmoji,
+                        db_error: None,
+                    }));
+                }
+                let user_reactions =
+                    crate::consts::DATABASE.fetch_custom_reactions_for(command.user.id.0);
+
+                if !user_reactions.is_empty() {
+                    command
                                 .edit_original_interaction_response(&ctx, |r| {
                                     r.create_embed(|e| {
                                         e.title("Reaction Could Not Be Added")
-                                            .description(format!("{} is not a valid default emoji", &emoji))
-                                            .color(Color::new(0x8b0000))
-                                    })
-                                }).await?;
-                            code = -1;
-                        }
-
-                    if code == 0 {
-
-                        let user_reactions = crate::consts::DATABASE.fetch_custom_reactions_for(command.user.id.0);
-
-                        if user_reactions.len() > 0 {
-                            command
-                                .edit_original_interaction_response(&ctx, |r| {
-                                    r.create_embed(|e| {
-                                        e.title("Reaction Could Not Be Added")
-                                            .description(format!("You already have a reaction! Remove it with `/reaction remove` and then try again."))
+                                            .description("You already have a reaction! Remove it with `/reaction remove` and then try again.")
                                             .color(Color::new(0x8b0000))
                                     })
                                 })
                                 .await?;
-                            code = -2;
-                        }
-                    }
-                        // put it in the db, if there is an error let the user know that it didn't work
-                        if code == 0 {
-                            if let Err(_err) = crate::consts::DATABASE.add_custom_reaction(
-                                command.user.id.0,
-                                &emoji,
-                                &trigger,
-                            ) {
-                                command
+                    return Err(Box::new(ReactionError {
+                        kind: ErrorKind::AlreadyExists,
+                        db_error: None,
+                    }));
+                }
+                // put it in the db, if there is an error let the user know that it didn't work
+                if let Err(db_error) =
+                    crate::consts::DATABASE.add_custom_reaction(command.user.id.0, &emoji, &trigger)
+                {
+                    command
                                     .edit_original_interaction_response(&ctx, |r| {
                                         r.create_embed(|e| {
                                             e.title("Reaction Could Not Be Added")
-                                                .description(format!("There was an error with the database! Try again, and if this happens again contact a developer."))
+                                                .description("There was an error with the database! Try again, and if this happens again contact a developer.")
                                                 .color(Color::new(0x8b0000))
                                         })
                                     })
                                     .await?;
-                                code = -3;
-                            }
-                        }
+                    return Err(Box::new(ReactionError {
+                        kind: ErrorKind::Database,
+                        db_error: Some(db_error),
+                    }));
+                }
 
-                        if code == 0 {
-                            command
-                                .edit_original_interaction_response(&ctx, |r| {
-                                    r.create_embed(|e| {
-                                        e.title("Reaction Added")
-                                            .description(format!("The {} reaction has been added.", &emoji))
-                                            .color(Color::new(0x1abc9c)) // light green
-                                    })
-                                })
-                                .await?;
-                        }
-                    },
-                "remove" => {
-                    let mut code = 0;
-                    if let Err(_err) = crate::consts::DATABASE.remove_custom_reaction(
-                        command.user.id.0,
-                    ) {
-                        command
+                command
+                    .edit_original_interaction_response(&ctx, |r| {
+                        r.create_embed(|e| {
+                            e.title("Reaction Added")
+                                .description(format!("The {} reaction has been added.", &emoji))
+                                .color(Color::new(0x1abc9c)) // light green
+                        })
+                    })
+                    .await?;
+            }
+            "remove" => {
+                if let Err(db_error) =
+                    crate::consts::DATABASE.remove_custom_reaction(command.user.id.0)
+                {
+                    command
                             .edit_original_interaction_response(&ctx, |r| {
                                 r.create_embed(|e| {
                                     e.title("Reaction Could Not Be Removed!")
-                                        .description(format!("There was an error with the database! Try again, and if this happens again contact a developer."))
+                                        .description("There was an error with the database! Try again, and if this happens again contact a developer.")
                                         .color(Color::new(0x8b0000))
                                 })
                             })
                             .await?;
-                            code = -1;
-                    }
-                    if code == 0 {
-                        command
-                            .edit_original_interaction_response(&ctx, |r| {
-                                r.create_embed(|e| {
-                                    e.title("Reaction Removed")
-                                        .description(format!("Your reaction has been removed."))
-                                        .color(Color::new(0x1abc9c)) // light green
-                                })
-                            })
-                            .await?;
-                    }
-                },
-                "delete" => {
-
+                    return Err(Box::new(ReactionError {
+                        kind: ErrorKind::Database,
+                        db_error: Some(db_error),
+                    }));
                 }
-                _ => {
-
-                }
+                command
+                    .edit_original_interaction_response(&ctx, |r| {
+                        r.create_embed(|e| {
+                            e.title("Reaction Removed")
+                                .description("Your reaction has been removed.")
+                                .color(Color::new(0x1abc9c)) // light green
+                        })
+                    })
+                    .await?;
             }
+            _ => {}
+        }
 
-
-
-
-            Ok(())
+        Ok(())
     }
     fn new() -> Box<Self>
     where

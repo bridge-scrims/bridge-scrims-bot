@@ -5,9 +5,9 @@ use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
+use crate::commands::reaction::{DelReaction, Reaction};
 use crate::commands::roll::Roll;
 use crate::commands::timeout::Timeout;
-use crate::commands::reaction::{Reaction, DelReaction};
 use crate::commands::Command as _;
 
 use crate::consts::CONFIG;
@@ -29,9 +29,8 @@ use serenity::model::user::User;
 type Command = Box<dyn crate::commands::Command + Send + Sync>;
 use regex::Regex;
 
-
 pub struct Handler {
-    commands: HashMap<String, Command>
+    commands: HashMap<String, Command>,
 }
 
 impl Handler {
@@ -48,7 +47,7 @@ impl Handler {
             Roll::new(),
             Purge::new(),
             Reaction::new(),
-            DelReaction::new()
+            DelReaction::new(),
         ];
         let commands = commands
             .into_iter()
@@ -57,12 +56,9 @@ impl Handler {
                 map
             });
 
-
         Handler { commands }
     }
-
 }
-
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -81,7 +77,6 @@ impl EventHandler for Handler {
                 if let Err(err) = command.run(&ctx, &command_interaction).await {
                     tracing::error!("{} command failed: {}", command.name(), err);
                 }
-
             }
         }
     }
@@ -110,7 +105,7 @@ impl EventHandler for Handler {
             }
         }
         if msg.content.to_ascii_lowercase() == "ratio"
-            || msg.content.to_ascii_lowercase().replace(" ", "") == "counterratio"
+            || msg.content.to_ascii_lowercase().replace(' ', "") == "counterratio"
         {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
@@ -223,23 +218,16 @@ impl EventHandler for Handler {
             }
         }
 
-
-
         for reaction in database.fetch_custom_reactions() {
-            if msg
-                .content
-                .to_ascii_lowercase()
-                == reaction.trigger
-
-            {
-                if let Err(err) = msg
-                    .react(
-                        &ctx,
-                        ReactionType::Unicode(reaction.emoji)
-                    )
-                    .await
-                {
-                    if format!("{}", err).to_ascii_lowercase().contains("unknown emoji") || format!("{}", err).to_ascii_lowercase().contains("invalid form body")  {
+            if msg.content.to_ascii_lowercase() == reaction.trigger {
+                if let Err(err) = msg.react(&ctx, ReactionType::Unicode(reaction.emoji)).await {
+                    if format!("{}", err)
+                        .to_ascii_lowercase()
+                        .contains("unknown emoji")
+                        || format!("{}", err)
+                            .to_ascii_lowercase()
+                            .contains("invalid form body")
+                    {
                         if let Err(err) = database.remove_custom_reaction(reaction.user) {
                             tracing::error!("{}", err);
                         }
@@ -254,7 +242,6 @@ impl EventHandler for Handler {
                     } else {
                         tracing::error!("{}", err);
                     }
-
                 }
             }
         }
@@ -277,21 +264,13 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_update(
-        &self,
-        _ctx: Context,
-        _old_data: Option<Member>,
-        user: Member
-    ) {
+    async fn guild_member_update(&self, _ctx: Context, _old_data: Option<Member>, user: Member) {
+        if !user.roles.contains(&CONFIG.server_booster) {
+            // if the user's server boost runs out
 
-            if !user.roles.contains(&CONFIG.server_booster) {
-
-                // if the user's server boost runs out
-
-                if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
-                    tracing::error!("Error when updating database: {}", err);
-                }
+            if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
+                tracing::error!("Error when updating database: {}", err);
             }
-
+        }
     }
 }
