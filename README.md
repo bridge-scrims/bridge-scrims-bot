@@ -13,6 +13,7 @@
   - [x] Booster-Reacting: LordOfTheCube
   - [ ] Logging: Salvage_Dev
   - [x] Team/matchmaking: NiteBlock
+  - [ ] Purge command: Tofaa, then NiteBlock
 
 ## Screenshare bot rewrite: dtomvan
   - [ ] Screenshare command
