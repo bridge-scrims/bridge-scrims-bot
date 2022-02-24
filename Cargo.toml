@@ -4,6 +4,9 @@ name = "bridge-scrims"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "bridge_scrims"
+path = "src/lib/mod.rs"
 
 [dependencies]
 base64 = "0.13.0"
@@ -19,6 +22,11 @@ sqlite = "0.26.0"
 toml = "0.5.8"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
+
+[dependencies.reqwest]
+default-features = false
+features = ["json", "multipart", "stream"]
+version = "0.11"
 
 [dependencies.time]
 features = ["local-offset"]
