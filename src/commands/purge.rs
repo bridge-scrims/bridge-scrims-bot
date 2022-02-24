@@ -214,6 +214,7 @@ impl Command for Purge {
             PurgeOption::Attachments,
             PurgeOption::Contains,
             PurgeOption::Bots,
+            PurgeOption::Links,
         ];
         let options = options.into_iter().fold(HashMap::new(), |mut map, opt| {
             map.insert(opt.name(), opt);
