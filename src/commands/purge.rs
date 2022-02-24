@@ -17,18 +17,66 @@ use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use crate::commands::Command;
 use crate::consts::CONFIG;
 
-#[async_trait]
-pub trait PurgeOption {
-    fn name(&self) -> String;
-    fn register(&self, cmd: &mut CreateApplicationCommand);
-    async fn check(&self, subcmd: &ApplicationCommandInteractionDataOption, msg: Message) -> bool;
-    fn new() -> Box<Self>
-    where
-        Self: Sized;
+pub enum PurgeOption {
+    All,
+    FromUser,
+}
+
+impl PurgeOption {
+    fn name(&self) -> String {
+        match self {
+            PurgeOption::All => "all",
+            PurgeOption::FromUser => "from_user",
+        }
+        .to_string()
+    }
+    fn description(&self) -> String {
+        match self {
+            PurgeOption::All => "Purges a certain number of messages in a certain channel",
+            PurgeOption::FromUser => "Purges messages from a certain user in a channel",
+        }
+        .to_string()
+    }
+
+    fn register(&self, cmd: &mut CreateApplicationCommand) {
+        cmd.create_option(|opt| {
+            opt.name(self.name())
+                .kind(ApplicationCommandOptionType::SubCommand)
+                .description(self.description())
+                .create_sub_option(|amount| {
+                    amount
+                        .name("amount")
+                        .kind(ApplicationCommandOptionType::Integer)
+                        .description(
+                            "The amount of messages to go through to purge (total messages)",
+                        )
+                        .required(true)
+                });
+            // Add more sub options if neccessary
+            if let PurgeOption::FromUser = self {
+                opt.create_sub_option(|user| {
+                    user.name("user")
+                        .kind(ApplicationCommandOptionType::User)
+                        .description("The user who's messages are to be purged")
+                });
+            }
+            opt
+        });
+    }
+
+    async fn check(&self, subcmd: &ApplicationCommandInteractionDataOption, msg: Message) -> bool {
+        match self {
+            PurgeOption::All => true,
+            PurgeOption::FromUser => {
+                let x: u64 = subcmd.get_str("user").unwrap().parse().unwrap();
+                msg.author.id.0 == x
+            }
+        }
+    }
 }
 
 pub struct Purge {
-    options: HashMap<String, Box<dyn PurgeOption + Send + Sync>>,
+    options: HashMap<String, PurgeOption>,
 }
 
 #[async_trait]
@@ -111,92 +159,12 @@ impl Command for Purge {
     where
         Self: Sized,
     {
-        let options: Vec<Box<dyn PurgeOption + Send + Sync>> = vec![All::new(), FromUser::new()];
-        let options = options.into_iter().fold(
-            HashMap::new(),
-            |mut map, opt: Box<dyn PurgeOption + Send + Sync>| {
-                map.insert(opt.name(), opt);
-                map
-            },
-        );
+        let options: Vec<PurgeOption> = vec![PurgeOption::All, PurgeOption::FromUser];
+        let options = options.into_iter().fold(HashMap::new(), |mut map, opt| {
+            map.insert(opt.name(), opt);
+            map
+        });
 
         Box::new(Purge { options })
-    }
-}
-
-struct All;
-
-#[async_trait]
-impl PurgeOption for All {
-    fn name(&self) -> String {
-        "all".to_string()
-    }
-    fn register(&self, cmd: &mut CreateApplicationCommand) {
-        cmd.create_option(|opt| {
-            opt.name(self.name())
-                .kind(ApplicationCommandOptionType::SubCommand)
-                .description("Purges a certain amount of messages in the current channel.")
-                .create_sub_option(|amount| {
-                    amount
-                        .name("amount")
-                        .description("The amount of messages to purge.")
-                        .kind(ApplicationCommandOptionType::Integer)
-                        .required(true)
-                })
-        });
-    }
-    async fn check(
-        &self,
-        _subcmd: &ApplicationCommandInteractionDataOption,
-        _msg: Message,
-    ) -> bool {
-        true
-    }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
-        Box::new(All {})
-    }
-}
-
-struct FromUser;
-
-#[async_trait]
-impl PurgeOption for FromUser {
-    fn name(&self) -> String {
-        "from_user".to_string()
-    }
-    fn register(&self, cmd: &mut CreateApplicationCommand) {
-        cmd.create_option(|opt| {
-            opt.name(self.name())
-                .kind(ApplicationCommandOptionType::SubCommand)
-                .description("Purges a certain amount of messages in the current channel.")
-                .create_sub_option(|amount| {
-                    amount
-                        .name("amount")
-                        .kind(ApplicationCommandOptionType::Integer)
-                        .description(
-                            "The amount of messages to go through to purge (total messages)",
-                        )
-                        .required(true)
-                })
-                .create_sub_option(|opt| {
-                    opt.name("user")
-                        .kind(ApplicationCommandOptionType::User)
-                        .required(true)
-                        .description("The user who's messages are to be purged.")
-                })
-        });
-    }
-    async fn check(&self, subcmd: &ApplicationCommandInteractionDataOption, msg: Message) -> bool {
-        let x: u64 = subcmd.get_str("user").unwrap().parse().unwrap();
-        msg.author.id.0 == x
-    }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
-        Box::new(FromUser {})
     }
 }
