@@ -157,19 +157,31 @@ impl Inner {
             .boxed();
         while let Some(member) = members.next().await {
             if member.roles.contains(&CONFIG.prime_head) {
-                prime_head = member.user.mention().to_string();
+                prime_head = format!("{} ({})", member.user.mention(), member.display_name());
             } else if member.roles.contains(&CONFIG.prime_council) {
-                prime_council.push(member.user.mention().to_string());
+                prime_council.push(format!(
+                    "{} ({})",
+                    member.user.mention(),
+                    member.display_name()
+                ));
             }
             if member.roles.contains(&CONFIG.private_head) {
-                private_head = member.user.mention().to_string();
+                private_head = format!("{} ({})", member.user.mention(), member.display_name());
             } else if member.roles.contains(&CONFIG.private_council) {
-                private_council.push(member.user.mention().to_string());
+                private_council.push(format!(
+                    "{} ({})",
+                    member.user.mention(),
+                    member.display_name()
+                ));
             }
             if member.roles.contains(&CONFIG.premium_head) {
-                premium_head = member.user.mention().to_string();
+                premium_head = format!("{} ({})", member.user.mention(), member.display_name());
             } else if member.roles.contains(&CONFIG.premium_council) {
-                premium_council.push(member.user.mention().to_string());
+                premium_council.push(format!(
+                    "{} ({})",
+                    member.user.mention(),
+                    member.display_name()
+                ));
             }
         }
         *prime_council_lock = format!(
