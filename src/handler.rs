@@ -8,7 +8,7 @@ use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
 use crate::commands::reaction::{DelReaction, Reaction};
-use crate::commands::roll::Roll;
+use crate::commands::roll::{Roll, Teams};
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
 
@@ -49,6 +49,7 @@ impl Handler {
             ScrimBan::new(),
             ScrimUnban::new(),
             Roll::new(),
+            Teams::new(),
             Purge::new(),
             Reaction::new(),
             DelReaction::new(),
