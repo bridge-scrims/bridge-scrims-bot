@@ -20,6 +20,12 @@ use crate::consts::CONFIG;
 pub enum PurgeOption {
     All,
     FromUser,
+    Embeds,
+    Images,
+    Attachments,
+    Contains,
+    Bots,
+    Links,
 }
 
 impl PurgeOption {
@@ -27,6 +33,12 @@ impl PurgeOption {
         match self {
             PurgeOption::All => "all",
             PurgeOption::FromUser => "from_user",
+            PurgeOption::Embeds => "embeds",
+            PurgeOption::Images => "images",
+            PurgeOption::Attachments => "attachments",
+            PurgeOption::Contains => "contains",
+            PurgeOption::Bots => "bots",
+            PurgeOption::Links => "links",
         }
         .to_string()
     }
@@ -34,6 +46,12 @@ impl PurgeOption {
         match self {
             PurgeOption::All => "Purges a certain number of messages in a certain channel",
             PurgeOption::FromUser => "Purges messages from a certain user in a channel",
+            PurgeOption::Embeds => "Purges a certain amount of embeds from a channel",
+            PurgeOption::Images => "Purges a certain amount of images in a channel",
+            PurgeOption::Attachments => "Purges all messages with files in a channel",
+            PurgeOption::Contains => "Purges messages that contain certain text",
+            PurgeOption::Bots => "Purges all messages from bots in a channel",
+            PurgeOption::Links => "Purges all links in a certain channel",
         }
         .to_string()
     }
@@ -53,12 +71,24 @@ impl PurgeOption {
                         .required(true)
                 });
             // Add more sub options if neccessary
-            if let PurgeOption::FromUser = self {
-                opt.create_sub_option(|user| {
-                    user.name("user")
-                        .kind(ApplicationCommandOptionType::User)
-                        .description("The user who's messages are to be purged")
-                });
+            match self {
+                PurgeOption::FromUser => {
+                    opt.create_sub_option(|user| {
+                        user.name("user")
+                            .kind(ApplicationCommandOptionType::User)
+                            .description("The user who's messages are to be purged")
+                            .required(true)
+                    });
+                }
+                PurgeOption::Contains => {
+                    opt.create_sub_option(|user| {
+                        user.name("text")
+                            .kind(ApplicationCommandOptionType::String)
+                            .description("The text to search for in purging messages")
+                            .required(true)
+                    });
+                }
+                _ => {}
             }
             opt
         });
@@ -70,6 +100,23 @@ impl PurgeOption {
             PurgeOption::FromUser => {
                 let x: u64 = subcmd.get_str("user").unwrap().parse().unwrap();
                 msg.author.id.0 == x
+            }
+            PurgeOption::Embeds => !msg.embeds.is_empty(),
+            PurgeOption::Images => {
+                !msg.attachments.is_empty() && msg.attachments[0].height.is_some()
+                // Height is some if its an imag
+            }
+            PurgeOption::Attachments => !msg.attachments.is_empty(),
+            PurgeOption::Contains => {
+                let x = subcmd.get_str("text").unwrap();
+                msg.content
+                    .to_ascii_lowercase()
+                    .contains(&x.to_ascii_lowercase())
+            }
+            PurgeOption::Bots => msg.author.bot,
+            PurgeOption::Links => {
+                msg.content.to_ascii_lowercase().contains("https://")
+                    || msg.content.to_ascii_lowercase().contains("http://")
             }
         }
     }
@@ -159,7 +206,15 @@ impl Command for Purge {
     where
         Self: Sized,
     {
-        let options: Vec<PurgeOption> = vec![PurgeOption::All, PurgeOption::FromUser];
+        let options: Vec<PurgeOption> = vec![
+            PurgeOption::All,
+            PurgeOption::FromUser,
+            PurgeOption::Embeds,
+            PurgeOption::Images,
+            PurgeOption::Attachments,
+            PurgeOption::Contains,
+            PurgeOption::Bots,
+        ];
         let options = options.into_iter().fold(HashMap::new(), |mut map, opt| {
             map.insert(opt.name(), opt);
             map
