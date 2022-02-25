@@ -405,7 +405,7 @@ impl Command for ListReactions {
                                 e.field(
                                     format!("Reaction `{}`:", reaction.trigger),
                                     format!(
-                                        "`{}` reactes with {}, created by <@!{}>",
+                                        "`{}` reacts with {}, created by <@!{}>",
                                         reaction.trigger, reaction.emoji, reaction.user
                                     ),
                                     false,
@@ -425,7 +425,7 @@ impl Command for ListReactions {
                                 e.field(
                                     format!("Reaction `{}`:", reaction.trigger),
                                     format!(
-                                        "`{}` reactes with {}, created by <@!{}>",
+                                        "`{}` reacts with {}, created by <@!{}>",
                                         reaction.trigger, reaction.emoji, reaction.user
                                     ),
                                     false,
