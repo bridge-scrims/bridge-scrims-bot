@@ -7,7 +7,7 @@ use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
-use crate::commands::reaction::{DelReaction, Reaction};
+use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
 use crate::commands::roll::{Roll, Teams};
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
@@ -53,6 +53,7 @@ impl Handler {
             Purge::new(),
             Reaction::new(),
             DelReaction::new(),
+            ListReactions::new(),
         ];
         let commands = commands
             .into_iter()

@@ -18,6 +18,7 @@ use crate::consts::CONFIG;
 
 pub struct Reaction;
 pub struct DelReaction;
+pub struct ListReactions;
 
 #[derive(Debug)]
 pub struct ReactionError {
@@ -60,13 +61,13 @@ pub enum ErrorKind {
 #[async_trait]
 impl Command for DelReaction {
     fn name(&self) -> String {
-        "deletereaction".to_string()
+        "delete_reaction".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         let cmd2 = CONFIG
             .guild
             .create_application_command(&ctx, |c| {
-                c.name("deletereaction")
+                c.name(self.name())
                     .description("A Staff Command to delete other users' custom reactions")
                     .default_permission(false)
                     .create_option(|user| {
@@ -346,5 +347,104 @@ impl Command for Reaction {
         Self: Sized,
     {
         Box::new(Reaction {})
+    }
+}
+
+#[async_trait]
+impl Command for ListReactions {
+    fn name(&self) -> String {
+        "list_reactions".to_string()
+    }
+    async fn register(&self, ctx: &Context) -> crate::Result<()> {
+        CONFIG
+            .guild
+            .create_application_command(&ctx, |c| {
+                c.name(self.name())
+                    .description(
+                        "Sends a list of all reactions, their triggers, and associated users.",
+                    )
+                    .default_permission(true)
+            })
+            .await?;
+        Ok(())
+    }
+    async fn run(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> crate::Result<()> {
+        command
+            .create_interaction_response(&ctx, |r| {
+                r.interaction_response_data(|d| d)
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+            })
+            .await?;
+        let reactions = crate::consts::DATABASE.fetch_custom_reactions();
+
+        if reactions.is_empty() {
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title("No custom reactions found!")
+                            .description("There are currently no custom reactions.")
+                            .color(Color::BLURPLE)
+                    })
+                })
+                .await?;
+            return Ok(());
+        }
+        for (i, chunk) in reactions.chunks(10).enumerate() {
+            if i == 0 {
+                command
+                    .edit_original_interaction_response(&ctx, |r| {
+                        r.create_embed(|e| {
+                            e.title(format!("Page {} of {}", i + 1, (reactions.len() / 10) + 1))
+                                .description("These are all custom reactions currently:")
+                                .color(Color::BLURPLE);
+                            for reaction in chunk {
+                                e.field(
+                                    format!("Reaction `{}`:", reaction.trigger),
+                                    format!(
+                                        "`{}` reactes with {}, created by <@!{}>",
+                                        reaction.trigger, reaction.emoji, reaction.user
+                                    ),
+                                    false,
+                                );
+                            }
+                            e
+                        })
+                    })
+                    .await?;
+            } else {
+                command
+                    .create_followup_message(&ctx, |r| {
+                        r.create_embed(|e| {
+                            e.title(format!("Page {} of {}", i + 1, (reactions.len() / 10) + 1))
+                                .color(Color::BLURPLE);
+                            for reaction in chunk {
+                                e.field(
+                                    format!("Reaction `{}`:", reaction.trigger),
+                                    format!(
+                                        "`{}` reactes with {}, created by <@!{}>",
+                                        reaction.trigger, reaction.emoji, reaction.user
+                                    ),
+                                    false,
+                                );
+                            }
+                            e
+                        })
+                    })
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn new() -> Box<Self>
+    where
+        Self: Sized,
+    {
+        Box::new(ListReactions {})
     }
 }
