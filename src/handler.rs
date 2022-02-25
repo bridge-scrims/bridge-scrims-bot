@@ -86,6 +86,9 @@ impl EventHandler for Handler {
                 if let Err(err) = command.run(&ctx, &command_interaction).await {
                     tracing::error!("{} command failed: {}", command.name(), err);
                 }
+                if command.name().contains("reaction") {
+                    update(self.reactions.clone()).await;
+                }
             }
         }
     }
@@ -277,7 +280,7 @@ impl EventHandler for Handler {
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
         let mut x = false;
         for role in user.roles(&ctx.cache).await.unwrap() {
-            if role.tags.premium_subscriber {
+            if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
         }
@@ -298,8 +301,9 @@ impl EventHandler for Handler {
 
 async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     loop {
+        tracing::info!("Updating reactions...");
         update(m.clone()).await;
-        tokio::time::sleep(Duration::from_secs(60 * 60 * 12)).await;
+        tokio::time::sleep(Duration::from_secs(60 * 60 * 2)).await;
     }
 }
 

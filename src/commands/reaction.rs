@@ -187,22 +187,30 @@ impl Command for Reaction {
 
             })
             .await?;
+        let mut brole = None;
         for (id, role) in CONFIG.guild.roles(&ctx.http).await? {
             if role.tags.premium_subscriber {
-                CONFIG
-                    .guild
-                    .create_application_command_permission(&ctx, cmd.id, |p| {
-                        p.create_permission(|perm| {
-                            perm.kind(ApplicationCommandPermissionType::Role)
-                                .id(id.0)
-                                .permission(true)
-                        });
-                        p
-                    })
-                    .await?;
+                brole = Some(id);
                 break;
             }
         }
+        CONFIG
+            .guild
+            .create_application_command_permission(&ctx, cmd.id, |p| {
+                if let Some(id) = brole {
+                    p.create_permission(|perm| {
+                        perm.kind(ApplicationCommandPermissionType::Role)
+                            .id(id.0)
+                            .permission(true)
+                    });
+                }
+                p.create_permission(|perm| {
+                    perm.kind(ApplicationCommandPermissionType::Role)
+                        .id(CONFIG.staff.0)
+                        .permission(true)
+                })
+            })
+            .await?;
 
         Ok(())
     }
