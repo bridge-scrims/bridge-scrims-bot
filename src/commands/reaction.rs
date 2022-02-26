@@ -12,6 +12,7 @@ use serenity::model::interactions::application_command::{
     ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
 };
 use serenity::model::interactions::InteractionResponseType;
+use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use serenity::utils::Color;
 
 use crate::consts::CONFIG;
@@ -413,7 +414,9 @@ impl Command for ListReactions {
     ) -> crate::Result<()> {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| d)
+                r.interaction_response_data(|d| {
+                    d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                })
                     .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
