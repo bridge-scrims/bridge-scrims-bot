@@ -95,14 +95,18 @@ impl Button for Freeze {
                 .unwrap_or_default()
                 .parse()?,
         );
-        if !command.user.has_role(&ctx.http, crate::CONFIG.guild, crate::CONFIG.ss_support).await? {
+        if !command
+            .user
+            .has_role(&ctx.http, crate::CONFIG.guild, crate::CONFIG.ss_support)
+            .await?
+        {
             command
-            .create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| {
-                    data.content("You are not a screensharer!")
+                .create_interaction_response(&ctx.http, |resp| {
+                    resp.interaction_response_data(|data| {
+                        data.content("You are not a screensharer!")
+                    })
                 })
-            })
-            .await?;
+                .await?;
             return Ok(());
         }
         freeze_user(ctx, user, command.user.id, command.channel_id).await?;
@@ -119,9 +123,19 @@ impl Button for Freeze {
     }
 }
 
-async fn freeze_user(ctx: &Context, target: UserId, staff: UserId, channel: ChannelId) -> crate::Result<()> {
-    let emoji = crate::CONFIG.guild.emoji(&ctx.http, crate::CONFIG.unfreeze_emoji).await?;
-    let is_frozen = crate::consts::DATABASE.fetch_freezes_for(target.0).is_some();
+async fn freeze_user(
+    ctx: &Context,
+    target: UserId,
+    staff: UserId,
+    channel: ChannelId,
+) -> crate::Result<()> {
+    let emoji = crate::CONFIG
+        .guild
+        .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
+        .await?;
+    let is_frozen = crate::consts::DATABASE
+        .fetch_freezes_for(target.0)
+        .is_some();
     if is_frozen {
         already_frozen(ctx, channel, target).await?;
         return Ok(());
@@ -177,12 +191,7 @@ instance of your pc, and revise your processes for cheats.",
         .await?;
     channel
         .send_message(&ctx.http, |msg| {
-            msg.content(format!(
-                "{}: {} is now frozen by {}",
-                emoji,
-                user,
-                staff
-            ))
+            msg.content(format!("{}: {} is now frozen by {}", emoji, user, staff))
         })
         .await?;
     Ok(())

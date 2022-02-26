@@ -3,19 +3,20 @@ use serenity::client::Context;
 use serenity::model::interactions::message_component::MessageComponentInteraction;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
 pub mod ban;
+pub mod close;
 pub mod council;
+pub mod freeze;
 pub mod notes;
 pub mod ping;
 pub mod prefabs;
 pub mod purge;
 pub mod reaction;
 pub mod roll;
-pub mod timeout;
 pub mod screenshare;
-pub mod close;
-pub mod freeze;
-pub mod unfreeze;
 pub mod ticket;
+pub mod timeout;
+pub mod unban;
+pub mod unfreeze;
 
 #[async_trait]
 pub trait Command: Send + Sync {

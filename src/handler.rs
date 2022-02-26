@@ -2,7 +2,7 @@ use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
-use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
+use crate::commands::ban::{Ban, ScrimBan};
 use crate::commands::close::Close;
 use crate::commands::council::Council;
 use crate::commands::freeze::Freeze;
@@ -15,6 +15,7 @@ use crate::commands::screenshare::Screenshare;
 use crate::commands::ticket::Ticket;
 use crate::commands::timeout::Timeout;
 use crate::commands::ping::Ping;
+use crate::commands::unban::{ScrimUnban, Unban};
 use crate::commands::Command as _;
 
 use crate::commands::unfreeze::Unfreeze;

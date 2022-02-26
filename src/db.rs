@@ -253,9 +253,7 @@ impl Database {
                 .split(',')
                 .filter_map(|x| RoleId::from_str(x).ok())
                 .collect();
-            let time =
-                OffsetDateTime::from_unix_timestamp(row[2].as_integer().unwrap())
-                    .unwrap();
+            let time = OffsetDateTime::from_unix_timestamp(row[2].as_integer().unwrap()).unwrap();
             result.get_or_insert(Freeze { id, roles, time });
         });
         result

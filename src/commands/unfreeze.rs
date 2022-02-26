@@ -54,7 +54,10 @@ impl Command for Unfreeze {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        let emoji = crate::CONFIG.guild.emoji(&ctx.http, crate::CONFIG.unfreeze_emoji).await?;
+        let emoji = crate::CONFIG
+            .guild
+            .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
+            .await?;
         let user = UserId(command.get_str("player").unwrap().parse()?);
         let unfreeze = unfreeze_user(ctx, user).await?;
         command
@@ -67,11 +70,7 @@ impl Command for Unfreeze {
                                 .description(format!("{} is not frozen", user))
                         })
                     } else {
-                        data.content(format!(
-                            "{} <@{}>, you are now unfrozen",
-                            emoji,
-                            user
-                        ))
+                        data.content(format!("{} <@{}>, you are now unfrozen", emoji, user))
                     }
                 })
             })
