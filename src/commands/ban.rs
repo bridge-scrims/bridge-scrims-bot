@@ -113,7 +113,20 @@ impl BanType {
                 let do_dmd = command.get_bool("dmd").unwrap_or(false);
                 let dmd = if do_dmd { 7 } else { 0 };
                 if let Some(unban_date) = unban_date {
-                    db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date)
+                    db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
+                    if crate::consts::DATABASE
+                        .fetch_unbans()
+                        .iter()
+                        .find(|x| x.id == id.0)
+                        .is_some()
+                    {
+                        embed.title(format!("{}'s ban has been modified", user.tag()));
+                        db_result = crate::consts::DATABASE.modify_unban_date(
+                            "ScheduledUnbans",
+                            *id.as_u64(),
+                            unban_date,
+                        );
+                    }
                 }
                 result = CONFIG
                     .guild
@@ -144,6 +157,21 @@ impl BanType {
                     unban_date.unwrap(),
                     &removed_roles.into(),
                 );
+
+                if crate::consts::DATABASE
+                    .fetch_scrim_unbans()
+                    .iter()
+                    .find(|x| x.id == id.0)
+                    .is_some()
+                {
+                    embed.title(format!("{}'s ban has been modified", user.tag()));
+                    db_result = crate::consts::DATABASE.modify_unban_date(
+                        "ScheduledScrimUnbans",
+                        *id.as_u64(),
+                        unban_date.unwrap(),
+                    );
+                }
+
                 CONFIG
                     .support_bans
                     .send_message(&http, |msg| msg.set_embed(embed.clone()))

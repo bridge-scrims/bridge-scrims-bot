@@ -7,10 +7,13 @@ use serenity::{
     model::{
         guild::Ban,
         id::UserId,
-        interactions::{application_command::{
-            ApplicationCommandInteraction, ApplicationCommandOptionType,
-            ApplicationCommandPermissionType,
-        }, InteractionApplicationCommandCallbackDataFlags},
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandOptionType,
+                ApplicationCommandPermissionType,
+            },
+            InteractionApplicationCommandCallbackDataFlags,
+        },
     },
 };
 
@@ -116,8 +119,9 @@ impl UnbanType {
             Self::Server => {
                 result = result.and(CONFIG.guild.unban(&http, to_unban.id).await);
                 if result.is_ok() {
-                    db_result =
-                        crate::consts::DATABASE.remove_entry("ScheduledUnbans", to_unban.id.0);
+                    // Permanent server bans are not in the database, do not error if that is the
+                    // case
+                    let _ = crate::consts::DATABASE.remove_entry("ScheduledUnbans", to_unban.id.0);
                 }
             }
             Self::Scrim => {

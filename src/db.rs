@@ -268,6 +268,18 @@ impl Database {
             ))
         })
     }
+
+    pub fn modify_unban_date(&self, table: &str, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "UPDATE '{}' SET time = {} WHERE id = {}",
+                table,
+                unban_date.unix_timestamp(),
+                id,
+            ))
+        })
+    }
+
     pub fn add_custom_reaction(
         &self,
         id: u64,
