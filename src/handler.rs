@@ -233,7 +233,7 @@ impl EventHandler for Handler {
         let reactions = self.reactions.lock().await;
         if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
             if let Err(err) = msg
-                .react(&ctx, ReactionType::Unicode(reaction.emoji.clone()))
+                .react(&ctx, ReactionType::try_from(reaction.emoji.clone()).unwrap())
                 .await
             {
                 if format!("{}", err)
