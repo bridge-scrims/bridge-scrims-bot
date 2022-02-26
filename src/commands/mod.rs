@@ -17,6 +17,7 @@ pub mod ticket;
 pub mod timeout;
 pub mod unban;
 pub mod unfreeze;
+pub mod list_bans;
 
 #[async_trait]
 pub trait Command: Send + Sync {

@@ -6,6 +6,7 @@ use crate::commands::ban::{Ban, ScrimBan};
 use crate::commands::close::Close;
 use crate::commands::council::Council;
 use crate::commands::freeze::Freeze;
+use crate::commands::list_bans::ListBans;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
@@ -68,6 +69,7 @@ impl Handler {
             Freeze::new(),
             Unfreeze::new(),
             Ticket::new(),
+            ListBans::new(),
         ];
         let commands = commands
             .into_iter()

@@ -117,8 +117,7 @@ impl BanType {
                     if crate::consts::DATABASE
                         .fetch_unbans()
                         .iter()
-                        .find(|x| x.id == id.0)
-                        .is_some()
+                        .any(|x| x.id == id.0)
                     {
                         embed.title(format!("{}'s ban has been modified", user.tag()));
                         db_result = crate::consts::DATABASE.modify_unban_date(
@@ -161,8 +160,7 @@ impl BanType {
                 if crate::consts::DATABASE
                     .fetch_scrim_unbans()
                     .iter()
-                    .find(|x| x.id == id.0)
-                    .is_some()
+                    .any(|x| x.id == id.0)
                 {
                     embed.title(format!("{}'s ban has been modified", user.tag()));
                     db_result = crate::consts::DATABASE.modify_unban_date(
