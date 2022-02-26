@@ -176,6 +176,22 @@ impl Database {
         result
     }
 
+    pub fn fetch_custom_reactions_with_trigger(&self, trigger: &str) -> Vec<CustomReaction> {
+        let mut result = Vec::new();
+        self.fetch_rows("Reaction", &format!("where trigger = '{}'", trigger), |row| {
+            let user = row.get(0).unwrap().as_integer().unwrap() as u64;
+            let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
+            let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
+
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
+        });
+        result
+    }
+
     pub fn fetch_notes_for(&self, userid: u64) -> Vec<Note> {
         let mut result = Vec::new();
         self.fetch_rows("Notes", &format!("where userid = {}", userid), |row| {
