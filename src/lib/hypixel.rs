@@ -71,13 +71,13 @@ impl FromStr for UUID {
             Ok([0u8; 16]),
             |acc, (i, c)| {
                 let num = u8::from_str_radix(std::str::from_utf8(&[c]).unwrap(), 16);
-                if let Err(_) = num {
+                if num.is_err() {
                     return Err(ApiError::InvalidUUID);
                 }
                 acc.map(|mut acc| {
                     let mut num = num.unwrap();
                     if i % 2 == 0 {
-                        num = num << 4;
+                        num <<= 4;
                         acc[i / 2] = num;
                     } else {
                         acc[i / 2] += num;

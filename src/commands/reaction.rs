@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::commands::Command;
 
-use crate::interact_opts::InteractOpts;
+use bridge_scrims::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::channel::ReactionType;
