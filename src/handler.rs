@@ -1,15 +1,20 @@
-use std::collections::HashMap;
+use std::time::Duration;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 use crate::commands::ban::{Ban, ScrimBan, ScrimUnban, Unban};
 use crate::commands::council::Council;
 use crate::commands::notes::Notes;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
-use crate::commands::roll::Roll;
+use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
+use crate::commands::roll::{Roll, Teams};
 use crate::commands::timeout::Timeout;
 use crate::commands::Command as _;
 
 use crate::consts::CONFIG;
+use crate::consts::DATABASE as database;
+use crate::db::CustomReaction;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
 use serenity::client::{Context, EventHandler};
@@ -29,6 +34,7 @@ use regex::Regex;
 
 pub struct Handler {
     commands: HashMap<String, Command>,
+    reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
@@ -43,7 +49,11 @@ impl Handler {
             ScrimBan::new(),
             ScrimUnban::new(),
             Roll::new(),
+            Teams::new(),
             Purge::new(),
+            Reaction::new(),
+            DelReaction::new(),
+            ListReactions::new(),
         ];
         let commands = commands
             .into_iter()
@@ -51,7 +61,11 @@ impl Handler {
                 map.insert(command.name(), command);
                 map
             });
-        Handler { commands }
+
+        Handler {
+            commands,
+            reactions: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 }
 
@@ -65,12 +79,16 @@ impl EventHandler for Handler {
                 tracing::error!("Could not register command {}: {}", name, err);
             }
         }
+        tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {
             if let Some(command) = self.commands.get(&command_interaction.data.name) {
                 if let Err(err) = command.run(&ctx, &command_interaction).await {
                     tracing::error!("{} command failed: {}", command.name(), err);
+                }
+                if command.name().contains("reaction") {
+                    update(self.reactions.clone()).await;
                 }
             }
         }
@@ -100,7 +118,7 @@ impl EventHandler for Handler {
             }
         }
         if msg.content.to_ascii_lowercase() == "ratio"
-            || msg.content.to_ascii_lowercase().replace(" ", "") == "counterratio"
+            || msg.content.to_ascii_lowercase().replace(' ', "") == "counterratio"
         {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
@@ -215,6 +233,35 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+        let reactions = self.reactions.lock().await;
+        if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
+            if let Err(err) = msg
+                .react(&ctx, ReactionType::try_from(reaction.emoji.clone()).unwrap())
+                .await
+            {
+                if format!("{}", err)
+                    .to_ascii_lowercase()
+                    .contains("unknown emoji")
+                    || format!("{}", err)
+                        .to_ascii_lowercase()
+                        .contains("invalid form body")
+                {
+                    if let Err(err) = database.remove_custom_reaction(reaction.user) {
+                        tracing::error!("Error in removal of reaction: {}", err);
+                    }
+                    if let Err(err) = msg.reply(&ctx, format!(
+                            "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
+                            &reaction.user)
+                            )
+                            .await
+                            {
+                                tracing::error!("{}", err);
+                            }
+                } else {
+                    tracing::error!("Error in addition of reaction: {}", err);
+                }
+            }
+        }
     }
 
     async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, _member: Member) {
@@ -233,4 +280,42 @@ impl EventHandler for Handler {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
+
+    async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
+        let mut x = false;
+        for role in user.roles(&ctx.cache).await.unwrap() {
+            if role.tags.premium_subscriber || role.id == CONFIG.staff {
+                x = true;
+            }
+        }
+        if x && !database
+            .fetch_custom_reactions_for(user.user.id.0)
+            .is_empty()
+        {
+            // if the user's server boost runs out
+
+            if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
+                tracing::error!("Error when updating database: {}", err);
+            }
+            // be sure to update the other thing
+            update(self.reactions.clone()).await;
+        }
+    }
+}
+
+async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
+    loop {
+        tracing::info!("Updating reactions...");
+        update(m.clone()).await;
+        tokio::time::sleep(Duration::from_secs(60 * 60 * 2)).await;
+    }
+}
+
+async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
+    let mut lock = m.lock().await;
+    let mut x = HashMap::new();
+    for reaction in database.fetch_custom_reactions() {
+        x.insert(reaction.trigger.to_ascii_lowercase(), reaction);
+    }
+    *lock = x;
 }

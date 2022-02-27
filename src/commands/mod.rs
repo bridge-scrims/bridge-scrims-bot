@@ -2,13 +2,14 @@ use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
 
-pub mod council;
-pub mod prefabs;
-pub mod notes;
-pub mod timeout;
 pub mod ban;
-pub mod roll;
+pub mod council;
+pub mod notes;
+pub mod prefabs;
 pub mod purge;
+pub mod reaction;
+pub mod roll;
+pub mod timeout;
 
 #[async_trait]
 pub trait Command {

@@ -22,8 +22,10 @@ async fn main() -> Result<()> {
         .await?
         .id
         .0;
-    let intents =
-        GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILD_MEMBERS | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES;
+    let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILDS
+        | GatewayIntents::GUILD_VOICE_STATES;
 
     let mut client = Client::builder(&CONFIG.bot_token)
         .application_id(application_id)
@@ -52,11 +54,12 @@ async fn main() -> Result<()> {
         tracing::info!("Deleting Global Commands...");
         if let Ok(commands) = &http.get_global_application_commands().await {
             for command in commands {
-                if let Err(err) = &http
-                    .delete_global_application_command(command.id.0)
-                    .await
-                {
-                    tracing::error!("Could not delete global command '{}': {}", command.name, err);
+                if let Err(err) = &http.delete_global_application_command(command.id.0).await {
+                    tracing::error!(
+                        "Could not delete global command '{}': {}",
+                        command.name,
+                        err
+                    );
                 }
             }
         }

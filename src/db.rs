@@ -54,6 +54,15 @@ impl Database {
         )
         .expect("Could not initialize database");
 
+        conn.execute(
+            "create table if not exists Reaction (
+                user integer,
+                emoji text,
+                trigger text
+            )",
+        )
+        .expect("Could not initialize database");
+
         Self {
             sqlite: Mutex::new(conn),
         }
@@ -135,6 +144,54 @@ impl Database {
         result
     }
 
+    pub fn fetch_custom_reactions(&self) -> Vec<CustomReaction> {
+        let mut result = Vec::new();
+        self.fetch_rows("Reaction", "", |row| {
+            let user = row.get(0).unwrap().as_integer().unwrap() as u64;
+            let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
+            let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
+
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
+        });
+        result
+    }
+
+    pub fn fetch_custom_reactions_for(&self, userid: u64) -> Vec<CustomReaction> {
+        let mut result = Vec::new();
+        self.fetch_rows("Reaction", &format!("where user = {}", userid), |row| {
+            let user = row.get(0).unwrap().as_integer().unwrap() as u64;
+            let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
+            let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
+
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
+        });
+        result
+    }
+
+    pub fn fetch_custom_reactions_with_trigger(&self, trigger: &str) -> Vec<CustomReaction> {
+        let mut result = Vec::new();
+        self.fetch_rows("Reaction", &format!("where trigger = '{}'", trigger), |row| {
+            let user = row.get(0).unwrap().as_integer().unwrap() as u64;
+            let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
+            let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
+
+            result.push(CustomReaction {
+                user,
+                emoji,
+                trigger,
+            });
+        });
+        result
+    }
+
     pub fn fetch_notes_for(&self, userid: u64) -> Vec<Note> {
         let mut result = Vec::new();
         self.fetch_rows("Notes", &format!("where userid = {}", userid), |row| {
@@ -164,6 +221,28 @@ impl Database {
                 unban_date.unix_timestamp()
             ))
         })
+    }
+    pub fn add_custom_reaction(
+        &self,
+        id: u64,
+        emoji: &str,
+        trigger: &str,
+    ) -> Result<(), sqlite::Error> {
+        let result = self
+            .sqlite
+            .lock()
+            .map(|db| {
+                db.execute(format!(
+                    "INSERT INTO 'Reaction' (user,emoji,trigger) values ({}, \"{}\", \"{}\")",
+                    id, emoji, trigger
+                ))
+            })
+            .ok();
+        if let Some(result) = result {
+            result
+        } else {
+            Ok(())
+        }
     }
 
     pub fn add_scrim_unban(
@@ -224,6 +303,18 @@ impl Database {
     pub fn remove_entry(&self, table: &str, i: u64) -> SqliteResult {
         self.get_lock(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
     }
+    pub fn remove_custom_reaction(&self, user: u64) -> Result<(), sqlite::Error> {
+        let result = self
+            .sqlite
+            .lock()
+            .map(|db| db.execute(format!("DELETE FROM 'Reaction' WHERE user = {}", user)))
+            .ok();
+        if let Some(result) = result {
+            result
+        } else {
+            Ok(())
+        }
+    }
 }
 
 pub struct Unban {
@@ -249,6 +340,12 @@ pub struct Note {
     pub note: String,
     /// the id of the person who added the note
     pub creator: u64,
+}
+
+pub struct CustomReaction {
+    pub user: u64,
+    pub trigger: String,
+    pub emoji: String,
 }
 
 pub struct BanRoles(pub Vec<RoleId>);
