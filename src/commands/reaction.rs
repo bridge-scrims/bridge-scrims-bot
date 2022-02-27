@@ -237,7 +237,7 @@ impl Command for Reaction {
                 let emoji = cmd.get_str("emoji").unwrap();
                 let trigger = cmd.get_str("trigger").unwrap();
 
-                if trigger.to_ascii_lowercase().contains("ratio") || trigger.to_ascii_lowercase().contains("shmill") || trigger.starts_with("/")
+                if trigger.to_ascii_lowercase().contains("ratio") || trigger.to_ascii_lowercase().contains("shmill") || trigger.starts_with("/") || trigger.starts_with("<")
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
