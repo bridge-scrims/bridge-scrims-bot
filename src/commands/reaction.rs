@@ -439,7 +439,7 @@ impl Command for ListReactions {
                 command
                     .edit_original_interaction_response(&ctx, |r| {
                         r.create_embed(|e| {
-                            e.title(format!("Page {} of {}", i + 1, (reactions.len() / 10) + 1))
+                            e.title(format!("Page {} of {}", i + 1, ((reactions.len() - 1) / 10) + 1))
                                 .description("These are all custom reactions currently:")
                                 .color(Color::BLURPLE);
                             for reaction in chunk {
@@ -474,6 +474,7 @@ impl Command for ListReactions {
                             }
                             e
                         })
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                     .await?;
             }
