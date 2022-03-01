@@ -1,13 +1,13 @@
 use serenity::{
     async_trait,
-    client::Context,
+    http::Http,
     model::{
         id::UserId,
         interactions::application_command::{
             ApplicationCommandInteraction, ApplicationCommandOptionType,
             ApplicationCommandPermissionType,
         },
-    },
+    }, client::Context,
 };
 
 use bridge_scrims::interact_opts::InteractOpts;
@@ -59,7 +59,7 @@ impl Command for Unfreeze {
             .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
             .await?;
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        let unfreeze = unfreeze_user(ctx, user).await?;
+        let unfreeze = unfreeze_user(ctx.http, user).await?;
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
@@ -82,16 +82,16 @@ impl Command for Unfreeze {
     }
 }
 
-async fn unfreeze_user(ctx: &Context, user: UserId) -> crate::Result<bool> {
+pub async fn unfreeze_user(http: &Http, user: UserId) -> crate::Result<bool> {
     let freeze = crate::consts::DATABASE.fetch_freezes_for(user.0);
     if freeze.is_none() {
         return Ok(false);
     }
     let freeze = freeze.unwrap();
 
-    let mut member = crate::CONFIG.guild.member(&ctx.http, user).await?;
-    member.remove_role(&ctx.http, crate::CONFIG.frozen).await?;
-    member.add_roles(&ctx.http, &freeze.roles).await?;
+    let mut member = crate::CONFIG.guild.member(&http, user).await?;
+    member.remove_role(&http, crate::CONFIG.frozen).await?;
+    member.add_roles(&http, &freeze.roles).await?;
     crate::consts::DATABASE.remove_entry("Freezes", user.0)?;
     Ok(true)
 }
