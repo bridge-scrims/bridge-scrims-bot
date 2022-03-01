@@ -140,6 +140,21 @@ async fn freeze_user(
         already_frozen(ctx, channel, target).await?;
         return Ok(());
     }
+
+    if crate::consts::DATABASE
+        .fetch_scrim_unbans()
+        .iter()
+        .any(|x| x.id == target.0)
+    {
+        channel.send_message(&ctx.http, |msg| {
+            msg.embed(|emb| {
+                emb.title("Already banned.")
+                    .description(format!("<@!{}> is already banned.", target.0))
+            })
+        }).await?;
+        return Ok(());
+    }
+
     let user = target.to_user(&ctx.http).await?;
     let mut member = crate::CONFIG.guild.member(&ctx.http, user.id).await?;
 
@@ -203,7 +218,7 @@ async fn already_frozen(ctx: &Context, channel: ChannelId, user: UserId) -> crat
             msg.embed(|embed| {
                 embed
                     .title("Already frozen")
-                    .description(format!("{} is already frozen", user))
+                    .description(format!("<@!{}> is already frozen", user.0))
             })
         })
         .await?;
