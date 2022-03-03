@@ -11,9 +11,9 @@
   - [x] List Council command: Shmill
   - [x] Auto-React: LordOfTheCube (polls, clips, welcome messages)
   - [x] Booster-Reacting: LordOfTheCube
-  - [ ] Logging: Salvage_Dev
+  - [ ] Logging
   - [x] Team/matchmaking: NiteBlock
-  - [ ] Purge command: Tofaa, then NiteBlock
+  - [x] Purge command: Tofaa, then NiteBlock
 
 ## Screenshare bot rewrite: dtomvan
   - [x] Screenshare command
