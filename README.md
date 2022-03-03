@@ -2,9 +2,10 @@
 
 
 ## TODO:
+  - [ ] Add cooldowns to all commands
   - [x] Ban command: dtomvan
   - [ ] Moderation
-  - [ ] Roles Ping command: NiteBlock
+  - [x] Roles Ping command: NiteBlock
   - [x] Notes command: NiteBlock
   - [x] Refabs for support: NiteBlock
   - [x] Suggestions command
