@@ -17,10 +17,11 @@
   - [ ] Purge command: Tofaa, then NiteBlock
 
 ## Screenshare bot rewrite: dtomvan
-  - [ ] Screenshare command
-  - [ ] Close command
-  - [ ] Freeze command
-  - [ ] Unfreeze command
+  - [x] Screenshare command
+  - [x] Close command
+  - [x] Freeze command
+  - [x] Unfreeze command
+  - [ ] Rest in issue
 
 ## Moderation
   - [x] Timeout: NiteBlock
