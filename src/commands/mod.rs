@@ -63,14 +63,9 @@ impl Cooldowns {
     async fn remove_cooldown(inner: Arc<Mutex<Vec<Cooldown>>>, cooldown: Cooldown) {
         sleep(cooldown.duration).await;
         let mut c = inner.lock().await;
-        let mut x = (&*c).clone();
-        for (i, v) in x.iter().enumerate() {
-            if v == &cooldown {
-                x.remove(i);
-                break;
-            }
+        if let Some(i) = c.iter().position(|v| v == &cooldown) {
+            c.swap_remove(i);
         }
-        *c = x
     }
 
     async fn add_cooldown(
