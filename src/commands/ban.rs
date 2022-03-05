@@ -247,9 +247,13 @@ impl Command for Ban {
                     })
                     .create_option(|o| {
                         o.name("duration")
-                            .description("The ban duration in days")
+                            .description("The ban duration")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
+                            .add_int_choice("Seconds", 1)
+                            .add_int_choice("Minutes", 60)
+                            .add_int_choice("Hours", 60 * 60)
+                            .add_int_choice("Days", 60 * 60 * 24)
                     })
                     .create_option(|o| {
                         o.name("dmd")
