@@ -1,6 +1,7 @@
 
 # This is the config file for general stuff
 bot_token = "my token"
+hypixel_token = "my token"
 
 guild = 759894401957888031
 

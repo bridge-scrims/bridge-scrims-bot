@@ -8,7 +8,7 @@ use std::{
 };
 
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 lazy_static::lazy_static! {
     /// The reqwest client for the Hypixel API
@@ -33,6 +33,21 @@ pub enum ApiError {
     InvalidUUID,
     /// Authentication token to API is invalid
     NotAuthenticated,
+    /// From serde
+    Message(String),
+}
+
+impl serde::de::Error for ApiError {
+    fn custom<T: Display>(msg: T) -> Self {
+        Self::Message(msg.to_string())
+    }
+}
+
+pub fn deserialize_uuid<'de, D>(deserializer: D) -> Result<UUID, D::Error>
+where D: Deserializer<'de> {
+    let buf = String::deserialize(deserializer)?;
+
+    UUID::from_str(&buf).map_err(serde::de::Error::custom)
 }
 
 impl From<reqwest::Error> for ApiError {
@@ -47,6 +62,7 @@ impl Display for ApiError {
             ApiError::Http(e) => format!("http error: {}", e),
             ApiError::InvalidUUID => String::from("invalid UUID"),
             ApiError::NotAuthenticated => String::from("not authenticated"),
+            ApiError::Message(m) => m.to_string(),
         };
 
         write!(f, "{}", e)
@@ -56,7 +72,7 @@ impl Display for ApiError {
 impl std::error::Error for ApiError {}
 
 /// A player UUID or API key
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct UUID([u8; 16]);
 
 impl FromStr for UUID {

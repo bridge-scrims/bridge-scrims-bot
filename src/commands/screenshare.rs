@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::Duration};
+use std::{fmt::Display, str::FromStr, time::Duration};
 
 use serenity::{
     async_trait,
@@ -18,7 +18,10 @@ use serenity::{
 };
 
 use crate::commands::close::Close;
-use bridge_scrims::interact_opts::InteractOpts;
+use bridge_scrims::{
+    hypixel::{Player, PlayerDataRequest, UUID},
+    interact_opts::InteractOpts,
+};
 
 use super::{close, freeze::Freeze, Button, Command};
 
@@ -79,6 +82,13 @@ impl Command for Screenshare {
                             .description("The person to request a screenshare to.")
                             .required(true)
                             .kind(ApplicationCommandOptionType::User)
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("ign")
+                            .description("The Minecraft ingame name of the person that you want to be screenshared.")
+                            .required(true)
+                            .kind(ApplicationCommandOptionType::String)
                     })
             })
             .await?;
@@ -154,6 +164,12 @@ impl Command for Screenshare {
         if let Ok(channel) = result {
             let mut message = CreateMessage::default();
 
+            let name = command.get_str("ign").unwrap();
+            let player = Player::fetch_from_username(name.clone()).await?;
+            let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
+                .send()
+                .await?;
+
             let db_result = crate::consts::DATABASE.add_screenshare(
                 channel.id.0,
                 command.user.id.0,
@@ -178,16 +194,28 @@ not to log aswell as any other info.
             ));
 
             message.embed(|embed| {
-                embed.title("Screenshare Request").description(
-                    "- Why did you request a screenshare on this member?
+                embed
+                    .title("Screenshare Request")
+                    .description(
+                        "- Why did you request a screenshare on this member?
 - Please provide evidence of you telling him not to log.
 - Anything else?
 
 **NOTE**: If you do not get frozen within 15 minutes you may logout.
 ",
-                )
+                    )
+                    .field("Ign", name, false)
+                    .field(
+                        "Last login time",
+                        format!("<t:{}>", playerstats.last_login.unwrap_or_default()),
+                        false,
+                    )
+                    .field(
+                        "Last logout time",
+                        format!("<t:{}>", playerstats.last_logout.unwrap_or_default()),
+                        false,
+                    )
             });
-            // TODO: also close the ticket after 15 minutes
             message.components(|components| {
                 components.create_action_row(|row| {
                     row.create_button(|button| {
@@ -218,6 +246,7 @@ not to log aswell as any other info.
                     })
                 })
                 .await?;
+
             let reactions = m
                 .await_component_interaction(&ctx)
                 .timeout(Duration::from_secs(60 * 15))

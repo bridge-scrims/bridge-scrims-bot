@@ -269,7 +269,12 @@ impl Database {
         })
     }
 
-    pub fn modify_unban_date(&self, table: &str, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
+    pub fn modify_unban_date(
+        &self,
+        table: &str,
+        id: u64,
+        unban_date: OffsetDateTime,
+    ) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
                 "UPDATE '{}' SET time = {} WHERE id = {}",
@@ -381,6 +386,7 @@ impl Database {
     pub fn remove_entry(&self, table: &str, i: u64) -> SqliteResult {
         self.get_lock(|db| db.execute(format!("DELETE FROM '{}' WHERE id = {}", table, i)))
     }
+
     pub fn remove_custom_reaction(&self, user: u64) -> Result<(), sqlite::Error> {
         let result = self
             .sqlite
