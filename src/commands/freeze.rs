@@ -146,12 +146,14 @@ async fn freeze_user(
         .iter()
         .any(|x| x.id == target.0)
     {
-        channel.send_message(&ctx.http, |msg| {
-            msg.embed(|emb| {
-                emb.title("Already banned.")
-                    .description(format!("<@!{}> is already banned.", target.0))
+        channel
+            .send_message(&ctx.http, |msg| {
+                msg.embed(|emb| {
+                    emb.title("Already banned.")
+                        .description(format!("<@!{}> is already banned.", target.0))
+                })
             })
-        }).await?;
+            .await?;
         return Ok(());
     }
 

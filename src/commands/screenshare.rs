@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 use serenity::{
     async_trait,
@@ -19,7 +19,7 @@ use serenity::{
 
 use crate::commands::close::Close;
 use bridge_scrims::{
-    hypixel::{Player, PlayerDataRequest, UUID},
+    hypixel::{Player, PlayerDataRequest},
     interact_opts::InteractOpts,
 };
 

@@ -1,7 +1,8 @@
 pub use crate::model::*;
 use std::{
+    cmp::Reverse,
     str::FromStr,
-    sync::{Mutex, MutexGuard}, cmp::Reverse,
+    sync::{Mutex, MutexGuard},
 };
 
 use serenity::model::id::RoleId;
@@ -410,15 +411,11 @@ impl Database {
 
     pub fn get_screensharers(&self) -> Vec<Screensharer> {
         let mut result = Vec::new();
-        self.fetch_rows(
-            "ScreensharerStats",
-            "",
-            |screensharer| {
-                let id = screensharer.get(0).unwrap().as_integer().unwrap() as u64;
-                let freezes = screensharer.get(1).unwrap().as_integer().unwrap() as u64;
-                result.push(Screensharer { id, freezes });
-            },
-        );
+        self.fetch_rows("ScreensharerStats", "", |screensharer| {
+            let id = screensharer.get(0).unwrap().as_integer().unwrap() as u64;
+            let freezes = screensharer.get(1).unwrap().as_integer().unwrap() as u64;
+            result.push(Screensharer { id, freezes });
+        });
         result.sort_unstable_by_key(|x| Reverse(x.freezes));
         result
     }
@@ -431,7 +428,7 @@ impl Database {
             |screensharer| {
                 let id = screensharer.get(0).unwrap().as_integer().unwrap() as u64;
                 let freezes = screensharer.get(1).unwrap().as_integer().unwrap() as u64;
-                let _ = result.get_or_insert_with(|| Screensharer { id, freezes });
+                let _ = result.get_or_insert(Screensharer { id, freezes });
             },
         );
         result

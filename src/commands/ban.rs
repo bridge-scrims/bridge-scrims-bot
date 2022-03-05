@@ -111,10 +111,12 @@ impl BanType {
 
         if crate::consts::DATABASE.fetch_freezes_for(id.0).is_some() {
             super::unfreeze::unfreeze_user(http, id).await?;
-            command.create_followup_message(http, |msg| {
-                msg.content(format!("Unfreezing {} before banning them.", user.tag()))
-                    .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-            }).await?;
+            command
+                .create_followup_message(http, |msg| {
+                    msg.content(format!("Unfreezing {} before banning them.", user.tag()))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                })
+                .await?;
         }
 
         match self {

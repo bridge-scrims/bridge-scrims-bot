@@ -44,7 +44,9 @@ impl serde::de::Error for ApiError {
 }
 
 pub fn deserialize_uuid<'de, D>(deserializer: D) -> Result<UUID, D::Error>
-where D: Deserializer<'de> {
+where
+    D: Deserializer<'de>,
+{
     let buf = String::deserialize(deserializer)?;
 
     UUID::from_str(&buf).map_err(serde::de::Error::custom)

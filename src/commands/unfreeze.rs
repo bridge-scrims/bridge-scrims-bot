@@ -77,10 +77,11 @@ impl Command for Unfreeze {
                             sc.freezes += 1;
                             let _ = crate::consts::DATABASE.set_screensharer(sc);
                         } else {
-                            let _ = crate::consts::DATABASE.set_screensharer(crate::db::Screensharer {
-                                id: command.user.id.0,
-                                freezes: 1,
-                            });
+                            let _ =
+                                crate::consts::DATABASE.set_screensharer(crate::db::Screensharer {
+                                    id: command.user.id.0,
+                                    freezes: 1,
+                                });
                         }
                         data.content(format!("{} <@{}>, you are now unfrozen", emoji, user))
                     }
