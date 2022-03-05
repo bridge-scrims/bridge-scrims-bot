@@ -1,7 +1,7 @@
 pub use crate::model::*;
 use std::{
     str::FromStr,
-    sync::{Mutex, MutexGuard},
+    sync::{Mutex, MutexGuard}, cmp::Reverse,
 };
 
 use serenity::model::id::RoleId;
@@ -77,6 +77,14 @@ impl Database {
                 id integer,
                 roles text,
                 time integer
+            )",
+        )
+        .expect("Could not initialize database");
+
+        conn.execute(
+            "create table if not exists ScreensharerStats (
+                id integer primary key,
+                freezes integer
             )",
         )
         .expect("Could not initialize database");
@@ -397,6 +405,53 @@ impl Database {
             result
         } else {
             Ok(())
+        }
+    }
+
+    pub fn get_screensharers(&self) -> Vec<Screensharer> {
+        let mut result = Vec::new();
+        self.fetch_rows(
+            "ScreensharerStats",
+            "",
+            |screensharer| {
+                let id = screensharer.get(0).unwrap().as_integer().unwrap() as u64;
+                let freezes = screensharer.get(1).unwrap().as_integer().unwrap() as u64;
+                result.push(Screensharer { id, freezes });
+            },
+        );
+        result.sort_unstable_by_key(|x| Reverse(x.freezes));
+        result
+    }
+
+    pub fn get_screensharer(&self, user: u64) -> Option<Screensharer> {
+        let mut result = None;
+        self.fetch_rows(
+            "ScreensharerStats",
+            &format!("where id = {}", user),
+            |screensharer| {
+                let id = screensharer.get(0).unwrap().as_integer().unwrap() as u64;
+                let freezes = screensharer.get(1).unwrap().as_integer().unwrap() as u64;
+                let _ = result.get_or_insert_with(|| Screensharer { id, freezes });
+            },
+        );
+        result
+    }
+
+    pub fn set_screensharer(&self, sc: Screensharer) -> SqliteResult<()> {
+        if self.get_screensharer(sc.id).is_some() {
+            self.get_lock(|db| {
+                db.execute(format!(
+                    "UPDATE 'ScreensharerStats' SET freezes = {} WHERE id = {}",
+                    sc.freezes, sc.id
+                ))
+            })
+        } else {
+            self.get_lock(|db| {
+                db.execute(format!(
+                    "INSERT INTO 'ScreensharerStats' (id,freezes) VALUES ({}, {})",
+                    sc.freezes, sc.id
+                ))
+            })
         }
     }
 }

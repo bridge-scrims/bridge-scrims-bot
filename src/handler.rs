@@ -13,6 +13,7 @@ use crate::commands::purge::Purge;
 use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
 use crate::commands::roll::{Roll, Teams};
 use crate::commands::screenshare::Screenshare;
+use crate::commands::screensharers::Screensharers;
 use crate::commands::ticket::Ticket;
 use crate::commands::timeout::Timeout;
 use crate::commands::ping::Ping;
@@ -70,6 +71,7 @@ impl Handler {
             Unfreeze::new(),
             Ticket::new(),
             ListBans::new(),
+            Screensharers::new(),
         ];
         let commands = commands
             .into_iter()

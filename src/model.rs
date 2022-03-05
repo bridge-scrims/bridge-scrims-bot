@@ -85,3 +85,8 @@ pub struct CustomReaction {
     pub trigger: String,
     pub emoji: String,
 }
+
+pub struct Screensharer {
+    pub id: u64,
+    pub freezes: u64,
+}

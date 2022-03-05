@@ -1,5 +1,6 @@
 use serenity::{
     async_trait,
+    client::Context,
     http::Http,
     model::{
         id::UserId,
@@ -7,7 +8,7 @@ use serenity::{
             ApplicationCommandInteraction, ApplicationCommandOptionType,
             ApplicationCommandPermissionType,
         },
-    }, client::Context,
+    },
 };
 
 use bridge_scrims::interact_opts::InteractOpts;
@@ -59,7 +60,7 @@ impl Command for Unfreeze {
             .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
             .await?;
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        let unfreeze = unfreeze_user(ctx.http, user).await?;
+        let unfreeze = unfreeze_user(&ctx.http, user).await?;
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
@@ -70,6 +71,17 @@ impl Command for Unfreeze {
                                 .description(format!("{} is not frozen", user))
                         })
                     } else {
+                        if let Some(mut sc) =
+                            crate::consts::DATABASE.get_screensharer(command.user.id.0)
+                        {
+                            sc.freezes += 1;
+                            let _ = crate::consts::DATABASE.set_screensharer(sc);
+                        } else {
+                            let _ = crate::consts::DATABASE.set_screensharer(crate::db::Screensharer {
+                                id: command.user.id.0,
+                                freezes: 1,
+                            });
+                        }
                         data.content(format!("{} <@{}>, you are now unfrozen", emoji, user))
                     }
                 })
