@@ -35,6 +35,8 @@ pub enum ApiError {
     NotAuthenticated,
     /// From serde
     Message(String),
+    /// From serde_json
+    Deser(serde_json::Error),
 }
 
 impl serde::de::Error for ApiError {
@@ -58,12 +60,19 @@ impl From<reqwest::Error> for ApiError {
     }
 }
 
+impl From<serde_json::Error> for ApiError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Deser(e)
+    }
+}
+
 impl Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let e = match self {
             ApiError::Http(e) => format!("http error: {}", e),
             ApiError::InvalidUUID => String::from("invalid UUID"),
             ApiError::NotAuthenticated => String::from("not authenticated"),
+            ApiError::Deser(e) => format!("deserialization error: {}", e),
             ApiError::Message(m) => m.to_string(),
         };
 
@@ -157,7 +166,11 @@ impl PlayerDataRequest {
             .query(&[("uuid", self.1 .0.to_string())])
             .send()
             .await?;
-        let json: PlayerDataResp = response.json().await?;
+        let text = response.text().await?;
+        if cfg!(test) {
+            eprintln!("{}", text);
+        }
+        let json: PlayerDataResp = serde_json::from_str(&text)?;
         Ok(json.player)
     }
 }
@@ -254,11 +267,11 @@ mod tests {
     }
     #[tokio::test]
     async fn fetch_notch_info() {
-        let player = Player::fetch_from_username(String::from("Notch"))
+        let player = Player::fetch_from_username(String::from("Briqled"))
             .await
             .unwrap();
         PlayerDataRequest(
-            UUID::from_str("151f4596-16db-452d-a174-5e4e4020d57d").unwrap(),
+            UUID::from_str("5c37d992-b286-468a-bedc-6a965cc3b78a").unwrap(),
             player,
         )
         .send()
