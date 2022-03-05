@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 
 use crate::db::Database;
+use bridge_scrims::hypixel::UUID;
 use serde::Deserialize;
 use serenity::model::id::ChannelId;
+use serenity::model::id::EmojiId;
 use serenity::model::id::GuildId;
 use serenity::model::id::RoleId;
 use serenity::prelude::Context;
@@ -35,6 +37,8 @@ pub struct Ping {
 #[derive(Deserialize)]
 pub struct Config {
     pub bot_token: String,
+    #[serde(deserialize_with = "bridge_scrims::hypixel::deserialize_uuid")]
+    pub hypixel_token: UUID,
 
     pub guild: GuildId,
 
@@ -53,6 +57,13 @@ pub struct Config {
     pub support: RoleId,
     pub trial_support: RoleId,
     pub support_bans: ChannelId,
+    pub screenshare_requests: ChannelId,
+    pub frozen: RoleId,
+    pub frozen_chat: ChannelId,
+    pub hello_cheaters: ChannelId,
+    pub ss_logs: ChannelId,
+    pub freeze_emoji: EmojiId,
+    pub unfreeze_emoji: EmojiId,
 
     pub polls: ChannelId,
     pub clips: ChannelId,

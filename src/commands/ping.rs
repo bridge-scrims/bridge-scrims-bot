@@ -14,8 +14,9 @@ use serenity::{
 };
 use std::time::Duration;
 
-use crate::{commands::Command, consts::CONFIG, interact_opts::InteractOpts};
+use crate::{commands::Command, consts::CONFIG};
 use bridge_scrims::cooldown::Cooldowns;
+use bridge_scrims::interact_opts::InteractOpts;
 
 pub struct Ping {
     cooldowns: Cooldowns,

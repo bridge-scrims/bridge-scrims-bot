@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::builder::CreateApplicationCommand;
 use serenity::client::Context;
@@ -13,6 +12,8 @@ use serenity::model::interactions::application_command::{
 };
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
+
+use bridge_scrims::interact_opts::InteractOpts;
 
 use crate::commands::Command;
 use crate::consts::CONFIG;

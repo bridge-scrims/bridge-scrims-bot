@@ -12,7 +12,7 @@ mod db;
 mod handler;
 #[macro_use]
 mod macros;
-mod interact_opts;
+mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
