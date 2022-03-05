@@ -26,6 +26,13 @@ impl MemberCount {
 }
 
 #[derive(Deserialize)]
+pub struct Ping {
+    pub name: String,
+    pub required_role: RoleId,
+    pub options: HashMap<String, RoleId>,
+}
+
+#[derive(Deserialize)]
 pub struct Config {
     pub bot_token: String,
 
@@ -53,6 +60,8 @@ pub struct Config {
     pub prefabs: HashMap<String, String>,
 
     pub member_count: MemberCount,
+
+    pub pings: Vec<Ping>,
 }
 
 lazy_static::lazy_static! {

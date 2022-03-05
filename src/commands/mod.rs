@@ -1,10 +1,10 @@
 use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::prelude::application_command::ApplicationCommandInteraction;
-
 pub mod ban;
 pub mod council;
 pub mod notes;
+pub mod ping;
 pub mod prefabs;
 pub mod purge;
 pub mod reaction;

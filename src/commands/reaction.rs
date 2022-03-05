@@ -237,7 +237,7 @@ impl Command for Reaction {
                 let emoji = cmd.get_str("emoji").unwrap();
                 let trigger = cmd.get_str("trigger").unwrap();
 
-                if trigger.to_ascii_lowercase().contains("ratio") || trigger.to_ascii_lowercase().contains("shmill") || trigger.starts_with("/") || trigger.starts_with("<")
+                if trigger.to_ascii_lowercase().contains("ratio") || trigger.to_ascii_lowercase().contains("shmill") || trigger.starts_with('/') || trigger.starts_with('<')
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
@@ -261,7 +261,7 @@ impl Command for Reaction {
                         .edit_original_interaction_response(&ctx, |r| {
                             r.create_embed(|e| {
                                 e.title("Reaction Could Not Be Added")
-                                    .description(format!("That trigger already exists!"))
+                                    .description("That trigger already exists!")
                                     .color(Color::new(0x8b0000))
                             })
                         })
