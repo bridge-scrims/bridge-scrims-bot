@@ -189,6 +189,7 @@ pub struct PlayerData {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum PlayerRank {
     Admin,
     Moderator,

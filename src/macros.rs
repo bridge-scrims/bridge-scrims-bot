@@ -1,12 +1,4 @@
 #[macro_export]
-macro_rules! dotenv {
-    ($var:expr) => {{
-        use ::dotenv::var;
-        var($var).expect(format!("{} not specified", $var).as_str())
-    }};
-}
-
-#[macro_export]
 macro_rules! id_impl {
     ($name:ty, $($what:ident),+) => {
         $(
