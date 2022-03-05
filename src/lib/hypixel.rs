@@ -162,7 +162,7 @@ impl PlayerDataRequest {
     pub async fn send(&self) -> Result<PlayerData> {
         let response = CLIENT
             .get(format!("{}/player", ENTRY_POINT))
-            .header("API-Key", self.0.to_string())
+            .header("API-Key", format!("{:#}", self.0))
             .query(&[("uuid", self.1 .0.to_string())])
             .send()
             .await?;
