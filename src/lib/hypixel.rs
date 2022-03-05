@@ -267,7 +267,7 @@ mod tests {
     }
     #[tokio::test]
     async fn fetch_notch_info() {
-        let player = Player::fetch_from_username(String::from("Briqled"))
+        let player = Player::fetch_from_username(String::from("Notch"))
             .await
             .unwrap();
         PlayerDataRequest(
