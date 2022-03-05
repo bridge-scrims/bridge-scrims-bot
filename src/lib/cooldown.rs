@@ -29,11 +29,12 @@ impl Cooldown {
     }
 }
 
+#[derive(Default, Clone)]
 pub struct Cooldowns(Arc<Mutex<Vec<Cooldown>>>);
 
 impl Cooldowns {
-    pub fn new() -> Cooldowns {
-        Cooldowns(Arc::new(Mutex::new(Vec::new())))
+    pub fn new() -> Self {
+        Self::default()
     }
     async fn remove_cooldown(inner: Arc<Mutex<Vec<Cooldown>>>, cooldown: Cooldown) {
         sleep(cooldown.duration).await;
@@ -54,7 +55,7 @@ impl Cooldowns {
         (*c).push(cooldown.clone());
         drop(c);
         // Make the cooldown automatically expire in the time
-        tokio::spawn(Cooldowns::remove_cooldown(self.0.clone(), cooldown.clone()));
+        tokio::spawn(Cooldowns::remove_cooldown(self.0.clone(), cooldown));
     }
     pub async fn add_global_cooldown(&self, duration: Duration) {
         self.add_cooldown(duration, None, CooldownType::Global)
