@@ -31,6 +31,7 @@ impl super::Command for Reload {
                 perm.create_permission(|perm| {
                     perm.kind(ApplicationCommandPermissionType::Role)
                         .id(CONFIG.staff.0)
+                        .permission(true)
                 })
             })
             .await?;
