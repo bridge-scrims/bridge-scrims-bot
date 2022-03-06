@@ -40,47 +40,49 @@ use serenity::model::id::GuildId;
 use serenity::model::user::User;
 
 use regex::Regex;
+use lazy_static::lazy_static;
 
 type Command = Box<dyn crate::commands::Command>;
 
+lazy_static! {
+    pub static ref COMMANDS: Vec<Command> = vec![
+        Council::new(),
+        Notes::new(),
+        Prefab::new(),
+        Timeout::new(),
+        Ban::new(),
+        Unban::new(),
+        ScrimBan::new(),
+        ScrimUnban::new(),
+        Roll::new(),
+        Teams::new(),
+        Purge::new(),
+        Reaction::new(),
+        DelReaction::new(),
+        ListReactions::new(),
+        Ping::new(),
+        Screenshare::new(),
+        Close::new(),
+        Freeze::new(),
+        Unfreeze::new(),
+        Ticket::new(),
+        ListBans::new(),
+        Screensharers::new(),
+        Reload::new(),
+    ];
+}
+
 pub struct Handler {
-    commands: HashMap<String, Command>,
+    commands: HashMap<String, &'static Command>,
     reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands: Vec<Command> = vec![
-            Council::new(),
-            Notes::new(),
-            Prefab::new(),
-            Timeout::new(),
-            Ban::new(),
-            Unban::new(),
-            ScrimBan::new(),
-            ScrimUnban::new(),
-            Roll::new(),
-            Teams::new(),
-            Purge::new(),
-            Reaction::new(),
-            DelReaction::new(),
-            ListReactions::new(),
-            Ping::new(),
-            Screenshare::new(),
-            Close::new(),
-            Freeze::new(),
-            Unfreeze::new(),
-            Ticket::new(),
-            ListBans::new(),
-            Screensharers::new(),
-            Reload::new(),
-        ];
-        let commands = commands
-            .into_iter()
-            .fold(HashMap::new(), |mut map, command| {
-                map.insert(command.name(), command);
-                map
-            });
+        let commands = COMMANDS.iter().fold(HashMap::new(), |mut map, command| {
+            map.insert(command.name(), command);
+            map
+        });
 
         Handler {
             commands,
@@ -354,7 +356,7 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
 
 async fn register_commands(
     ctx: &Context,
-    commands: &HashMap<String, Command>,
+    commands: &HashMap<String, &'static Command>,
 ) -> Result<(), String> {
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;

@@ -1,8 +1,12 @@
+use bridge_scrims::interact_opts::InteractOpts;
 use serenity::{
     async_trait,
     client::Context,
     model::interactions::{
-        application_command::{ApplicationCommandInteraction, ApplicationCommandPermissionType},
+        application_command::{
+            ApplicationCommandInteraction, ApplicationCommandOptionType,
+            ApplicationCommandPermissionType,
+        },
         InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
     },
 };
@@ -23,6 +27,18 @@ impl super::Command for Reload {
                 cmd.name(self.name())
                     .description("Reloads application commands.")
                     .default_permission(false)
+                    .create_option(|opt| {
+                        let opt = opt
+                            .name("command")
+                            .description("Which command to remove. Default: all")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(false);
+                        for command in crate::handler::COMMANDS.iter() {
+                            let name = command.name();
+                            opt.add_string_choice(&name, &name);
+                        }
+                        opt
+                    })
             })
             .await?;
 
@@ -50,12 +66,13 @@ impl super::Command for Reload {
             })
             .await?;
 
-        let commands = CONFIG
-            .guild
-            .get_application_commands(&ctx.http)
-            .await?;
+        let mut commands = CONFIG.guild.get_application_commands(&ctx.http).await?;
 
-        for c in commands {
+        if let Some(cmd) = command.get_str("command") {
+            commands = commands.into_iter().filter(|x| x.name == cmd).collect();
+        }
+
+        for c in &commands {
             tracing::info!("Deleting command {}", c.name);
             CONFIG
                 .guild
@@ -65,9 +82,12 @@ impl super::Command for Reload {
 
         command
             .create_followup_message(&ctx.http, |resp| {
-                resp.content(
-                    "Removed all commands. Please wait for the bot to add the commands back.",
-                )
+                resp.content(match commands.len() {
+                    0 => "Removed no commands.".to_string(),
+                    1 => format!("Removed command {}", commands[0].name),
+                    _ => "Removed all commands. Please wait for the bot to add the commands back."
+                        .to_string(),
+                })
                 .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
             })
             .await?;
