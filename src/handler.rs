@@ -8,15 +8,16 @@ use crate::commands::council::Council;
 use crate::commands::freeze::Freeze;
 use crate::commands::list_bans::ListBans;
 use crate::commands::notes::Notes;
+use crate::commands::ping::Ping;
 use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
 use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
+use crate::commands::reload::Reload;
 use crate::commands::roll::{Roll, Teams};
 use crate::commands::screenshare::Screenshare;
 use crate::commands::screensharers::Screensharers;
 use crate::commands::ticket::Ticket;
 use crate::commands::timeout::Timeout;
-use crate::commands::ping::Ping;
 use crate::commands::unban::{ScrimUnban, Unban};
 use crate::commands::Command as _;
 
@@ -72,6 +73,7 @@ impl Handler {
             Ticket::new(),
             ListBans::new(),
             Screensharers::new(),
+            Reload::new(),
         ];
         let commands = commands
             .into_iter()
@@ -89,14 +91,10 @@ impl Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _ctx: Context, data: Ready) {
+    async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
-        for (name, command) in &self.commands {
-            tracing::info!("Registering {}", name);
-            if let Err(err) = command.register(&_ctx).await {
-                tracing::error!("Could not register command {}: {}", name, err);
-            }
-        }
+        // Errors are already handled
+        let _ = register_commands(&ctx, &self.commands).await;
         tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -107,6 +105,22 @@ impl EventHandler for Handler {
                 }
                 if command.name().contains("reaction") {
                     update(self.reactions.clone()).await;
+                }
+                if command.name().contains("reload") {
+                    let res = register_commands(&ctx, &self.commands).await;
+                    let response = command_interaction
+                        .create_interaction_response(&ctx.http, |resp| {
+                            resp.interaction_response_data(|data| {
+                                data.content(match res {
+                                    Ok(_) => "Successfully reloaded!".to_string(),
+                                    Err(e) => format!("Reloading failed: {}", e),
+                                })
+                            })
+                        })
+                        .await;
+                    if let Err(e) = response {
+                        tracing::error!("Reloading failed: {}", e);
+                    }
                 }
             }
         }
@@ -210,9 +224,7 @@ impl EventHandler for Handler {
                             .field("First Captain", members[0].display_name(), true)
                             .field("Second Captain", members[1].display_name(), true)
                             .color(Color::new(0x1abc9c))
-                            .footer(|f| {
-                                f.text("Hint: use the /roll command to roll!")
-                            })
+                            .footer(|f| f.text("Hint: use the /roll command to roll!"))
                     })
                     .reference_message(&msg)
                     .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
@@ -254,7 +266,10 @@ impl EventHandler for Handler {
         let reactions = self.reactions.lock().await;
         if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
             if let Err(err) = msg
-                .react(&ctx, ReactionType::try_from(reaction.emoji.clone()).unwrap())
+                .react(
+                    &ctx,
+                    ReactionType::try_from(reaction.emoji.clone()).unwrap(),
+                )
                 .await
             {
                 if format!("{}", err)
@@ -336,4 +351,28 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
         x.insert(reaction.trigger.to_ascii_lowercase(), reaction);
     }
     *lock = x;
+}
+
+async fn register_commands(
+    ctx: &Context,
+    commands: &HashMap<String, Command>,
+) -> Result<(), String> {
+    let mut res = Ok(());
+    let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
+
+    for (name, command) in commands {
+        tracing::info!("Registering {}", name);
+        // ignore any commands that we have already registered.
+        if let Ok(ref cmds) = guild_commands {
+            if cmds.iter().any(|cmd| &cmd.name == name) {
+                continue;
+            }
+        }
+        let result = command.register(&ctx).await.map_err(|x| x.to_string());
+        if let Err(ref err) = result.as_ref() {
+            tracing::error!("Could not register command {}: {}", name, err);
+        }
+        res = res.and(result);
+    }
+    res
 }
