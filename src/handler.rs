@@ -31,7 +31,7 @@ use serenity::client::{Context, EventHandler};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
-use serenity::model::interactions::Interaction;
+use serenity::model::interactions::{Interaction, InteractionApplicationCommandCallbackDataFlags};
 
 use serenity::model::prelude::Member;
 use serenity::utils::Color;
@@ -109,13 +109,12 @@ impl EventHandler for Handler {
                 if command.name().contains("reload") {
                     let res = register_commands(&ctx, &self.commands).await;
                     let response = command_interaction
-                        .create_interaction_response(&ctx.http, |resp| {
-                            resp.interaction_response_data(|data| {
-                                data.content(match res {
-                                    Ok(_) => "Successfully reloaded!".to_string(),
-                                    Err(e) => format!("Reloading failed: {}", e),
-                                })
+                        .create_followup_message(&ctx.http, |resp| {
+                            resp.content(match res {
+                                Ok(_) => "Successfully reloaded!".to_string(),
+                                Err(e) => format!("Reloading failed: {}", e),
                             })
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                         })
                         .await;
                     if let Err(e) = response {
@@ -364,7 +363,7 @@ async fn register_commands(
         tracing::info!("Registering {}", name);
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
-            if cmds.iter().any(|cmd| &cmd.name == name) {
+            if cmds.iter().any(|cmd| &cmd.name == name) && name.as_str() != "reload" {
                 continue;
             }
         }

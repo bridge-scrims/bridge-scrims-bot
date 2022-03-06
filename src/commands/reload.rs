@@ -1,8 +1,9 @@
 use serenity::{
     async_trait,
     client::Context,
-    model::interactions::application_command::{
-        ApplicationCommandInteraction, ApplicationCommandPermissionType,
+    model::interactions::{
+        application_command::{ApplicationCommandInteraction, ApplicationCommandPermissionType},
+        InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
     },
 };
 
@@ -41,17 +42,35 @@ impl super::Command for Reload {
     async fn run(
         &self,
         ctx: &Context,
-        _command: &ApplicationCommandInteraction,
+        command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
+        command
+            .create_interaction_response(&ctx.http, |resp| {
+                resp.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+            })
+            .await?;
+
         let commands = CONFIG
             .guild
             .get_application_commands(&ctx.http)
-            .await?
-            .into_iter()
-            .map(|x| x.id);
-        for id in commands {
-            CONFIG.guild.delete_application_command(&ctx.http, id).await?;
+            .await?;
+
+        for c in commands {
+            tracing::info!("Deleting command {}", c.name);
+            CONFIG
+                .guild
+                .delete_application_command(&ctx.http, c.id)
+                .await?;
         }
+
+        command
+            .create_followup_message(&ctx.http, |resp| {
+                resp.content(
+                    "Removed all commands. Please wait for the bot to add the commands back.",
+                )
+                .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+            })
+            .await?;
         Ok(())
     }
     fn new() -> Box<Self> {
