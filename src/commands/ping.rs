@@ -130,7 +130,7 @@ impl Command for Ping {
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| {
                     d.content(format!("<@&{}> {}", role.0, text))
-                        .allowed_mentions(|m| m.roles([role]))
+                        .allowed_mentions(|m| m.empty_roles().roles(vec![role]))
                 })
             })
             .await?;
