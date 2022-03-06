@@ -32,3 +32,6 @@
 
 ## Suggetions:
   - [ ] Rewrite database to better data model, such as sqlx or Postgres
+
+## Misc
+  - [x] Reload command: dtomvan
