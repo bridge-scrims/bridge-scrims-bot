@@ -12,6 +12,7 @@ pub mod ping;
 pub mod prefabs;
 pub mod purge;
 pub mod reaction;
+pub mod reload;
 pub mod roll;
 pub mod screenshare;
 pub mod screensharers;

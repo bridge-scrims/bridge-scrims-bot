@@ -49,36 +49,11 @@ async fn main() -> Result<()> {
         .intents(intents)
         .await?;
     let shard_manager = client.shard_manager.clone();
-    let http = client.cache_and_http.http.clone();
     tokio::spawn(async move {
         tokio::signal::ctrl_c()
             .await
             .expect("Could not listen for ctrl+c");
         tracing::info!("Shutting down");
-        tracing::info!("Deleting Guild Commands...");
-        if let Ok(commands) = CONFIG.guild.get_application_commands(&http).await {
-            for command in commands {
-                if let Err(err) = CONFIG
-                    .guild
-                    .delete_application_command(&http, command.id)
-                    .await
-                {
-                    tracing::error!("Could not delete guild command '{}': {}", command.name, err);
-                }
-            }
-        }
-        tracing::info!("Deleting Global Commands...");
-        if let Ok(commands) = &http.get_global_application_commands().await {
-            for command in commands {
-                if let Err(err) = &http.delete_global_application_command(command.id.0).await {
-                    tracing::error!(
-                        "Could not delete global command '{}': {}",
-                        command.name,
-                        err
-                    );
-                }
-            }
-        }
         tracing::info!("Ending process...");
         shard_manager.lock().await.shutdown_all().await;
     });
