@@ -25,6 +25,9 @@ pub mod unfreeze;
 pub trait Command: Send + Sync {
     fn name(&self) -> String;
     async fn register(&self, ctx: &Context) -> crate::Result<()>;
+    fn is_command(&self, name: String) -> bool {
+        self.name() == name
+    }
     async fn run(
         &self,
         ctx: &Context,

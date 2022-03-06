@@ -39,8 +39,8 @@ use serenity::utils::Color;
 use serenity::model::id::GuildId;
 use serenity::model::user::User;
 
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 type Command = Box<dyn crate::commands::Command>;
 
@@ -73,19 +73,12 @@ lazy_static! {
 }
 
 pub struct Handler {
-    commands: HashMap<String, &'static Command>,
     reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
     pub fn new() -> Handler {
-        let commands = COMMANDS.iter().fold(HashMap::new(), |mut map, command| {
-            map.insert(command.name(), command);
-            map
-        });
-
         Handler {
-            commands,
             reactions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -96,12 +89,15 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
         // Errors are already handled
-        let _ = register_commands(&ctx, &self.commands).await;
+        let _ = register_commands(&ctx).await;
         tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {
-            if let Some(command) = self.commands.get(&command_interaction.data.name) {
+            if let Some(command) = COMMANDS
+                .iter()
+                .find(|x| x.is_command(command_interaction.data.name.clone()))
+            {
                 if let Err(err) = command.run(&ctx, &command_interaction).await {
                     tracing::error!("{} command failed: {}", command.name(), err);
                 }
@@ -109,7 +105,7 @@ impl EventHandler for Handler {
                     update(self.reactions.clone()).await;
                 }
                 if command.name().contains("reload") {
-                    let res = register_commands(&ctx, &self.commands).await;
+                    let res = register_commands(&ctx).await;
                     let response = command_interaction
                         .create_followup_message(&ctx.http, |resp| {
                             resp.content(match res {
@@ -163,12 +159,7 @@ impl EventHandler for Handler {
 
         let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
 
-        let channel = msg
-            .channel_id
-            .to_channel_cached(&ctx.cache)
-            .await
-            .unwrap()
-            .guild();
+        let channel = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild();
         if roll_commands.is_match(&msg.content)
             && channel.as_ref().is_some()
             && channel.as_ref().unwrap().category_id.is_some()
@@ -354,18 +345,18 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     *lock = x;
 }
 
-async fn register_commands(
-    ctx: &Context,
-    commands: &HashMap<String, &'static Command>,
-) -> Result<(), String> {
+async fn register_commands(ctx: &Context) -> Result<(), String> {
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
 
-    for (name, command) in commands {
+    for command in &*COMMANDS {
+        let name = command.name();
         tracing::info!("Registering {}", name);
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
-            if cmds.iter().any(|cmd| &cmd.name == name) && name.as_str() != "reload" {
+            if cmds.iter().any(|cmd| command.is_command(cmd.name.clone()))
+                && name.as_str() != "reload"
+            {
                 continue;
             }
         }

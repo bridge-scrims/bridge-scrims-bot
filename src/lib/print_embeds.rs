@@ -102,7 +102,7 @@ mod tests {
 
         let formatter = FormatEmbed(to_format);
         assert_eq!(
-            format!("{formatter}"),
+            format!("{}", formatter),
             String::from(
                 "Author: Bridge Scrims
 Author url: https://example.org
