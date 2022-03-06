@@ -109,10 +109,17 @@ impl Command for Ping {
             .await;
         let text = command.get_str("text").unwrap_or_else(|| "".to_string());
         command
+            .channel_id
+            .send_message(&ctx.http, |r| {
+                r.content(format!("<@!{}>: <@&{}> {}", command.user.id, role.0, text))
+                    .allowed_mentions(|m| m.roles(vec![role]))
+            })
+            .await?;
+        command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| {
-                    d.content(format!("<@&{}> {}", role.0, text))
-                        .allowed_mentions(|m| m.empty_roles().roles(vec![role]))
+                    d.content("Ping sent!")
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                 })
             })
             .await?;

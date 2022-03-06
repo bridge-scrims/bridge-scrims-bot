@@ -60,7 +60,6 @@ lazy_static! {
         Reaction::new(),
         DelReaction::new(),
         ListReactions::new(),
-        Ping::new(),
         Screenshare::new(),
         Close::new(),
         Freeze::new(),
@@ -69,6 +68,7 @@ lazy_static! {
         ListBans::new(),
         Screensharers::new(),
         Reload::new(),
+        Ping::new(),
     ];
 }
 
