@@ -12,7 +12,6 @@ path = "src/lib/mod.rs"
 base64 = "0.13.0"
 chrono = "0.4"
 dirs = "4.0.0"
-dotenv = "0.15.0"
 lazy_static = "1.4.0"
 rand = "0.8.4"
 regex = "1"
@@ -22,6 +21,7 @@ sqlite = "0.26.0"
 toml = "0.5.8"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
+tracing-appender = "0.2.1"
 
 [dependencies.reqwest]
 default-features = false

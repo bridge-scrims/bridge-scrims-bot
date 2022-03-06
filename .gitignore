@@ -4,3 +4,4 @@
 /.env
 /Config.toml
 /.cargo
+/logs.txt.*

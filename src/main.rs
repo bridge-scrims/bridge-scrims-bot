@@ -3,6 +3,9 @@ use crate::handler::Handler;
 use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::http::Http;
 use serenity::Client;
+use tracing_subscriber::{
+    filter::LevelFilter, fmt::Layer, layer::SubscriberExt, Layer as _, Registry,
+};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -16,7 +19,20 @@ mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt().init();
+    let file_appender = tracing_appender::rolling::daily(".", "logs.txt");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let filter = LevelFilter::INFO;
+    let subscriber = Registry::default()
+        .with(Layer::default().pretty().with_filter(filter.clone()))
+        .with(
+            Layer::default()
+                .with_ansi(false)
+                .with_writer(non_blocking)
+                .with_filter(filter),
+        );
+
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
     let application_id = Http::new_with_token(&CONFIG.bot_token)
         .get_current_application_info()
         .await?
