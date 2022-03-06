@@ -54,11 +54,14 @@ impl BanType {
             .get_str("reason")
             .unwrap_or_else(|| String::from("No reason given."));
 
-        let seconds = command.get_u64("duration");
-        let seconds = match (self, seconds) {
-            (_, Some(d)) => Some(d),
-            (BanType::Server, None) => None,
-            (BanType::Scrim, None) => Some(30 * 86400),
+        let duration = command.get_u64("duration");
+        let factor = command.get_u64("type");
+
+        let seconds = match (self, duration, factor) {
+            (_, Some(d), None) => Some(d * 86400),
+            (_, Some(d), Some(f)) => Some(d * f),
+            (BanType::Server, None, _) => None,
+            (BanType::Scrim, None, _) => Some(30 * 86400),
         };
         let unban_date = seconds.map(|seconds| {
             let now = OffsetDateTime::now_utc();
@@ -247,7 +250,13 @@ impl Command for Ban {
                     })
                     .create_option(|o| {
                         o.name("duration")
-                            .description("The ban duration")
+                            .description("The ban duration. Default: forever")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Integer)
+                    })
+                    .create_option(|o| {
+                        o.name("type")
+                            .description("The ban duration type. Default: Days")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
                             .add_int_choice("Seconds", 1)
@@ -346,7 +355,13 @@ impl Command for ScrimBan {
                     })
                     .create_option(|o| {
                         o.name("duration")
-                            .description("The ban duration")
+                            .description("The ban duration. Default: 30")
+                            .required(false)
+                            .kind(ApplicationCommandOptionType::Integer)
+                    })
+                    .create_option(|o| {
+                        o.name("type")
+                            .description("The ban duration type. Default: days")
                             .required(false)
                             .kind(ApplicationCommandOptionType::Integer)
                             .add_int_choice("Seconds", 1)
