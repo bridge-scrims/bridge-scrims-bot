@@ -10,7 +10,7 @@ macro_rules! id_impl {
 
             impl From<$name> for Vec<$what> {
                 fn from(v: $name) -> Self {
-                    v.0.into_iter().map(|x| $what(x)).collect()
+                    v.0.into_iter().map($what).collect()
                 }
             }
         )+

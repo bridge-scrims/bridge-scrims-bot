@@ -360,7 +360,7 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        let result = command.register(&ctx).await.map_err(|x| x.to_string());
+        let result = command.register(ctx).await.map_err(|x| x.to_string());
         if let Err(ref err) = result.as_ref() {
             tracing::error!("Could not register command {}: {}", name, err);
         }

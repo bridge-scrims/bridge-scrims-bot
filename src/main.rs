@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
     let filter = LevelFilter::INFO;
     let subscriber = Registry::default()
-        .with(Layer::default().pretty().with_filter(filter.clone()))
+        .with(Layer::default().pretty().with_filter(filter))
         .with(
             Layer::default()
                 .with_ansi(false)
