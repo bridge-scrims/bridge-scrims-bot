@@ -81,6 +81,7 @@ impl BanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("You do not have permission to ban {}", user.tag()))
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;

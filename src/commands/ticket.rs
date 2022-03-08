@@ -5,11 +5,14 @@ use serenity::{
     model::{
         channel::{PermissionOverwrite, PermissionOverwriteType},
         id::UserId,
-        interactions::application_command::{
+        interactions::{application_command::{
             ApplicationCommandInteraction, ApplicationCommandOptionType,
-        },
+            ApplicationCommandPermissionType,
+        }, InteractionApplicationCommandCallbackDataFlags},
     },
 };
+
+use crate::consts::{CONFIG, self};
 
 use super::Command;
 
@@ -21,7 +24,7 @@ impl Command for Ticket {
         String::from("ticket")
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        crate::CONFIG
+        let command = crate::CONFIG
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
@@ -40,9 +43,24 @@ impl Command for Ticket {
                             .kind(ApplicationCommandOptionType::User)
                             .required(true)
                     })
+                    .default_permission(false)
             })
             .await?;
-        // TODO: Permissions
+
+        crate::CONFIG
+            .guild
+            .create_application_command_permission(&ctx.http, command.id, |perm| {
+                for role in &[CONFIG.ss_support, CONFIG.staff] {
+                    perm.create_permission(|perm| {
+                        perm.kind(ApplicationCommandPermissionType::Role)
+                            .permission(true)
+                            .id(role.0)
+                    });
+                }
+                perm
+            })
+            .await?;
+
         Ok(())
     }
     async fn run(
@@ -58,6 +76,18 @@ impl Command for Ticket {
             .await?
             .guild()
             .unwrap();
+
+        if consts::DATABASE.fetch_screenshares_for(channel.id.0).is_none() {
+            command.create_interaction_response(&ctx.http, |resp| {
+                resp.interaction_response_data(|data| {
+                    data.content("That channel is not a ticket!")
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                })
+            }).await?;
+
+            return Ok(());
+        }
+
         match operation.as_str() {
             "a" => {
                 channel

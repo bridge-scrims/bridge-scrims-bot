@@ -1,6 +1,8 @@
+use futures::future::join_all;
 use serenity::{
-    async_trait, client::Context,
-    model::interactions::application_command::ApplicationCommandInteraction,
+    async_trait,
+    client::Context,
+    model::{id::UserId, interactions::application_command::ApplicationCommandInteraction},
 };
 
 use crate::consts::{self, CONFIG};
@@ -32,19 +34,29 @@ impl Command for Screensharers {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        let screensharers = consts::DATABASE.get_screensharers().into_iter().map(|x| {
-            (
-                format!("<@!{}>", x.id),
-                format!("{} freezes", x.freezes),
-                false,
-            )
-        });
+        let screensharers = join_all(consts::DATABASE.get_screensharers().into_iter().map(
+            |x| async move {
+                let user = UserId(x.id).to_user(&ctx.http).await;
+                if let Ok(user) = user {
+                    Some((
+                        format!("{}", user.tag()),
+                        format!("{} freezes", x.freezes),
+                        false,
+                    ))
+                } else {
+                    None
+                }
+            },
+        ))
+        .await
+        .into_iter()
+        .filter_map(|x| x);
 
         command.create_interaction_response(&ctx.http, |resp| {
             resp.interaction_response_data(|data| {
                 data.create_embed(|embed| {
                     embed.title("Unfreeze leaderboard")
-                        .description("List of every screenshare member that has unfrozen someone before and how many time they did it.")
+                        .description("List of every screenshare member that has unfrozen someone before and how many times they did it.")
                         .fields(screensharers)
                 })
             })

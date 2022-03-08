@@ -9,6 +9,7 @@ use serenity::{
                 ApplicationCommandPermissionType,
             },
             message_component::MessageComponentInteraction,
+            InteractionApplicationCommandCallbackDataFlags,
         },
     },
 };
@@ -115,6 +116,7 @@ impl Button for Freeze {
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
                     data.content(format!("Sucessfully frozen {}", tag))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                 })
             })
             .await?;
@@ -208,7 +210,7 @@ instance of your pc, and revise your processes for cheats.",
         .await?;
     channel
         .send_message(&ctx.http, |msg| {
-            msg.content(format!("{}: {} is now frozen by {}", emoji, user, staff))
+            msg.content(format!("{}: {} is now frozen by <@{}>", emoji, user, staff))
         })
         .await?;
     Ok(())
