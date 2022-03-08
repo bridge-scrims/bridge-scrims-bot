@@ -446,7 +446,7 @@ impl Database {
             self.get_lock(|db| {
                 db.execute(format!(
                     "INSERT INTO 'ScreensharerStats' (id,freezes) VALUES ({}, {})",
-                    sc.freezes, sc.id
+                    sc.id, sc.freezes
                 ))
             })
         }

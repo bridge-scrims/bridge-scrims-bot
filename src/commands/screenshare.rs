@@ -168,7 +168,8 @@ impl Command for Screenshare {
             let player = Player::fetch_from_username(name.clone()).await?;
             let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
                 .send()
-                .await?;
+                .await
+                .unwrap_or_default();
 
             let db_result = crate::consts::DATABASE.add_screenshare(
                 channel.id.0,
@@ -207,12 +208,12 @@ not to log aswell as any other info.
                     .field("Ign", name, false)
                     .field(
                         "Last login time",
-                        format!("<t:{}>", playerstats.last_login.unwrap_or_default()),
+                        format!("<t:{}:R>", playerstats.last_login.unwrap_or_default()),
                         false,
                     )
                     .field(
                         "Last logout time",
-                        format!("<t:{}>", playerstats.last_logout.unwrap_or_default()),
+                        format!("<t:{}:R>", playerstats.last_logout.unwrap_or_default()),
                         false,
                     )
             });
