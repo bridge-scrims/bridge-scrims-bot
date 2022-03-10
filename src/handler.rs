@@ -73,12 +73,14 @@ lazy_static! {
 }
 
 pub struct Handler {
+    init: Mutex<bool>,
     reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
     pub fn new() -> Handler {
         Handler {
+            init: Mutex::new(false),
             reactions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -88,9 +90,16 @@ impl Handler {
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
+        let mut init = self.init.lock().await;
+        if !*init {
+            *init = true;
+            for command in &*COMMANDS {
+                command.init(&ctx).await
+            }
+            tokio::spawn(update_reactions(self.reactions.clone()));
+        }
         // Errors are already handled
         let _ = register_commands(&ctx).await;
-        tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {

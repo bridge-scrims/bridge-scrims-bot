@@ -34,7 +34,9 @@ impl Command for Council {
     fn name(&self) -> String {
         "council".to_string()
     }
-
+    async fn init(&self, ctx: &Context) {
+        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
+    }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -52,7 +54,6 @@ impl Command for Council {
                     })
             })
             .await?;
-        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
         Ok(())
     }
 
