@@ -39,7 +39,7 @@ impl Command for Screensharers {
                 let user = UserId(x.id).to_user(&ctx.http).await;
                 if let Ok(user) = user {
                     Some((
-                        format!("{}", user.tag()),
+                        user.tag(),
                         format!("{} freezes", x.freezes),
                         false,
                     ))
@@ -50,7 +50,7 @@ impl Command for Screensharers {
         ))
         .await
         .into_iter()
-        .filter_map(|x| x);
+        .flatten();
 
         command.create_interaction_response(&ctx.http, |resp| {
             resp.interaction_response_data(|data| {
