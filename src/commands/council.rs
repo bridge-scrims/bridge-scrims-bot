@@ -34,7 +34,9 @@ impl Command for Council {
     fn name(&self) -> String {
         "council".to_string()
     }
-
+    async fn init(&self, ctx: &Context) {
+        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
+    }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -43,7 +45,7 @@ impl Command for Council {
                     .description("Lists the council members for a given council")
                     .create_option(|o| {
                         o.name("council")
-                            .description("Available councils")
+                            .description("The council who's members to display")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String)
                             .add_string_choice("Prime", "Prime")
@@ -52,7 +54,6 @@ impl Command for Council {
                     })
             })
             .await?;
-        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
         Ok(())
     }
 

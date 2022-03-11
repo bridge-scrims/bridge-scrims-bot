@@ -229,7 +229,9 @@ impl Command for Ban {
     fn name(&self) -> String {
         String::from("ban")
     }
-
+    async fn init(&self, ctx: &Context) {
+        tokio::spawn(update_loop(ctx.http.clone()));
+    }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         let command = CONFIG.guild
             .create_application_command(&ctx, |c| {
@@ -288,7 +290,6 @@ impl Command for Ban {
                 })
             })
             .await?;
-        tokio::spawn(update_loop(ctx.http.clone()));
         Ok(())
     }
 
@@ -334,7 +335,9 @@ impl Command for ScrimBan {
     fn name(&self) -> String {
         String::from("scrimban")
     }
-
+    async fn init(&self, ctx: &Context) {
+        tokio::spawn(scrim_update_loop(ctx.http.clone()));
+    }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         let command = CONFIG
             .guild
@@ -392,7 +395,6 @@ impl Command for ScrimBan {
                 })
             })
             .await?;
-        tokio::spawn(scrim_update_loop(ctx.http.clone()));
         Ok(())
     }
 

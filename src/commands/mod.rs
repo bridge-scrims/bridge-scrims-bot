@@ -24,7 +24,10 @@ pub mod unfreeze;
 #[async_trait]
 pub trait Command: Send + Sync {
     fn name(&self) -> String;
-    async fn register(&self, ctx: &Context) -> crate::Result<()>;
+    async fn init(&self, _ctx: &Context) {
+        // init will only be executed once.
+    }
+    async fn register(&self, ctx: &Context) -> crate::Result<()>; // will be exectued on reloads
     fn is_command(&self, name: String) -> bool {
         self.name() == name
     }

@@ -57,17 +57,18 @@ impl Command for Ping {
             CONFIG
                 .guild
                 .create_application_command_permission(&ctx.http, cmd.id, |perms| {
-                    perms
-                        .create_permission(|p| {
+                    for r in &option.required_roles {
+                        perms.create_permission(|p| {
                             p.kind(ApplicationCommandPermissionType::Role)
-                                .id(option.required_role.0)
+                                .id(r.0)
                                 .permission(true)
-                        })
-                        .create_permission(|p| {
-                            p.kind(ApplicationCommandPermissionType::Role)
-                                .id(CONFIG.staff.0)
-                                .permission(true)
-                        })
+                        });
+                    }
+                    perms.create_permission(|p| {
+                        p.kind(ApplicationCommandPermissionType::Role)
+                            .id(CONFIG.staff.0)
+                            .permission(true)
+                    })
                 })
                 .await?;
         }
@@ -82,6 +83,37 @@ impl Command for Ping {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let role = RoleId(command.get_str("role").unwrap().parse().unwrap());
+        if let Some(opt) = CONFIG
+            .pings
+            .iter()
+            .find(|opt| opt.name == command.data.name)
+        {
+            if let Some(channels) = &opt.allowed_channels {
+                let cat = command
+                    .channel_id
+                    .to_channel(&ctx)
+                    .await?
+                    .guild()
+                    .unwrap()
+                    .category_id;
+                if !channels
+                    .iter()
+                    .any(|c| c == &command.channel_id || Some(*c) == cat)
+                {
+                    command
+                        .create_interaction_response(&ctx.http, |r| {
+                            r.interaction_response_data(|d| {
+                                d.content("This command is disabled in this channel.")
+                                    .flags(
+                                        InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
+                                    )
+                            })
+                        })
+                        .await?;
+                    return Ok(());
+                }
+            }
+        }
         let cid = format!("{}", role.0);
         let cooldown = self
             .cooldowns
