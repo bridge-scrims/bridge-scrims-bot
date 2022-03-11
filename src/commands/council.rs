@@ -45,7 +45,7 @@ impl Command for Council {
                     .description("Lists the council members for a given council")
                     .create_option(|o| {
                         o.name("council")
-                            .description("Available councils")
+                            .description("The council who's members to display")
                             .required(true)
                             .kind(ApplicationCommandOptionType::String)
                             .add_string_choice("Prime", "Prime")

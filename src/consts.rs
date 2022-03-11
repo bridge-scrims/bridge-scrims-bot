@@ -30,8 +30,9 @@ impl MemberCount {
 #[derive(Deserialize)]
 pub struct Ping {
     pub name: String,
-    pub required_role: RoleId,
+    pub required_roles: Vec<RoleId>,
     pub options: HashMap<String, RoleId>,
+    pub allowed_channels: Option<Vec<ChannelId>>,
 }
 
 #[derive(Deserialize)]
