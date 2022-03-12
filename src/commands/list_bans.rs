@@ -67,7 +67,12 @@ impl Command for ListBans {
                 let bans = crate::consts::DATABASE.fetch_unbans();
                 let mut result = String::new();
                 for ban in bans {
-                    writeln!(result, "- <@!{}>: banned until <t:{}>", ban.id, ban.date)?;
+                    writeln!(
+                        result,
+                        "- <@!{}>: banned until <t:{}:R>",
+                        ban.id,
+                        ban.date.unix_timestamp()
+                    )?;
                 }
                 result
             }
@@ -75,7 +80,12 @@ impl Command for ListBans {
                 let bans = crate::consts::DATABASE.fetch_scrim_unbans();
                 let mut result = String::new();
                 for ban in bans {
-                    writeln!(result, "- <@!{}>: banned until <t:{}>", ban.id, ban.date)?;
+                    writeln!(
+                        result,
+                        "- <@!{}>: banned until <t:{}:R>",
+                        ban.id,
+                        ban.date.unix_timestamp()
+                    )?;
                 }
                 result
             }
