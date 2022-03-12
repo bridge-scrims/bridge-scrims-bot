@@ -47,21 +47,22 @@ tourney = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjoiUGxlYXNlIGxpc3QgdGhlIGZvb
 unverified = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpdGxlIjoiSG93IHRvIHZlcmlmeSIsImRlc2NyaXB0aW9uIjoiSGV5LCBpdCBzZWVtcyB5b3UncmUgbm90IHlldCB2ZXJpZmllZCEgVG8gdmVyaWZ5IHlvdXIgYWNjb3VudCwgaGVhZCBvdmVyIHRvIDwjODI0MzQyMjI0Mjg3OTU2OTkzPiBhbmQgcHJlc3MgdGhlIGJ1dHRvbiEgTWFrZSBzdXJlIHlvdSByZWFkIGFuZCBhZ3JlZSB0byA8Izc1OTkwMDExNzg0NjQ1ODM4OD4hIiwiY29sb3IiOjU4MTQ3ODN9XX19XX0"
 
 [[pings]]
+allowed_channels = [123] # can be category or channel ids
 name = "prime"
-required_role = 946614789973622805
+required_roles = [946614789973622805]
 [pings.options]
 "1v1" = 948172523021926410
 "2v2" = 948172550628839444
 
 [[pings]]
 name = "private"
-required_role = 946614975533842493
+required_roles = [946614975533842493]
 [pings.options]
 "1v1" = 948172570262396978
 "2v2" = 948172610762588210
 
 [[pings]]
 name = "pack_maker"
-required_role = 948178243016593469
+required_roles = [948178243016593469]
 [pings.options]
 "overlay" = 948172655083794443
