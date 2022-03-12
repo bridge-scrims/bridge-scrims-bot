@@ -318,12 +318,13 @@ impl EventHandler for Handler {
 
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
         let mut x = false;
-        let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
+        
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
         }
+        let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
         if !x && !custom_reactions
             .is_empty()
         {
