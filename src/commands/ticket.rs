@@ -5,14 +5,17 @@ use serenity::{
     model::{
         channel::{PermissionOverwrite, PermissionOverwriteType},
         id::UserId,
-        interactions::{application_command::{
-            ApplicationCommandInteraction, ApplicationCommandOptionType,
-            ApplicationCommandPermissionType,
-        }, InteractionApplicationCommandCallbackDataFlags},
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandOptionType,
+                ApplicationCommandPermissionType,
+            },
+            InteractionApplicationCommandCallbackDataFlags,
+        },
     },
 };
 
-use crate::consts::{CONFIG, self};
+use crate::consts::{self, CONFIG};
 
 use super::Command;
 
@@ -77,13 +80,18 @@ impl Command for Ticket {
             .guild()
             .unwrap();
 
-        if consts::DATABASE.fetch_screenshares_for(channel.id.0).is_none() {
-            command.create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| {
-                    data.content("That channel is not a ticket!")
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+        if consts::DATABASE
+            .fetch_screenshares_for(channel.id.0)
+            .is_none()
+        {
+            command
+                .create_interaction_response(&ctx.http, |resp| {
+                    resp.interaction_response_data(|data| {
+                        data.content("That channel is not a ticket!")
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                    })
                 })
-            }).await?;
+                .await?;
 
             return Ok(());
         }

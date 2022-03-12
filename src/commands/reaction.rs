@@ -36,7 +36,7 @@ impl Display for ReactionError {
                 ErrorKind::InvalidEmoji => "invalid emoji",
                 ErrorKind::AlreadyExists => "reaction already exists",
                 ErrorKind::Database => "database error",
-                ErrorKind::InvalidTrigger => "invalid trigger"
+                ErrorKind::InvalidTrigger => "invalid trigger",
             }
         )?;
         if let Some(ref e) = self.db_error {
@@ -237,13 +237,19 @@ impl Command for Reaction {
                 let emoji = cmd.get_str("emoji").unwrap();
                 let trigger = cmd.get_str("trigger").unwrap();
 
-                if trigger.to_ascii_lowercase().contains("ratio") || trigger.to_ascii_lowercase().contains("shmill") || trigger.starts_with('/') || trigger.starts_with('<')
+                if trigger.to_ascii_lowercase().contains("ratio")
+                    || trigger.to_ascii_lowercase().contains("shmill")
+                    || trigger.starts_with('/')
+                    || trigger.starts_with('<')
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
                             r.create_embed(|e| {
                                 e.title("Reaction Could Not Be Added")
-                                    .description(format!("You are not allowed to use `{}` as a trigger", &trigger))
+                                    .description(format!(
+                                        "You are not allowed to use `{}` as a trigger",
+                                        &trigger
+                                    ))
                                     .color(Color::new(0x8b0000))
                             })
                         })
@@ -254,7 +260,8 @@ impl Command for Reaction {
                     }));
                 }
 
-                let reactions_with_trigger = crate::consts::DATABASE.fetch_custom_reactions_with_trigger(&trigger);
+                let reactions_with_trigger =
+                    crate::consts::DATABASE.fetch_custom_reactions_with_trigger(&trigger);
 
                 if !reactions_with_trigger.is_empty() {
                     command
@@ -417,7 +424,7 @@ impl Command for ListReactions {
                 r.interaction_response_data(|d| {
                     d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                 })
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let reactions = crate::consts::DATABASE.fetch_custom_reactions();
@@ -439,9 +446,13 @@ impl Command for ListReactions {
                 command
                     .edit_original_interaction_response(&ctx, |r| {
                         r.create_embed(|e| {
-                            e.title(format!("Page {} of {}", i + 1, ((reactions.len() - 1) / 10) + 1))
-                                .description("These are all custom reactions currently:")
-                                .color(Color::BLURPLE);
+                            e.title(format!(
+                                "Page {} of {}",
+                                i + 1,
+                                ((reactions.len() - 1) / 10) + 1
+                            ))
+                            .description("These are all custom reactions currently:")
+                            .color(Color::BLURPLE);
                             for reaction in chunk {
                                 e.field(
                                     format!("Reaction `{}`:", reaction.trigger),

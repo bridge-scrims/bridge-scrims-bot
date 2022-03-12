@@ -75,18 +75,22 @@ impl Cooldowns {
     }
 
     async fn has_cooldown(&self, key: Option<String>, user: UserId) -> Option<Duration> {
-        self.0.lock().await.iter().find(|cooldown| {
-            if key != cooldown.key && cooldown.key.is_some() {
-                return false;
-            };
-            match cooldown.cooldown_info {
-                CooldownType::Global => true,
-                CooldownType::User(uid) => uid == user,
-            }
-        })
-        .map(|cooldown| {
-            cooldown.duration - (cooldown.expire - cooldown.duration).elapsed().unwrap()
-        })
+        self.0
+            .lock()
+            .await
+            .iter()
+            .find(|cooldown| {
+                if key != cooldown.key && cooldown.key.is_some() {
+                    return false;
+                };
+                match cooldown.cooldown_info {
+                    CooldownType::Global => true,
+                    CooldownType::User(uid) => uid == user,
+                }
+            })
+            .map(|cooldown| {
+                cooldown.duration - (cooldown.expire - cooldown.duration).elapsed().unwrap()
+            })
     }
 
     pub async fn check_cooldown(&self, user: UserId) -> Option<Duration> {
