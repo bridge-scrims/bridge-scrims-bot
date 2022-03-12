@@ -14,6 +14,7 @@ use serenity::model::interactions::application_command::{
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use serenity::utils::Color;
+use serenity::builder::CreateEmbed;
 
 use crate::consts::CONFIG;
 
@@ -139,6 +140,15 @@ impl Command for DelReaction {
                 })
             })
             .await?;
+            let mut embed = CreateEmbed::default();
+            embed.title(format!("{}'s reaction has been removed", user.tag()));
+            embed.description(format!("Removed using the /delete_reaction command by {}", command.user.tag()));
+            if let Err(err) = CONFIG
+                .reaction_logs
+                .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+                .await {
+                    tracing::error!("Error when sending message: {}", err);
+                }
 
         Ok(())
     }
@@ -354,6 +364,16 @@ impl Command for Reaction {
                         })
                     })
                     .await?;
+
+                    let mut embed = CreateEmbed::default();
+                    embed.title(format!("New reaction added by {}.", command.user.tag()));
+                    embed.description(format!("`{}` reacts with `{}`", &trigger, &emoji));
+                    if let Err(err) = CONFIG
+                        .reaction_logs
+                        .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+                        .await {
+                            tracing::error!("Error when sending message: {}", err);
+                        }
             }
             "remove" => {
                 if let Err(db_error) =
@@ -382,6 +402,15 @@ impl Command for Reaction {
                         })
                     })
                     .await?;
+                    let mut embed = CreateEmbed::default();
+                    embed.title(format!("{}'s reaction has been removed", command.user.tag()));
+                    embed.description("Used the /reaction remove command.");
+                    if let Err(err) = CONFIG
+                        .reaction_logs
+                        .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+                        .await {
+                            tracing::error!("Error when sending message: {}", err);
+                        }
             }
             _ => {}
         }
