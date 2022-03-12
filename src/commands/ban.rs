@@ -128,7 +128,6 @@ impl BanType {
                 let do_dmd = command.get_bool("dmd").unwrap_or(false);
                 let dmd = if do_dmd { 7 } else { 0 };
                 if let Some(unban_date) = unban_date {
-                    db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
                     if crate::consts::DATABASE
                         .fetch_unbans()
                         .iter()
@@ -140,6 +139,8 @@ impl BanType {
                             *id.as_u64(),
                             unban_date,
                         );
+                    } else {
+                        db_result = crate::consts::DATABASE.add_unban(*id.as_u64(), unban_date);
                     }
                 }
                 result = CONFIG
@@ -155,23 +156,6 @@ impl BanType {
                 }
             }
             Self::Scrim => {
-                let mut removed_roles = Vec::new();
-                for role in roles.iter().filter(|x| !x.managed) {
-                    if let Err(e) = member.remove_role(&http, role).await {
-                        result = result.and(Err(e));
-                    } else {
-                        removed_roles.push(role.id);
-                    }
-                }
-                result = result.and(member.add_role(&http, CONFIG.banned.0).await);
-
-                db_result = crate::consts::DATABASE.add_scrim_unban(
-                    *id.as_u64(),
-                    // NOTE: In the case of a `ScrimBan`, this is always `Some`
-                    unban_date.unwrap(),
-                    &removed_roles.into(),
-                );
-
                 if crate::consts::DATABASE
                     .fetch_scrim_unbans()
                     .iter()
@@ -182,6 +166,23 @@ impl BanType {
                         "ScheduledScrimUnbans",
                         *id.as_u64(),
                         unban_date.unwrap(),
+                    );
+                } else {
+                    let mut removed_roles = Vec::new();
+                    for role in roles.iter().filter(|x| !x.managed) {
+                        if let Err(e) = member.remove_role(&http, role).await {
+                            result = result.and(Err(e));
+                        } else {
+                            removed_roles.push(role.id);
+                        }
+                    }
+                    result = result.and(member.add_role(&http, CONFIG.banned.0).await);
+
+                    db_result = crate::consts::DATABASE.add_scrim_unban(
+                        *id.as_u64(),
+                        // NOTE: In the case of a `ScrimBan`, this is always `Some`
+                        unban_date.unwrap(),
+                        &removed_roles.into(),
                     );
                 }
 
