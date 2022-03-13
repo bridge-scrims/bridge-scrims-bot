@@ -27,6 +27,7 @@ use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
+use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
@@ -73,12 +74,14 @@ lazy_static! {
 }
 
 pub struct Handler {
+    init: Mutex<bool>,
     reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
     pub fn new() -> Handler {
         Handler {
+            init: Mutex::new(false),
             reactions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -88,9 +91,16 @@ impl Handler {
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
+        let mut init = self.init.lock().await;
+        if !*init {
+            *init = true;
+            for command in &*COMMANDS {
+                command.init(&ctx).await
+            }
+            tokio::spawn(update_reactions(self.reactions.clone()));
+        }
         // Errors are already handled
         let _ = register_commands(&ctx).await;
-        tokio::spawn(update_reactions(self.reactions.clone()));
     }
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command_interaction) = interaction {
@@ -308,19 +318,28 @@ impl EventHandler for Handler {
 
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
         let mut x = false;
+
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
         }
-        if x && !database
-            .fetch_custom_reactions_for(user.user.id.0)
-            .is_empty()
-        {
+        let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
+        if !x && !custom_reactions.is_empty() {
             // if the user's server boost runs out
+            let mut embed = CreateEmbed::default();
+            embed.title(format!("{}'s reaction has been removed", user.user.tag()));
+            embed.description("No longer has booster or staff role.");
 
             if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
                 tracing::error!("Error when updating database: {}", err);
+            }
+            if let Err(err) = CONFIG
+                .reaction_logs
+                .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+                .await
+            {
+                tracing::error!("Error when sending message: {}", err);
             }
             // be sure to update the other thing
             update(self.reactions.clone()).await;
@@ -360,7 +379,7 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        let result = command.register(&ctx).await.map_err(|x| x.to_string());
+        let result = command.register(ctx).await.map_err(|x| x.to_string());
         if let Err(ref err) = result.as_ref() {
             tracing::error!("Could not register command {}: {}", name, err);
         }

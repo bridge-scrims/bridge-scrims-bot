@@ -8,6 +8,7 @@ use serenity::{
         interactions::{
             application_command::ApplicationCommandInteraction,
             message_component::MessageComponentInteraction,
+            InteractionApplicationCommandCallbackDataFlags,
         },
     },
 };
@@ -46,6 +47,7 @@ impl Command for Close {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("This is not a screenshare ticket!")
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;

@@ -62,6 +62,7 @@ impl UnbanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Could not find {} in our bans", user))
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;

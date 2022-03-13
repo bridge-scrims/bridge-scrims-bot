@@ -18,17 +18,18 @@ support = 834247683484024893
 trial_support = 917185016012890202
 
 banned = 818149603475456030
-support_bans = 883846880835039312
-screenshare_requests = 1234567890
+freeze_emoji = 1234567890
 frozen = 1234567890
 frozen_chat = 1234567890
 hello_cheaters = 1234567890
+screenshare_requests = 1234567890
 ss_logs = 1234567890
-freeze_emoji = 1234567890
+support_bans = 883846880835039312
 unfreeze_emoji = 1234567890
 
 clips = 759992463032188988
 polls = 858486862212235274
+reaction_logs = 1234567890
 
 # Queue channels for rolling
 queue_categories = [913134187131838466, 1234, 1235]
@@ -46,23 +47,23 @@ overlays = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRp
 tourney = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjoiUGxlYXNlIGxpc3QgdGhlIGZvbGxvd2luZyBpbmZvcm1hdGlvbiBiZWxvdyBmb3IgdXMgdG8gYWR2ZXJ0aXNlIHlvdXIgdG91cm5hbWVudC4gXG5cbi0gQmFzaWMgYWR2ZXJ0aXNlbWVudCBvZiB0aGUgdG91cm5hbWVudC4gXG4tIExpbmsgdG8gdGhlIHRvdXJuYW1lbnRcbi0gSGF2ZSBhIHByaXplIChtb25ldGFyeSBvciBub3QpIGFuZCBoYXZlIHByb29mIG9mIHRoZSBwcml6ZSIsImVtYmVkcyI6bnVsbH19XX0"
 unverified = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpdGxlIjoiSG93IHRvIHZlcmlmeSIsImRlc2NyaXB0aW9uIjoiSGV5LCBpdCBzZWVtcyB5b3UncmUgbm90IHlldCB2ZXJpZmllZCEgVG8gdmVyaWZ5IHlvdXIgYWNjb3VudCwgaGVhZCBvdmVyIHRvIDwjODI0MzQyMjI0Mjg3OTU2OTkzPiBhbmQgcHJlc3MgdGhlIGJ1dHRvbiEgTWFrZSBzdXJlIHlvdSByZWFkIGFuZCBhZ3JlZSB0byA8Izc1OTkwMDExNzg0NjQ1ODM4OD4hIiwiY29sb3IiOjU4MTQ3ODN9XX19XX0"
 
-
 [[pings]]
+allowed_channels = [123] # can be category or channel ids
 name = "prime"
-required_role = 946614789973622805
+required_roles = [946614789973622805]
 [pings.options]
 "1v1" = 948172523021926410
 "2v2" = 948172550628839444
 
 [[pings]]
 name = "private"
-required_role = 946614975533842493
+required_roles = [946614975533842493]
 [pings.options]
 "1v1" = 948172570262396978
 "2v2" = 948172610762588210
 
 [[pings]]
 name = "pack_maker"
-required_role = 948178243016593469
+required_roles = [948178243016593469]
 [pings.options]
 "overlay" = 948172655083794443

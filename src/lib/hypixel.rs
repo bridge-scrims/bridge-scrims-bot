@@ -176,7 +176,7 @@ impl PlayerDataRequest {
 }
 
 /// Player data from Hypixel [`PlayerDataRequest`]
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerData {
     /// Player's UUID
@@ -193,11 +193,24 @@ pub struct PlayerData {
     pub monthly_package_rank: Option<MonthlyPackageRank>,
     // TODO: use an actual date
     /// First time on the server for the player
-    pub first_login: Option<u64>,
+    pub first_login: Option<LogTime>,
     /// Last login time on the server for the player
-    pub last_login: Option<u64>,
+    pub last_login: Option<LogTime>,
     /// Last logout time on the server for the player
-    pub last_logout: Option<u64>,
+    pub last_logout: Option<LogTime>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+pub struct LogTime(u64);
+
+impl Display for LogTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 == 0 {
+            write!(f, "API ERROR")
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
 }
 
 #[derive(Deserialize)]

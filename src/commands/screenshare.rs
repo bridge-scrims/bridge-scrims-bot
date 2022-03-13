@@ -12,6 +12,7 @@ use serenity::{
                 ApplicationCommandInteraction as ACI, ApplicationCommandOptionType,
             },
             message_component::ButtonStyle,
+            InteractionApplicationCommandCallbackDataFlags,
         },
         Permissions,
     },
@@ -105,6 +106,7 @@ impl Command for Screenshare {
                             "You already have an active screenshare in <#${}>",
                             screenshare.id
                         ))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -168,7 +170,8 @@ impl Command for Screenshare {
             let player = Player::fetch_from_username(name.clone()).await?;
             let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
                 .send()
-                .await?;
+                .await
+                .unwrap_or_default();
 
             let db_result = crate::consts::DATABASE.add_screenshare(
                 channel.id.0,
@@ -207,12 +210,12 @@ not to log aswell as any other info.
                     .field("Ign", name, false)
                     .field(
                         "Last login time",
-                        format!("<t:{}>", playerstats.last_login.unwrap_or_default()),
+                        format!("<t:{}:R>", playerstats.last_login.unwrap_or_default()),
                         false,
                     )
                     .field(
                         "Last logout time",
-                        format!("<t:{}>", playerstats.last_logout.unwrap_or_default()),
+                        format!("<t:{}:R>", playerstats.last_logout.unwrap_or_default()),
                         false,
                     )
             });
@@ -243,6 +246,7 @@ not to log aswell as any other info.
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Ticket created in {}", channel))
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -287,6 +291,7 @@ not to log aswell as any other info.
                             "Could not create your ticket: {}",
                             result.as_ref().unwrap_err()
                         ))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;

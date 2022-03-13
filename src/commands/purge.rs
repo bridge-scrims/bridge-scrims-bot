@@ -7,8 +7,7 @@ use serenity::futures::StreamExt;
 use serenity::model::channel::Message;
 
 use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandInteractionDataOption,
-    ApplicationCommandOptionType, ApplicationCommandPermissionType,
+    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
 };
 use serenity::model::interactions::InteractionResponseType;
 use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
@@ -43,63 +42,38 @@ impl PurgeOption {
         }
         .to_string()
     }
-    fn description(&self) -> String {
+    fn register_options(&self, cmd: &mut CreateApplicationCommand) {
+        // Add more sub options if neccessary
         match self {
-            PurgeOption::All => "Purges a certain number of messages in a certain channel",
-            PurgeOption::FromUser => "Purges messages from a certain user in a channel",
-            PurgeOption::Embeds => "Purges a certain amount of embeds from a channel",
-            PurgeOption::Images => "Purges a certain amount of images in a channel",
-            PurgeOption::Attachments => "Purges all messages with files in a channel",
-            PurgeOption::Contains => "Purges messages that contain certain text",
-            PurgeOption::Bots => "Purges all messages from bots in a channel",
-            PurgeOption::Links => "Purges all links in a certain channel",
-        }
-        .to_string()
-    }
-
-    fn register(&self, cmd: &mut CreateApplicationCommand) {
-        cmd.create_option(|opt| {
-            opt.name(self.name())
-                .kind(ApplicationCommandOptionType::SubCommand)
-                .description(self.description())
-                .create_sub_option(|amount| {
-                    amount
-                        .name("amount")
-                        .kind(ApplicationCommandOptionType::Integer)
-                        .description(
-                            "The amount of messages to go through to purge (total messages)",
-                        )
-                        .required(true)
+            PurgeOption::FromUser => {
+                cmd.create_option(|user| {
+                    user.name("user")
+                        .kind(ApplicationCommandOptionType::User)
+                        .description("The user who's messages are to be purged (if the from_user option is selected)")
+                        .required(false)
                 });
-            // Add more sub options if neccessary
-            match self {
-                PurgeOption::FromUser => {
-                    opt.create_sub_option(|user| {
-                        user.name("user")
-                            .kind(ApplicationCommandOptionType::User)
-                            .description("The user who's messages are to be purged")
-                            .required(true)
-                    });
-                }
-                PurgeOption::Contains => {
-                    opt.create_sub_option(|user| {
-                        user.name("text")
-                            .kind(ApplicationCommandOptionType::String)
-                            .description("The text to search for in purging messages")
-                            .required(true)
-                    });
-                }
-                _ => {}
             }
-            opt
-        });
+            PurgeOption::Contains => {
+                cmd.create_option(|user| {
+                    user.name("text")
+                        .kind(ApplicationCommandOptionType::String)
+                        .description("The text to search for in purging messages (if the contains option is selected)")
+                        .required(false)
+                });
+            }
+            _ => {}
+        }
     }
 
-    async fn check(&self, subcmd: &ApplicationCommandInteractionDataOption, msg: Message) -> bool {
+    async fn check(&self, cmd: &ApplicationCommandInteraction, msg: Message) -> bool {
         match self {
             PurgeOption::All => true,
             PurgeOption::FromUser => {
-                let x: u64 = subcmd.get_str("user").unwrap().parse().unwrap();
+                let x: u64 = cmd
+                    .get_str("user")
+                    .unwrap_or_else(|| "0".to_string())
+                    .parse()
+                    .unwrap();
                 msg.author.id.0 == x
             }
             PurgeOption::Embeds => !msg.embeds.is_empty(),
@@ -109,7 +83,7 @@ impl PurgeOption {
             }
             PurgeOption::Attachments => !msg.attachments.is_empty(),
             PurgeOption::Contains => {
-                let x = subcmd.get_str("text").unwrap();
+                let x = cmd.get_str("text").unwrap_or_default();
                 msg.content
                     .to_ascii_lowercase()
                     .contains(&x.to_ascii_lowercase())
@@ -140,8 +114,22 @@ impl Command for Purge {
                 c.name(self.name())
                     .description("Purges a specific amount of messages from the channel")
                     .default_permission(false);
+                c.create_option(|opt| {
+                    opt.name("filter")
+                        .kind(ApplicationCommandOptionType::String)
+                        .description("The specific type of messages to purge.")
+                });
+                c.create_option(|amount| {
+                    amount
+                        .name("amount")
+                        .kind(ApplicationCommandOptionType::Integer)
+                        .description(
+                            "The amount of messages to go through to purge (total messages)",
+                        )
+                        .required(true)
+                });
                 for option in self.options.values() {
-                    option.register(c);
+                    option.register_options(c);
                 }
                 c
             })
@@ -178,10 +166,10 @@ impl Command for Purge {
 
         let channel = command.channel_id;
         let mut messages = channel.messages_iter(&ctx.http).boxed();
-        let cmd = &command.data.options[0];
-        let max_purge = cmd.get_i64("amount").unwrap_or(50);
+        let filter = command.get_str("filter").unwrap();
+        let max_purge = command.get_i64("amount").unwrap_or(50);
 
-        let option = self.options.get(&cmd.name).unwrap();
+        let option = self.options.get(&filter).unwrap();
         let mut i = 0;
         while let Some(Ok(message)) = messages.next().await {
             i += 1;
@@ -190,7 +178,7 @@ impl Command for Purge {
                 break;
             }
 
-            if option.check(cmd, message.clone()).await {
+            if option.check(command, message.clone()).await {
                 // ignore errors here since it doesn't matter if we can't delete
                 let _ = message.delete(&ctx.http).await;
             }
