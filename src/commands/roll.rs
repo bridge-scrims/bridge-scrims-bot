@@ -7,7 +7,7 @@ use serenity::{
         application_command::ApplicationCommandInteraction,
         InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
     },
-    prelude::Context,
+    prelude::{Context, Mentionable},
     utils::Color,
 };
 
@@ -119,8 +119,8 @@ impl Command for Roll {
             .edit_original_interaction_response(&ctx, |r| {
                 r.create_embed(|e| {
                     e.title("Team Captains:")
-                        .field("First Captain", members[0].display_name(), true)
-                        .field("Second Captain", members[1].display_name(), true)
+                        .field("First Captain", members[0].mention(), true)
+                        .field("Second Captain", members[1].mention(), true)
                         .color(Color::new(0x1abc9c))
                 })
             })
@@ -242,9 +242,9 @@ impl Command for Teams {
         let mut y = "".to_string();
         while !members.is_empty() {
             if is_x {
-                x = format!("{}\n{}", x, members.pop().unwrap().display_name());
+                x = format!("{}\n{}", x, members.pop().unwrap().mention());
             } else {
-                y = format!("{}\n{}", y, members.pop().unwrap().display_name());
+                y = format!("{}\n{}", y, members.pop().unwrap().mention());
             }
             is_x = !is_x
         }

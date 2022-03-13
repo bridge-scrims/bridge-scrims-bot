@@ -213,8 +213,8 @@ impl EventHandler for Handler {
                 .send_message(&ctx, |r| {
                     r.add_embed(|e| {
                         e.title("Team Captains:")
-                            .field("First Captain", members[0].display_name(), true)
-                            .field("Second Captain", members[1].display_name(), true)
+                            .field("First Captain", members[0].mention(), true)
+                            .field("Second Captain", members[1].mention(), true)
                             .color(Color::new(0x1abc9c))
                             .footer(|f| f.text("Hint: use the /roll command to roll!"))
                     })
