@@ -27,12 +27,12 @@ use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
+use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::{Interaction, InteractionApplicationCommandCallbackDataFlags};
-use serenity::builder::CreateEmbed;
 
 use serenity::model::prelude::Member;
 use serenity::utils::Color;
@@ -318,16 +318,14 @@ impl EventHandler for Handler {
 
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
         let mut x = false;
-        
+
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
         }
         let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
-        if !x && !custom_reactions
-            .is_empty()
-        {
+        if !x && !custom_reactions.is_empty() {
             // if the user's server boost runs out
             let mut embed = CreateEmbed::default();
             embed.title(format!("{}'s reaction has been removed", user.user.tag()));
@@ -339,9 +337,10 @@ impl EventHandler for Handler {
             if let Err(err) = CONFIG
                 .reaction_logs
                 .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
-                .await {
-                    tracing::error!("Error when sending message: {}", err);
-                }
+                .await
+            {
+                tracing::error!("Error when sending message: {}", err);
+            }
             // be sure to update the other thing
             update(self.reactions.clone()).await;
         }
