@@ -133,6 +133,7 @@ impl Command for Ticket {
                     .create_interaction_response(&ctx.http, |resp| {
                         resp.interaction_response_data(|data| {
                             data.content("That is not an option.")
+                                .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                         })
                     })
                     .await?;

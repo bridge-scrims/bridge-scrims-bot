@@ -12,6 +12,7 @@ use serenity::{
                 ApplicationCommandInteraction as ACI, ApplicationCommandOptionType,
             },
             message_component::ButtonStyle,
+            InteractionApplicationCommandCallbackDataFlags,
         },
         Permissions,
     },
@@ -105,6 +106,7 @@ impl Command for Screenshare {
                             "You already have an active screenshare in <#${}>",
                             screenshare.id
                         ))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -244,6 +246,7 @@ not to log aswell as any other info.
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Ticket created in {}", channel))
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -288,6 +291,7 @@ not to log aswell as any other info.
                             "Could not create your ticket: {}",
                             result.as_ref().unwrap_err()
                         ))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
