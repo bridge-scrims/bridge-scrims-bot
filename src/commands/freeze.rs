@@ -19,6 +19,13 @@ use bridge_scrims::interact_opts::InteractOpts;
 
 use super::{Button, Command};
 
+#[non_exhaustive]
+#[must_use = "statuses should be handled in the response to the user"]
+enum Status {
+    Success,
+    Ignored,
+}
+
 pub struct Freeze;
 
 #[async_trait]
@@ -63,12 +70,15 @@ impl Command for Freeze {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        freeze_user(ctx, user, command.user.id, command.channel_id).await?;
+        let status = freeze_user(ctx, user, command.user.id, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
         command
             .create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| {
-                    data.content(format!("Sucessfully frozen {}", tag))
+                resp.interaction_response_data(|data| match status {
+                    Status::Success => data.content(format!("Sucessfully frozen {}", tag)),
+                    Status::Ignored => data
+                        .content(format!("Ignored your request to freeze {}.", tag))
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL),
                 })
             })
             .await?;
@@ -105,21 +115,24 @@ impl Button for Freeze {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("You are not a screensharer!")
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
                 .await?;
             return Ok(());
         }
-        freeze_user(ctx, user, command.user.id, command.channel_id).await?;
+        let status = freeze_user(ctx, user, command.user.id, command.channel_id).await?;
         let tag = user.to_user(&ctx.http).await?.tag();
-        command
-            .create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| {
-                    data.content(format!("Sucessfully frozen {}", tag))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+        if let Status::Success = status {
+            command
+                .create_interaction_response(&ctx.http, |resp| {
+                    resp.interaction_response_data(|data| {
+                        data.content(format!("Successfully frozen {}", tag))
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                    })
                 })
-            })
-            .await?;
+                .await?;
+        }
 
         Ok(())
     }
@@ -130,7 +143,7 @@ async fn freeze_user(
     target: UserId,
     staff: UserId,
     channel: ChannelId,
-) -> crate::Result<()> {
+) -> crate::Result<Status> {
     let emoji = crate::CONFIG
         .guild
         .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
@@ -140,7 +153,7 @@ async fn freeze_user(
         .is_some();
     if is_frozen {
         already_frozen(ctx, channel, target).await?;
-        return Ok(());
+        return Ok(Status::Ignored);
     }
 
     if crate::consts::DATABASE
@@ -156,13 +169,41 @@ async fn freeze_user(
                 })
             })
             .await?;
-        return Ok(());
+        return Ok(Status::Ignored);
     }
 
     let user = target.to_user(&ctx.http).await?;
     let mut member = crate::CONFIG.guild.member(&ctx.http, user.id).await?;
 
     let roles = member.roles(&ctx.cache).await.unwrap_or_default();
+    let highest_role = roles
+        .iter()
+        .fold(0, |acc, x| if x.position > acc { x.position } else { acc });
+    let staffroles = crate::CONFIG
+        .guild
+        .member(&ctx.http, staff)
+        .await?
+        .roles(&ctx.cache)
+        .await
+        .unwrap_or_default();
+    let has_higher_role = staffroles
+        .into_iter()
+        .any(|srole| srole.position > highest_role);
+    if !has_higher_role {
+        channel
+            .send_message(&ctx.http, |msg| {
+                msg.embed(|emb| {
+                    emb.title("Cannot freeze")
+                        .description(format!(
+                        "<@{}>, you are not allowed to freeze <@!{}> as they have a higher role than you.",
+                        staff.0,
+                        target.0
+                    ))
+                })
+            })
+            .await?;
+        return Ok(Status::Ignored);
+    }
     let mut removed_roles = Vec::new();
 
     // TODO: Make this into a function
@@ -213,7 +254,8 @@ instance of your pc, and revise your processes for cheats.",
             msg.content(format!("{}: {} is now frozen by <@{}>", emoji, user, staff))
         })
         .await?;
-    Ok(())
+
+    Ok(Status::Success)
 }
 
 async fn already_frozen(ctx: &Context, channel: ChannelId, user: UserId) -> crate::Result<()> {

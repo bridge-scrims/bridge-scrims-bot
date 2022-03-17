@@ -68,6 +68,7 @@ pub struct Config {
 
     pub polls: ChannelId,
     pub clips: ChannelId,
+    pub reaction_logs: ChannelId,
 
     pub prefabs: HashMap<String, String>,
 

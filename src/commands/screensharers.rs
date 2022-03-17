@@ -38,11 +38,7 @@ impl Command for Screensharers {
             |x| async move {
                 let user = UserId(x.id).to_user(&ctx.http).await;
                 if let Ok(user) = user {
-                    Some((
-                        user.tag(),
-                        format!("{} freezes", x.freezes),
-                        false,
-                    ))
+                    Some((user.tag(), format!("{} freezes", x.freezes), false))
                 } else {
                     None
                 }

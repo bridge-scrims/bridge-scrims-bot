@@ -27,12 +27,13 @@ use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
 use rand::seq::SliceRandom;
 use serenity::async_trait;
+use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::{Interaction, InteractionApplicationCommandCallbackDataFlags};
-
+use serenity::prelude::Mentionable;
 use serenity::model::prelude::Member;
 use serenity::utils::Color;
 
@@ -222,8 +223,8 @@ impl EventHandler for Handler {
                 .send_message(&ctx, |r| {
                     r.add_embed(|e| {
                         e.title("Team Captains:")
-                            .field("First Captain", members[0].display_name(), true)
-                            .field("Second Captain", members[1].display_name(), true)
+                            .field("First Captain", members[0].mention(), true)
+                            .field("Second Captain", members[1].mention(), true)
                             .color(Color::new(0x1abc9c))
                             .footer(|f| f.text("Hint: use the /roll command to roll!"))
                     })
@@ -317,19 +318,28 @@ impl EventHandler for Handler {
 
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
         let mut x = false;
+
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
         }
-        if x && !database
-            .fetch_custom_reactions_for(user.user.id.0)
-            .is_empty()
-        {
+        let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
+        if !x && !custom_reactions.is_empty() {
             // if the user's server boost runs out
+            let mut embed = CreateEmbed::default();
+            embed.title(format!("{}'s reaction has been removed", user.user.tag()));
+            embed.description("No longer has booster or staff role.");
 
             if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
                 tracing::error!("Error when updating database: {}", err);
+            }
+            if let Err(err) = CONFIG
+                .reaction_logs
+                .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+                .await
+            {
+                tracing::error!("Error when sending message: {}", err);
             }
             // be sure to update the other thing
             update(self.reactions.clone()).await;
