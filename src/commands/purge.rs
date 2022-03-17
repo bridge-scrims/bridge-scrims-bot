@@ -118,6 +118,7 @@ impl Command for Purge {
                     opt.name("filter")
                         .kind(ApplicationCommandOptionType::String)
                         .description("The specific type of messages to purge.")
+                        .required(true)
                 });
                 c.create_option(|amount| {
                     amount
@@ -171,6 +172,7 @@ impl Command for Purge {
 
         let option = self.options.get(&filter).unwrap();
         let mut i = 0;
+        let mut message_ids = vec![];
         while let Some(Ok(message)) = messages.next().await {
             i += 1;
 
@@ -179,9 +181,14 @@ impl Command for Purge {
             }
 
             if option.check(command, message.clone()).await {
-                // ignore errors here since it doesn't matter if we can't delete
-                let _ = message.delete(&ctx.http).await;
+                message_ids.push(message.id)
             }
+        }
+        for chunk in message_ids.chunks(100) {
+            command
+                .channel_id
+                .delete_messages(&ctx.http, chunk.to_vec())
+                .await?;
         }
         command
             .edit_original_interaction_response(&ctx.http, |r| {
