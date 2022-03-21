@@ -30,6 +30,7 @@ unfreeze_emoji = 1234567890
 clips = 759992463032188988
 polls = 858486862212235274
 reaction_logs = 1234567890
+booster_info = 1234
 
 # Queue channels for rolling
 queue_categories = [913134187131838466, 1234, 1235]
