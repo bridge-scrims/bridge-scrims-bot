@@ -21,7 +21,7 @@
   - [x] Close command
   - [x] Freeze command
   - [x] Unfreeze command
-  - [ ] Rest in issue
+  - [x] Rest in issue
 
 ## Moderation
   - [x] Timeout: NiteBlock

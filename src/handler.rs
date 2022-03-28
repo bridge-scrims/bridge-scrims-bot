@@ -273,10 +273,38 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.kind == MessageType::MemberJoin {
-            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {
-                tracing::error!("{}", err);
+        match msg.kind {
+            MessageType::MemberJoin => {
+                if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {
+                    tracing::error!("{}", err);
+                }
             }
+            MessageType::NitroBoost
+            | MessageType::NitroTier1
+            | MessageType::NitroTier2
+            | MessageType::NitroTier3 => {
+                if let Err(err) = msg.react(&ctx, ReactionType::Unicode("🎉".into())).await {
+                    tracing::error!("{}", err);
+                }
+                if let Err(err) = CONFIG
+                    .booster_info
+                    .send_message(&ctx.http, |m| {
+                        m.add_embed(|em| {
+                            em.title(format!("{} has boosted the server!", msg.author.tag()))
+                                .description(format!(
+                                    "Thank you for boosting the server <@!{}>",
+                                    msg.author.id
+                                ))
+                                .thumbnail(msg.author.avatar_url().unwrap_or_default())
+                        })
+                        .reactions([ReactionType::Unicode("🎉".into())])
+                    })
+                    .await
+                {
+                    tracing::error!("{}", err)
+                }
+            }
+            _ => {}
         }
         let reactions = self.reactions.lock().await;
         if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
