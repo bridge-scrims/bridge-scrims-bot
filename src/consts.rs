@@ -77,8 +77,11 @@ pub struct Config {
     pub pings: Vec<Ping>,
     pub q_and_a_channel: ChannelId,
     pub q_and_a_role: RoleId,
-    pub booster_info: ChannelId,
 
+    pub booster_info: ChannelId,
+}
+
+lazy_static::lazy_static!{
     // Database related
     pub static ref DATABASE_PATH: PathBuf = dirs::cache_dir()
         .unwrap_or_else(|| std::env::current_dir().unwrap());
