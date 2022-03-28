@@ -33,8 +33,8 @@ use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::EmojiId;
 use serenity::model::interactions::{Interaction, InteractionApplicationCommandCallbackDataFlags};
-use serenity::prelude::Mentionable;
 use serenity::model::prelude::Member;
+use serenity::prelude::Mentionable;
 use serenity::utils::Color;
 
 use serenity::model::id::GuildId;
@@ -166,6 +166,23 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+        let member = msg.author.clone();
+
+        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+        if msg.channel_id == CONFIG.q_and_a_channel {
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
+                tracing::error!("{}", err);
+            }
+            match msg.member(&ctx).await {
+                Ok(m) => {
+                    let mut member = m.clone();
+                    if let Err(err) = member.add_role(&ctx.http, CONFIG.q_and_a_role).await {
+                        tracing::error!("{}", err)
+                    }
+                }
+                Err(err) => tracing::error!("{}", err),
+            }
+        }
 
         let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
 
@@ -177,10 +194,6 @@ impl EventHandler for Handler {
                 .queue_categories
                 .contains(&channel.unwrap().category_id.unwrap())
         {
-            let member = msg.author.clone();
-
-            let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
-
             let voice_state = guild.voice_states.get(&member.id);
 
             if voice_state.is_none() || voice_state.unwrap().channel_id.is_none() {

@@ -75,6 +75,9 @@ pub struct Config {
     pub member_count: MemberCount,
 
     pub pings: Vec<Ping>,
+
+    pub q_and_a_channel: ChannelId,
+    pub q_and_a_role: RoleId,
 }
 
 lazy_static::lazy_static! {
