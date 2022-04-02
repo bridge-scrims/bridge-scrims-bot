@@ -80,6 +80,21 @@ pub async fn close_ticket(
     if screenshare.is_none() {
         return Ok(false);
     }
+
+    let screenshare = screenshare.unwrap();
+
+    if closer == screenshare.in_question {
+        channel
+            .send_message(&ctx.http, |msg| {
+                msg.content(format!(
+                    "The user <@{}> tried to close their own ticket.",
+                    closer
+                ))
+            })
+            .await?;
+        return Ok(true);
+    }
+
     let mut messages = Vec::new();
     let raw_messages: Vec<_> = channel.messages_iter(&ctx.http).collect().await;
 
@@ -97,7 +112,6 @@ pub async fn close_ticket(
 
     messages.reverse();
     let history = messages.join("\n").into_bytes().into();
-    let screenshare = screenshare.unwrap();
     crate::CONFIG
         .ss_logs
         .send_message(&ctx.http, |msg| {
