@@ -18,13 +18,13 @@ use serenity::{
     },
 };
 
-use crate::commands::close::Close;
 use bridge_scrims::{
     hypixel::{Player, PlayerDataRequest},
     interact_opts::InteractOpts,
 };
 
-use super::{close, freeze::Freeze, Button, Command};
+use super::{close, freeze::Freeze};
+use crate::commands::{Button, Command};
 
 lazy_static::lazy_static! {
     // allow:
@@ -210,12 +210,12 @@ not to log aswell as any other info.
                     .field("Ign", name, false)
                     .field(
                         "Last login time",
-                        format!("<t:{}:R>", playerstats.last_login.unwrap_or_default()),
+                        playerstats.last_login.unwrap_or_default(),
                         false,
                     )
                     .field(
                         "Last logout time",
-                        format!("<t:{}:R>", playerstats.last_logout.unwrap_or_default()),
+                        playerstats.last_logout.unwrap_or_default(),
                         false,
                     )
             });
@@ -266,7 +266,7 @@ not to log aswell as any other info.
                 let operation = chunks.next().unwrap_or_default();
                 let operation = Operation::try_from(operation)?;
                 let operation: Box<dyn Button> = match operation {
-                    Operation::Close => Close::new(),
+                    Operation::Close => close::Close::new(),
                     Operation::Freeze => Freeze::new(),
                 };
 

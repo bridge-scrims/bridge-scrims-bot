@@ -7,6 +7,7 @@ use crate::commands::close::Close;
 use crate::commands::council::Council;
 use crate::commands::freeze::Freeze;
 use crate::commands::list_bans::ListBans;
+use crate::commands::logtime::LogTime;
 use crate::commands::notes::Notes;
 use crate::commands::ping::Ping;
 use crate::commands::prefabs::Prefab;
@@ -70,6 +71,7 @@ lazy_static! {
         Screensharers::new(),
         Reload::new(),
         Ping::new(),
+        LogTime::new(),
     ];
 }
 

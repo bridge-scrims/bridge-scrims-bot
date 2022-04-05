@@ -208,7 +208,7 @@ impl Display for LogTime {
         if self.0 == 0 {
             write!(f, "API ERROR")
         } else {
-            write!(f, "{}", self.0)
+            write!(f, "<t:{}:R>", self.0/1000)
         }
     }
 }
