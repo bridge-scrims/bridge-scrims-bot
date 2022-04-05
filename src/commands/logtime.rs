@@ -3,13 +3,9 @@ use std::time::Duration;
 use serenity::{
     async_trait,
     client::Context,
-    model::{
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction as ACI, ApplicationCommandOptionType,
-            },
-            InteractionApplicationCommandCallbackDataFlags,
-        },
+    model::interactions::{
+        application_command::{ApplicationCommandInteraction as ACI, ApplicationCommandOptionType},
+        InteractionApplicationCommandCallbackDataFlags,
     },
 };
 
@@ -64,38 +60,68 @@ impl Command for LogTime {
             return Ok(());
         }
         self.cooldowns
-            .add_global_cooldown(Duration::from_secs(1))
+            .add_global_cooldown(Duration::from_secs(5))
             .await;
         self.cooldowns
-            .add_user_cooldown(Duration::from_secs(10), command.user.id)
+            .add_user_cooldown(Duration::from_secs(15), command.user.id)
             .await;
         let name = command.get_str("ign").unwrap();
-        let player = Player::fetch_from_username(name.clone()).await?;
-        let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
-            .send()
-            .await
-            .unwrap_or_default();
-
-        command
-            .create_interaction_response(&ctx.http, |message| {
-                message.interaction_response_data(|d| {
-                    d.create_embed(|em| {
-                        em.title(format!("Log Time information for {}", name))
-                            .field(
-                                "Last login time",
-                                playerstats.last_login.unwrap_or_default(),
-                                false,
-                            )
-                            .field(
-                                "Last logout time",
-                                playerstats.last_logout.unwrap_or_default(),
-                                false,
-                            )
+        let player = Player::fetch_from_username(name.clone()).await;
+        if let Err(err) = player {
+            tracing::info!("Error in logtime: {}", err);
+            command
+                .create_interaction_response(&ctx.http, |message| {
+                    message.interaction_response_data(|d| {
+                        d.create_embed(|em| {
+                            em.title("Invalid User!")
+                                .description(format!("The player `{}` could not be found", name))
+                        })
+                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                     })
                 })
-            })
-            .await?;
-
+                .await?;
+            return Ok(());
+        }
+        match PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player.unwrap())
+            .send()
+            .await
+        {
+            Ok(playerstats) => {
+                command
+                    .create_interaction_response(&ctx.http, |message| {
+                        message.interaction_response_data(|d| {
+                            d.create_embed(|em| {
+                                em.title(format!("Log Time information for {}", name))
+                                    .field(
+                                        "Last login time",
+                                        playerstats.last_login.unwrap_or_default(),
+                                        false,
+                                    )
+                                    .field(
+                                        "Last logout time",
+                                        playerstats.last_logout.unwrap_or_default(),
+                                        false,
+                                    )
+                            })
+                        })
+                    })
+                    .await?;
+            }
+            Err(err) => {
+                tracing::info!("Error in logtime: {}", err);
+                command
+                    .create_interaction_response(&ctx.http, |message| {
+                        message.interaction_response_data(|d| {
+                            d.create_embed(|em| {
+                                em.title("API Error!")
+                                    .description("The hypixel api has yeileded an error!")
+                            })
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        })
+                    })
+                    .await?;
+            }
+        }
         Ok(())
     }
     fn new() -> Box<LogTime> {

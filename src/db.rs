@@ -57,7 +57,7 @@ impl Database {
 
         conn.execute(
             "create table if not exists Reaction (
-                user integer,
+                user integer primary key,
                 emoji text,
                 trigger text
             )",
