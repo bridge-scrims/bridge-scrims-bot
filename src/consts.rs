@@ -80,6 +80,7 @@ pub struct Config {
     pub q_and_a_role: RoleId,
 
     pub booster_info: ChannelId,
+    pub member_role: RoleId,
 }
 
 lazy_static::lazy_static! {

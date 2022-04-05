@@ -6,7 +6,7 @@ use serenity::{
     http::Http,
     model::{
         guild::Ban,
-        id::UserId,
+        id::{RoleId, UserId},
         interactions::{
             application_command::{
                 ApplicationCommandInteraction, ApplicationCommandOptionType,
@@ -135,9 +135,19 @@ impl UnbanType {
                     .into_iter()
                     .find(|x| x.id == to_unban.id.0)
                     .unwrap();
-                let roles: Vec<_> = unban.roles.into();
-                result = result.and(member.add_roles(&http, &roles).await.map(|_| ()));
-                result = result.and(member.remove_role(&http, CONFIG.banned.0).await);
+                let mut roles: Vec<RoleId> = unban.roles.into();
+                if !roles.contains(&CONFIG.member_role) {
+                    roles.push(CONFIG.member_role)
+                }
+                // add roles individually, since we want to add as many as we can.
+                for role in roles {
+                    if let Err(err) = member.add_role(&http, &role).await {
+                        tracing::error!("Could not add role uppon unban: {}", err);
+                    }
+                }
+                if let Err(err) = member.remove_role(&http, CONFIG.banned.0).await {
+                    tracing::error!("Could not remove role uppon unban: {}", err);
+                }
 
                 // If roles cannot be added, don't remove the unban from the database either
                 if result.is_ok() {
