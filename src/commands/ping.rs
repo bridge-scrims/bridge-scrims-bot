@@ -134,7 +134,7 @@ impl Command for Ping {
             return Ok(());
         }
         self.cooldowns
-            .add_global_cooldown_key(cid.clone(), Duration::from_secs(60))
+            .add_global_cooldown_key(cid.clone(), Duration::from_secs(20))
             .await;
         self.cooldowns
             .add_user_cooldown_key(cid.clone(), Duration::from_secs(60 * 5), command.user.id)
