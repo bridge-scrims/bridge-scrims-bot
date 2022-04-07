@@ -137,7 +137,7 @@ impl Command for Ping {
             .add_global_cooldown_key(cid.clone(), Duration::from_secs(20))
             .await;
         self.cooldowns
-            .add_user_cooldown_key(cid.clone(), Duration::from_secs(60 * 5), command.user.id)
+            .add_user_cooldown_key(cid.clone(), Duration::from_secs(35), command.user.id)
             .await;
         let text = command.get_str("text").unwrap_or_else(|| "".to_string());
         command
