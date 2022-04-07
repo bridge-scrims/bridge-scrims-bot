@@ -69,12 +69,24 @@ impl Command for Council {
             })
             .await?;
         let name = command.get_str("council").unwrap();
+        tracing::info!("doing stuff...");
         if let Some(value) = self.councils.get_council(&name).await {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
                         e.title(format!("{} Council", name))
                             .description(value)
+                            .color(Color::new(0xbb77fc))
+                    })
+                })
+                .await?;
+        } else {
+            tracing::error!("Council not found {}, {}", name, self.councils.0.lock().await);
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title("Invalid Council")
+                            .description("An error has been detected!")
                             .color(Color::new(0xbb77fc))
                     })
                 })
@@ -93,7 +105,7 @@ impl Command for Council {
     }
 }
 
-pub struct Inner(Mutex<HashMap<String, String>>);
+pub struct Inner(pub Mutex<HashMap<String, String>>);
 
 impl Inner {
     pub fn new() -> Inner {
