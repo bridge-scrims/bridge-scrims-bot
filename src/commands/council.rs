@@ -81,7 +81,8 @@ impl Command for Council {
                 })
                 .await?;
         } else {
-            tracing::error!("Council not found {}, {:?}", name, self.councils.0.lock().await);
+            let v = self.councils.data().await;
+            tracing::error!("Council not found {}, {:?}", name, v);
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
@@ -156,6 +157,10 @@ impl Inner {
     }
     pub async fn get_council(&self, name: &str) -> Option<String> {
         let councils = self.0.lock().await;
-        councils.get(name).cloned()
+        (*councils).get(name).cloned()
+    }
+    pub async fn data(&self) -> HashMap<String, String> {
+        let c = self.0.lock().await;
+        (*c).clone()
     }
 }
