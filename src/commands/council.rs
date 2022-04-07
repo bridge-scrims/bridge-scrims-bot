@@ -81,7 +81,7 @@ impl Command for Council {
                 })
                 .await?;
         } else {
-            tracing::error!("Council not found {}, {}", name, self.councils.0.lock().await);
+            tracing::error!("Council not found {}, {:?}", name, self.councils.0.lock().await);
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
