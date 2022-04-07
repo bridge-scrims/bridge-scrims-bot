@@ -43,10 +43,7 @@ impl Command for Council {
                             .required(true)
                             .kind(ApplicationCommandOptionType::String);
                         for name in CONFIG.councils.keys() {
-                            o.add_string_choice(
-                                name,
-                                format!("Display the members of the {} council.", name),
-                            );
+                            o.add_string_choice(name, name);
                         }
                         o
                     })
@@ -69,12 +66,23 @@ impl Command for Council {
             })
             .await?;
         let name = command.get_str("council").unwrap();
+
         if let Some(value) = self.councils.get_council(&name).await {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
                         e.title(format!("{} Council", name))
                             .description(value)
+                            .color(Color::new(0xbb77fc))
+                    })
+                })
+                .await?;
+        } else {
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title("Invalid Council")
+                            .description("The councils are not yet loaded!")
                             .color(Color::new(0xbb77fc))
                     })
                 })
@@ -93,7 +101,7 @@ impl Command for Council {
     }
 }
 
-pub struct Inner(Mutex<HashMap<String, String>>);
+pub struct Inner(pub Mutex<HashMap<String, String>>);
 
 impl Inner {
     pub fn new() -> Inner {
@@ -144,6 +152,10 @@ impl Inner {
     }
     pub async fn get_council(&self, name: &str) -> Option<String> {
         let councils = self.0.lock().await;
-        councils.get(name).cloned()
+        (*councils).get(name).cloned()
+    }
+    pub async fn data(&self) -> HashMap<String, String> {
+        let c = self.0.lock().await;
+        (*c).clone()
     }
 }
