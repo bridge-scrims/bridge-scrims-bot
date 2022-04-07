@@ -43,10 +43,7 @@ impl Command for Council {
                             .required(true)
                             .kind(ApplicationCommandOptionType::String);
                         for name in CONFIG.councils.keys() {
-                            o.add_string_choice(
-                                name,
-                                format!("Display the members of the {} council.", name),
-                            );
+                            o.add_string_choice(name, name);
                         }
                         o
                     })
@@ -69,7 +66,7 @@ impl Command for Council {
             })
             .await?;
         let name = command.get_str("council").unwrap();
-        tracing::info!("doing stuff...");
+
         if let Some(value) = self.councils.get_council(&name).await {
             command
                 .edit_original_interaction_response(&ctx, |r| {
@@ -81,14 +78,11 @@ impl Command for Council {
                 })
                 .await?;
         } else {
-            let v = self.councils.data().await;
-            tracing::error!("Council not found {}, {:?}", name, v);
-            tracing::info!("{:?} {} {}", v.get("Prime"), "Prime" == name, name);
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
                         e.title("Invalid Council")
-                            .description("An error has been detected!")
+                            .description("The councils are not yet loaded!")
                             .color(Color::new(0xbb77fc))
                     })
                 })
