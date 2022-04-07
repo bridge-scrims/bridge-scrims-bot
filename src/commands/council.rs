@@ -83,6 +83,7 @@ impl Command for Council {
         } else {
             let v = self.councils.data().await;
             tracing::error!("Council not found {}, {:?}", name, v);
+            tracing::info!("{:?}", v.get("Prime"));
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.create_embed(|e| {
