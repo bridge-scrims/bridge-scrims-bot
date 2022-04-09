@@ -22,7 +22,7 @@ unfreeze_emoji = 1234567890
 
 booster_info = 1234
 clips = 759992463032188988
-polls = 858486862212235274
+upvote_downvote = [858486862212235274] # Polls, purge channels, etc...
 reaction_logs = 1234567890
 
 # Queue channels for rolling

@@ -154,8 +154,4 @@ impl Inner {
         let councils = self.0.lock().await;
         (*councils).get(name).cloned()
     }
-    pub async fn data(&self) -> HashMap<String, String> {
-        let c = self.0.lock().await;
-        (*c).clone()
-    }
 }

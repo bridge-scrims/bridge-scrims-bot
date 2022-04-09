@@ -267,7 +267,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id.as_u64() == CONFIG.polls.as_u64() {
+        if CONFIG.upvote_downvote.contains(&msg.channel_id) {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
             }
