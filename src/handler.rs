@@ -7,6 +7,7 @@ use crate::commands::close::Close;
 use crate::commands::council::Council;
 use crate::commands::freeze::Freeze;
 use crate::commands::list_bans::ListBans;
+use crate::commands::logtime::LogTime;
 use crate::commands::notes::Notes;
 use crate::commands::ping::Ping;
 use crate::commands::prefabs::Prefab;
@@ -70,6 +71,7 @@ lazy_static! {
         Screensharers::new(),
         Reload::new(),
         Ping::new(),
+        LogTime::new(),
     ];
 }
 
@@ -266,7 +268,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if msg.channel_id.as_u64() == CONFIG.polls.as_u64() {
+        if CONFIG.upvote_downvote.contains(&msg.channel_id) {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
             }

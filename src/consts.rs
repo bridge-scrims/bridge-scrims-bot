@@ -35,6 +35,12 @@ pub struct Ping {
     pub allowed_channels: Option<Vec<ChannelId>>,
 }
 
+#[derive(Deserialize, Clone)]
+pub struct Council {
+    pub head: RoleId,
+    pub role: RoleId,
+}
+
 #[derive(Deserialize)]
 pub struct Config {
     pub bot_token: String,
@@ -45,15 +51,13 @@ pub struct Config {
 
     pub queue_categories: Vec<ChannelId>,
 
+
     pub member_role: RoleId,
     pub unverified_role: RoleId,
 
-    pub prime_council: RoleId,
-    pub prime_head: RoleId,
-    pub private_council: RoleId,
-    pub private_head: RoleId,
-    pub premium_council: RoleId,
-    pub premium_head: RoleId,
+
+    pub councils: HashMap<String, Council>,
+
 
     pub banned: RoleId,
     pub ss_support: RoleId,
@@ -69,7 +73,7 @@ pub struct Config {
     pub freeze_emoji: EmojiId,
     pub unfreeze_emoji: EmojiId,
 
-    pub polls: ChannelId,
+    pub upvote_downvote: Vec<ChannelId>,
     pub clips: ChannelId,
     pub reaction_logs: ChannelId,
 
@@ -82,9 +86,10 @@ pub struct Config {
     pub q_and_a_role: RoleId,
 
     pub booster_info: ChannelId,
+    pub member_role: RoleId,
 }
 
-lazy_static::lazy_static!{
+lazy_static::lazy_static! {
     // Database related
     pub static ref DATABASE_PATH: PathBuf = dirs::cache_dir()
         .unwrap_or_else(|| std::env::current_dir().unwrap());

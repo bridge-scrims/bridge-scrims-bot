@@ -8,12 +8,6 @@ guild = 759894401957888031
 member_role = 1234567890
 unverified_role = 1234567890
 
-premium_council = 803319607350788146
-premium_head = 851540595155271690
-prime_council = 850029321635495937
-prime_head = 850037363878264912
-private_council = 819766802926010378
-private_head = 837741017221824532
 
 ss_support = 774457162759012412
 staff = 759949547882545154
@@ -30,15 +24,16 @@ ss_logs = 1234567890
 support_bans = 883846880835039312
 unfreeze_emoji = 1234567890
 
-clips = 759992463032188988
-polls = 858486862212235274
-reaction_logs = 1234567890
 booster_info = 1234
+clips = 759992463032188988
+upvote_downvote = [858486862212235274] # Polls, purge channels, etc...
+reaction_logs = 1234567890
 
 # Queue channels for rolling
 queue_categories = [913134187131838466, 1234, 1235]
 
 member_count = 940907252099997747
+member_role = 759939347226427392
 
 q_and_a_channel = 1234
 q_and_a_role = 1234
@@ -74,3 +69,14 @@ name = "pack_maker"
 required_roles = [948178243016593469]
 [pings.options]
 "overlay" = 948172655083794443
+
+[councils.Premium]
+head = 851540595155271690
+role = 803319607350788146
+[councils.Private]
+head = 837741017221824532
+role = 819766802926010378
+[councils.Prime]
+head = 850037363878264912
+role = 850029321635495937
+

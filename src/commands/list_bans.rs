@@ -62,13 +62,17 @@ impl Command for ListBans {
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
         let operation = command.get_str("type").unwrap();
-        let desc = match operation.as_str() {
+        let mut desc = match operation.as_str() {
             "sv" => {
                 let bans = crate::consts::DATABASE.fetch_unbans();
-                let mut result = String::new();
+                let mut result = vec![String::new()];
                 for ban in bans {
+                    if result[result.len() - 1].len() > 1950 {
+                        result.push(String::new())
+                    }
+                    let t = result.len() - 1;
                     writeln!(
-                        result,
+                        result[t],
                         "- <@!{}>: banned until <t:{}:R>",
                         ban.id,
                         ban.date.unix_timestamp()
@@ -78,10 +82,14 @@ impl Command for ListBans {
             }
             "sc" => {
                 let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-                let mut result = String::new();
+                let mut result = vec![String::new()];
                 for ban in bans {
+                    if result[result.len() - 1].len() > 1950 {
+                        result.push(String::new())
+                    }
+                    let t = result.len() - 1;
                     writeln!(
-                        result,
+                        result[t],
                         "- <@!{}>: banned until <t:{}:R>",
                         ban.id,
                         ban.date.unix_timestamp()
@@ -106,11 +114,18 @@ impl Command for ListBans {
                                     "Scrim"
                                 }
                             ))
-                            .description(desc)
+                            .description(desc.pop().unwrap())
                     })
                 })
             })
             .await?;
+        for d in desc {
+            command
+                .create_followup_message(&ctx.http, |resp| {
+                    resp.create_embed(|embed| embed.description(d))
+                })
+                .await?;
+        }
         Ok(())
     }
 

@@ -206,9 +206,9 @@ pub struct LogTime(u64);
 impl Display for LogTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0 == 0 {
-            write!(f, "API ERROR")
+            write!(f, "API Disabled")
         } else {
-            write!(f, "{}", self.0)
+            write!(f, "<t:{}:R>", self.0/1000)
         }
     }
 }

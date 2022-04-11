@@ -1,11 +1,11 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use bridge_scrims::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::client::Context;
-use serenity::futures::stream::BoxStream;
 use serenity::futures::StreamExt;
 use serenity::http::Http;
-use serenity::model::guild::Member;
 use serenity::model::interactions::application_command::{
     ApplicationCommandInteraction, ApplicationCommandOptionType,
 };
@@ -20,13 +20,7 @@ use crate::commands::Command;
 use crate::consts::CONFIG;
 
 pub struct Council {
-    inner: Arc<Inner>,
-}
-
-struct Inner {
-    prime_council: Mutex<String>,
-    private_council: Mutex<String>,
-    premium_council: Mutex<String>,
+    councils: Arc<Inner>,
 }
 
 #[async_trait]
@@ -35,7 +29,7 @@ impl Command for Council {
         "council".to_string()
     }
     async fn init(&self, ctx: &Context) {
-        tokio::spawn(update_loop(self.inner.clone(), ctx.http.clone()));
+        tokio::spawn(Inner::update_loop(self.councils.clone(), ctx.http.clone()));
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
@@ -47,10 +41,11 @@ impl Command for Council {
                         o.name("council")
                             .description("The council who's members to display")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
-                            .add_string_choice("Prime", "Prime")
-                            .add_string_choice("Private", "Private")
-                            .add_string_choice("Premium", "Premium")
+                            .kind(ApplicationCommandOptionType::String);
+                        for name in CONFIG.councils.keys() {
+                            o.add_string_choice(name, name);
+                        }
+                        o
                     })
             })
             .await?;
@@ -70,50 +65,28 @@ impl Command for Council {
                 .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-        match command.data.options[0]
-            .value
-            .as_ref()
-            .unwrap()
-            .as_str()
-            .unwrap()
-        {
-            "Prime" => {
-                let prime_council = self.inner.prime_council.lock().await;
-                command
-                    .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
-                            e.title("Prime Council")
-                                .description(prime_council.to_string())
-                                .color(Color::new(0x74a8ee))
-                        })
+        let name = command.get_str("council").unwrap();
+
+        if let Some(value) = self.councils.get_council(&name).await {
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title(format!("{} Council", name))
+                            .description(value)
+                            .color(Color::new(0xbb77fc))
                     })
-                    .await?;
-            }
-            "Private" => {
-                let private_council = self.inner.private_council.lock().await;
-                command
-                    .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
-                            e.title("Private Council")
-                                .description(private_council.to_string())
-                                .color(Color::new(0xadade0))
-                        })
+                })
+                .await?;
+        } else {
+            command
+                .edit_original_interaction_response(&ctx, |r| {
+                    r.create_embed(|e| {
+                        e.title("Invalid Council")
+                            .description("The councils are not yet loaded!")
+                            .color(Color::new(0xbb77fc))
                     })
-                    .await?;
-            }
-            "Premium" => {
-                let premium_council = self.inner.premium_council.lock().await;
-                command
-                    .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
-                            e.title("Premium Council")
-                                .description(premium_council.to_string())
-                                .color(Color::new(0xbb77fc))
-                        })
-                    })
-                    .await?;
-            }
-            _ => {}
+                })
+                .await?;
         }
         Ok(())
     }
@@ -123,82 +96,62 @@ impl Command for Council {
         Self: Sized,
     {
         Box::new(Council {
-            inner: Arc::new(Inner {
-                prime_council: Mutex::new("".into()),
-                private_council: Mutex::new("".into()),
-                premium_council: Mutex::new("".into()),
-            }),
+            councils: Arc::new(Inner::new()),
         })
     }
 }
 
-async fn update_loop(inner: Arc<Inner>, http: Arc<Http>) {
-    loop {
-        inner.update(http.clone()).await;
-        tokio::time::sleep(Duration::from_secs(21600)).await;
-    }
-}
+pub struct Inner(pub Mutex<HashMap<String, String>>);
 
 impl Inner {
-    async fn update(&self, http: Arc<Http>) {
-        tracing::info!("Updating councils");
-        let mut prime_council_lock = self.prime_council.lock().await;
-        let mut private_council_lock = self.private_council.lock().await;
-        let mut premium_council_lock = self.premium_council.lock().await;
-        let mut prime_head = "".to_string();
-        let mut private_head = "".to_string();
-        let mut premium_head = "".to_string();
-        let mut prime_council = Vec::new();
-        let mut private_council = Vec::new();
-        let mut premium_council = Vec::new();
-        let mut members: BoxStream<Member> = CONFIG
-            .guild
-            .members_iter(&http)
-            .filter_map(|r| async move { r.ok() })
-            .boxed();
+    pub fn new() -> Inner {
+        Inner(Mutex::new(HashMap::new()))
+    }
+    pub async fn update_loop(me: Arc<Inner>, http: Arc<Http>) {
+        loop {
+            me.clone().update_councils(http.clone()).await;
+            // update every 12 hours
+            tokio::time::sleep(Duration::from_secs(12 * 60 * 60)).await;
+        }
+    }
+    pub async fn update_councils(&self, http: Arc<Http>) {
+        let mut new: HashMap<String, String> = HashMap::new();
+        let mut members = CONFIG.guild.members_iter(&http).boxed();
         while let Some(member) = members.next().await {
-            if member.roles.contains(&CONFIG.prime_head) {
-                prime_head = format!("{} ({})", member.user.mention(), member.display_name());
-            } else if member.roles.contains(&CONFIG.prime_council) {
-                prime_council.push(format!(
-                    "{} ({})",
-                    member.user.mention(),
-                    member.display_name()
-                ));
+            if let Err(err) = member {
+                tracing::info!("Error while updating councils: {}", err);
+                continue;
             }
-            if member.roles.contains(&CONFIG.private_head) {
-                private_head = format!("{} ({})", member.user.mention(), member.display_name());
-            } else if member.roles.contains(&CONFIG.private_council) {
-                private_council.push(format!(
-                    "{} ({})",
-                    member.user.mention(),
-                    member.display_name()
-                ));
-            }
-            if member.roles.contains(&CONFIG.premium_head) {
-                premium_head = format!("{} ({})", member.user.mention(), member.display_name());
-            } else if member.roles.contains(&CONFIG.premium_council) {
-                premium_council.push(format!(
-                    "{} ({})",
-                    member.user.mention(),
-                    member.display_name()
-                ));
+            let member = member.unwrap();
+            for (name, council) in
+                CONFIG.councils.clone().into_iter().filter(|(_k, v)| {
+                    member.roles.contains(&v.role) || member.roles.contains(&v.head)
+                })
+            {
+                let mut x = new.get(&name).cloned().unwrap_or_default();
+                if member.roles.contains(&council.head) {
+                    x = format!(
+                        "{} ({}) - Council Head\n{}",
+                        member.user.mention(),
+                        member.display_name(),
+                        x
+                    );
+                } else {
+                    x = format!(
+                        "{}\n{} ({})",
+                        x,
+                        member.user.mention(),
+                        member.display_name()
+                    );
+                }
+                new.insert(name, x);
             }
         }
-        *prime_council_lock = format!(
-            "{} - Council Head\n{}",
-            prime_head,
-            prime_council.join("\n")
-        );
-        *private_council_lock = format!(
-            "{} - Council Head\n{}",
-            private_head,
-            private_council.join("\n")
-        );
-        *premium_council_lock = format!(
-            "{} - Council Head\n{}",
-            premium_head,
-            premium_council.join("\n")
-        );
+        let mut c = self.0.lock().await;
+        *c = new;
+    }
+    pub async fn get_council(&self, name: &str) -> Option<String> {
+        let councils = self.0.lock().await;
+        (*councils).get(name).cloned()
     }
 }
