@@ -360,7 +360,7 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, user: Member) {
+    async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, mut user: Member) {
         let mut x = false;
 
         for role in user.roles(&ctx.cache).await.unwrap() {
@@ -387,6 +387,18 @@ impl EventHandler for Handler {
             }
             // be sure to update the other thing
             update(self.reactions.clone()).await;
+        }
+
+        if !x {
+            for role in user.roles(&ctx.cache).await.unwrap() {
+                for a in &CONFIG.color_roles {
+                    if &role.id == a {
+                        if let Err(err) = user.remove_role(&ctx.http, a).await {
+                                tracing::error!("{}", err);
+                        }
+                    }
+                }
+            }
         }
     }
 }

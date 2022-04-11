@@ -76,6 +76,7 @@ pub struct Config {
     pub upvote_downvote: Vec<ChannelId>,
     pub clips: ChannelId,
     pub reaction_logs: ChannelId,
+    pub color_roles: Vec<RoleId>,
 
     pub prefabs: HashMap<String, String>,
 
