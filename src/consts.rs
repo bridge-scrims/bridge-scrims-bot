@@ -45,6 +45,9 @@ pub struct Config {
 
     pub queue_categories: Vec<ChannelId>,
 
+    pub member_role: RoleId,
+    pub unverified_role: RoleId,
+
     pub prime_council: RoleId,
     pub prime_head: RoleId,
     pub private_council: RoleId,

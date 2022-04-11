@@ -98,6 +98,7 @@ impl EventHandler for Handler {
                 command.init(&ctx).await
             }
             tokio::spawn(update_reactions(self.reactions.clone()));
+            tokio::spawn(update_roles(ctx.clone()));
         }
         // Errors are already handled
         let _ = register_commands(&ctx).await;
@@ -395,6 +396,53 @@ async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
         tokio::time::sleep(Duration::from_secs(60 * 60 * 2)).await;
     }
 }
+
+async fn update_roles(ctx: Context) {
+    loop {
+        tracing::info!("Updating roles...");
+        let guild_users = CONFIG.guild.members(&ctx.http, None, None).await.unwrap();
+
+        for mut user in guild_users {
+            let mut has_banned = false;
+            let mut has_member = false;
+            let mut has_unverified = false;
+            for role in user.roles(&ctx.cache).await.unwrap() {
+                if role.id == CONFIG.member_role {
+                        has_member = true;
+                    }
+                if role.id == CONFIG.unverified_role {
+                        has_unverified = true;
+                    }
+                if role.id == CONFIG.banned {
+                        has_banned = true;
+                    }
+                }
+
+            if has_banned && has_member {
+                if let Err(err) = user.remove_role(&ctx.http, CONFIG.member_role).await {
+                        tracing::error!("{}", err);
+                }
+                has_member = false;
+
+            }
+            if has_banned && has_unverified {
+                if let Err(err) = user.remove_role(&ctx.http, CONFIG.unverified_role).await {
+                        tracing::error!("{}", err);
+                }
+                has_unverified = false;
+
+            }
+            if has_member && has_unverified {
+                if let Err(err) = user.remove_role(&ctx.http, CONFIG.unverified_role).await {
+                        tracing::error!("{}", err);
+                }
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(60*30)).await;
+    }
+
+}
+
 
 async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     let mut lock = m.lock().await;

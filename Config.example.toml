@@ -5,6 +5,9 @@ hypixel_token = "my token"
 
 guild = 759894401957888031
 
+member_role = 1234567890
+unverified_role = 1234567890
+
 premium_council = 803319607350788146
 premium_head = 851540595155271690
 prime_council = 850029321635495937
@@ -71,4 +74,3 @@ name = "pack_maker"
 required_roles = [948178243016593469]
 [pings.options]
 "overlay" = 948172655083794443
-
