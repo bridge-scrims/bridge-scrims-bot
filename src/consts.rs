@@ -51,7 +51,13 @@ pub struct Config {
 
     pub queue_categories: Vec<ChannelId>,
 
+
+    pub member_role: RoleId,
+    pub unverified_role: RoleId,
+
+
     pub councils: HashMap<String, Council>,
+
 
     pub banned: RoleId,
     pub ss_support: RoleId,
@@ -70,6 +76,7 @@ pub struct Config {
     pub upvote_downvote: Vec<ChannelId>,
     pub clips: ChannelId,
     pub reaction_logs: ChannelId,
+    pub color_roles: Vec<RoleId>,
 
     pub prefabs: HashMap<String, String>,
 
@@ -80,7 +87,6 @@ pub struct Config {
     pub q_and_a_role: RoleId,
 
     pub booster_info: ChannelId,
-    pub member_role: RoleId,
 }
 
 lazy_static::lazy_static! {
