@@ -103,7 +103,7 @@ impl BanType {
         embed.field("Reason", format!("`{}`", reason), false);
         embed.field("Staff", format!("<@{}>", command.user.id), false);
         if matches!(self, BanType::Server) {
-            embed.description("Appeal at http://appeal.bridgescrims.com/");
+            embed.description("[Click to appeal](https://dyno.gg/form/31ac5763)");
         }
         let dm_result = user.dm(&http, |msg| msg.set_embed(embed.clone())).await;
         if let Err(e) = dm_result {
