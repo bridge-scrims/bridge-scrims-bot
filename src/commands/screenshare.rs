@@ -189,10 +189,11 @@ impl Command for Screenshare {
 
             message.content(format!(
                 "<@&{}>
-Please explain how <@{}> is cheating and screenshots of you telling them
+<@{}> Please explain how <@{}> is cheating and screenshots of you telling them
 not to log aswell as any other info.
 ",
                 crate::consts::CONFIG.ss_support,
+                command.user.id.0,
                 in_question
             ));
 
