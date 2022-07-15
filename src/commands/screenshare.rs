@@ -1,5 +1,7 @@
+use futures::StreamExt;
 use std::{fmt::Display, time::Duration};
 
+use serenity::model::interactions::InteractionResponseType;
 use serenity::{
     async_trait,
     builder::CreateMessage,
@@ -252,18 +254,32 @@ not to log aswell as any other info.
                 })
                 .await?;
 
-            let reactions = m
-                .await_component_interaction(&ctx)
+            let mut reactions = m
+                .await_component_interactions(&ctx)
                 .timeout(Duration::from_secs(60 * 15))
                 .await;
 
-            if let Some(reactions) = reactions {
+            while let Some(reaction) = reactions.next().await {
+                if reaction.user.id == in_question || reaction.user.id == command.user.id {
+                    let _ = reaction
+                        .create_interaction_response(&ctx, |r| {
+                            r.kind(InteractionResponseType::ChannelMessageWithSource)
+                                .interaction_response_data(|r| {
+                                    r.flags(
+                                        InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
+                                    )
+                                    .content("You do not have permission to do that")
+                                })
+                        })
+                        .await;
+                    continue;
+                }
                 m.edit(&ctx, |m| {
                     m.components(|comp| comp.set_action_rows(Default::default()))
                 })
                 .await?;
 
-                let mut chunks = reactions.data.custom_id.split(':');
+                let mut chunks = reaction.data.custom_id.split(':');
                 let operation = chunks.next().unwrap_or_default();
                 let operation = Operation::try_from(operation)?;
                 let operation: Box<dyn Button> = match operation {
@@ -272,17 +288,17 @@ not to log aswell as any other info.
                 };
 
                 operation
-                    .click(ctx, &*reactions)
+                    .click(ctx, &*reaction)
                     .await
                     .map_err(|x| format!("While handling button: {}", x))?;
-            } else {
-                // This is so you also can use /freeze
-                if crate::consts::DATABASE
-                    .fetch_freezes_for(in_question.0)
-                    .is_none()
-                {
-                    close::close_ticket(ctx, command.user.id, channel.id).await?;
-                }
+                return Ok(());
+            }
+            // This is so you also can use /freeze
+            if crate::consts::DATABASE
+                .fetch_freezes_for(in_question.0)
+                .is_none()
+            {
+                close::close_ticket(ctx, command.user.id, channel.id).await?;
             }
         } else {
             command
