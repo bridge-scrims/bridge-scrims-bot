@@ -51,13 +51,10 @@ pub struct Config {
 
     pub queue_categories: Vec<ChannelId>,
 
-
     pub member_role: RoleId,
     pub unverified_role: RoleId,
 
-
     pub councils: HashMap<String, Council>,
-
 
     pub banned: RoleId,
     pub ss_support: RoleId,

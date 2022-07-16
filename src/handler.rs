@@ -393,7 +393,7 @@ impl EventHandler for Handler {
                 for a in &CONFIG.color_roles {
                     if &role.id == a {
                         if let Err(err) = user.remove_role(&ctx.http, a).await {
-                                tracing::error!("{}", err);
+                            tracing::error!("{}", err);
                         }
                     }
                 }
@@ -405,21 +405,24 @@ impl EventHandler for Handler {
         let mut has_unverified = false;
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.id == CONFIG.member_role {
-                    has_member = true;
-                }
-            if role.id == CONFIG.unverified_role {
-                    has_unverified = true;
-                }
-            if role.id == CONFIG.banned {
-                    has_banned = true;
-                }
+                has_member = true;
             }
-        if user.roles(&ctx.cache).await.unwrap().is_empty() && !has_banned && !has_unverified && !has_member {
-            if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
-                    tracing::error!("{}", err);
+            if role.id == CONFIG.unverified_role {
+                has_unverified = true;
+            }
+            if role.id == CONFIG.banned {
+                has_banned = true;
             }
         }
-
+        if user.roles(&ctx.cache).await.unwrap().is_empty()
+            && !has_banned
+            && !has_unverified
+            && !has_member
+        {
+            if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
+                tracing::error!("{}", err);
+            }
+        }
     }
 }
 
@@ -430,8 +433,6 @@ async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
         tokio::time::sleep(Duration::from_secs(60 * 60 * 2)).await;
     }
 }
-
-
 
 async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     let mut lock = m.lock().await;

@@ -208,7 +208,7 @@ impl Display for LogTime {
         if self.0 == 0 {
             write!(f, "API Disabled")
         } else {
-            write!(f, "<t:{}:R>", self.0/1000)
+            write!(f, "<t:{}:R>", self.0 / 1000)
         }
     }
 }
