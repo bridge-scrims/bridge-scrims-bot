@@ -204,7 +204,7 @@ not to log aswell as any other info.
                     .title("Screenshare Request")
                     .description(
                         "- Why did you request a screenshare on this member?
-- Please provide evidence of you telling him not to log.
+- __**Please provide evidence of you telling him not to log.**__
 - Anything else?
 
 **NOTE**: If you do not get frozen within 15 minutes you may logout.
