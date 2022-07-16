@@ -414,11 +414,10 @@ impl EventHandler for Handler {
                     has_banned = true;
                 }
             }
-        if user.roles(&ctx.cache).await.unwrap().len() > 0 && !has_banned && !has_unverified && !has_member {
+        if user.roles(&ctx.cache).await.unwrap().is_empty() && !has_banned && !has_unverified && !has_member {
             if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
                     tracing::error!("{}", err);
             }
-            has_member = true;
         }
 
     }
