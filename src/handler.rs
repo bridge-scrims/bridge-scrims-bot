@@ -174,6 +174,7 @@ impl EventHandler for Handler {
         if let Some(g) = msg.guild(&ctx).await {
             guild = g;
         } else {
+            tracing::warn!("Message from a user in a dm {:?}", msg);
             return;
         }
 

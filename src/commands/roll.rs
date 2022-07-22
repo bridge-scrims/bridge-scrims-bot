@@ -35,17 +35,12 @@ impl Command for Roll {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        let channel = command
-            .channel_id
-            .to_channel_cached(&ctx.cache)
-            .await
-            .unwrap()
-            .guild();
+        let channel = command.channel_id.to_channel(&ctx).await.ok();
         if channel.is_none()
-            || channel.as_ref().unwrap().category_id.is_none()
+            || channel.clone().unwrap().category().is_none()
             || !CONFIG
                 .queue_categories
-                .contains(&channel.unwrap().category_id.unwrap())
+                .contains(&channel.unwrap().category().unwrap().id)
         {
             command
                 .create_interaction_response(&ctx, |r| {
