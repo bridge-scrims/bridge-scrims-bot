@@ -170,7 +170,13 @@ impl EventHandler for Handler {
         }
         let member = msg.author.clone();
 
-        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+        let guild;
+        if let Some(g) = msg.guild(&ctx).await {
+            guild = g;
+        } else {
+            return;
+        }
+
         if msg.channel_id == CONFIG.q_and_a_channel {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
@@ -393,7 +399,7 @@ impl EventHandler for Handler {
                 for a in &CONFIG.color_roles {
                     if &role.id == a {
                         if let Err(err) = user.remove_role(&ctx.http, a).await {
-                                tracing::error!("{}", err);
+                            tracing::error!("{}", err);
                         }
                     }
                 }
@@ -405,22 +411,25 @@ impl EventHandler for Handler {
         let mut has_unverified = false;
         for role in user.roles(&ctx.cache).await.unwrap() {
             if role.id == CONFIG.member_role {
-                    has_member = true;
-                }
-            if role.id == CONFIG.unverified_role {
-                    has_unverified = true;
-                }
-            if role.id == CONFIG.banned {
-                    has_banned = true;
-                }
+                has_member = true;
             }
-        if user.roles(&ctx.cache).await.unwrap().len() > 0 && !has_banned && !has_unverified && !has_member {
+            if role.id == CONFIG.unverified_role {
+                has_unverified = true;
+            }
+            if role.id == CONFIG.banned {
+                has_banned = true;
+            }
+        }
+        if user.roles(&ctx.cache).await.unwrap().len() > 0
+            && !has_banned
+            && !has_unverified
+            && !has_member
+        {
             if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
-                    tracing::error!("{}", err);
+                tracing::error!("{}", err);
             }
             has_member = true;
         }
-
     }
 }
 
@@ -432,8 +441,6 @@ async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     }
 }
 
-
-
 async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     let mut lock = m.lock().await;
     let mut x = HashMap::new();
@@ -444,6 +451,7 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
 }
 
 async fn register_commands(ctx: &Context) -> Result<(), String> {
+    #[allow(unused_mut)]
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
 
@@ -458,11 +466,11 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        let result = command.register(ctx).await.map_err(|x| x.to_string());
-        if let Err(ref err) = result.as_ref() {
-            tracing::error!("Could not register command {}: {}", name, err);
-        }
-        res = res.and(result);
+        // let result = command.register(ctx).await.map_err(|x| x.to_string());
+        // if let Err(ref err) = result.as_ref() {
+        //     tracing::error!("Could not register command {}: {}", name, err);
+        // }
+        // res = res.and(result);
     }
     res
 }

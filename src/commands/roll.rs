@@ -158,12 +158,7 @@ impl Command for Teams {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> crate::Result<()> {
-        let channel = command
-            .channel_id
-            .to_channel_cached(&ctx.cache)
-            .await
-            .unwrap()
-            .guild();
+        let channel = command.channel_id.to_channel(&ctx).await?.guild();
         if channel.is_none()
             || channel.as_ref().unwrap().category_id.is_none()
             || !CONFIG
@@ -189,7 +184,12 @@ impl Command for Teams {
 
         let member = command.member.as_ref().unwrap();
 
-        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+        let guild = command
+            .guild_id
+            .ok_or("No guild found")?
+            .to_guild_cached(&ctx.cache)
+            .await
+            .ok_or("No guild found")?;
 
         let voice_state = guild.voice_states.get(&member.user.id);
 
