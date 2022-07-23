@@ -40,6 +40,7 @@ async fn main() -> Result<()> {
         .id
         .0;
     let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MEMBERS
         | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_VOICE_STATES;
