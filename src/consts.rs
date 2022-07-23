@@ -1,23 +1,25 @@
+use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
-use crate::db::Database;
-use bridge_scrims::hypixel::UUID;
 use serde::Deserialize;
 use serenity::model::id::ChannelId;
 use serenity::model::id::EmojiId;
 use serenity::model::id::GuildId;
 use serenity::model::id::RoleId;
 use serenity::prelude::Context;
-use std::collections::HashMap;
-use std::fs;
 use toml::from_str;
+
+use bridge_scrims::hypixel::UUID;
+
+use crate::db::Database;
 
 #[derive(Deserialize)]
 pub struct MemberCount(ChannelId);
 
 impl MemberCount {
     pub async fn update(&self, ctx: Context, guild_id: GuildId) -> crate::Result<()> {
-        let guild = guild_id.to_guild_cached(&ctx.cache).await.unwrap();
+        let guild = guild_id.to_guild_cached(&ctx.cache).unwrap();
         self.0
             .edit(&ctx.http, |c| {
                 c.name(format!("Members: {}", guild.member_count))
@@ -51,13 +53,10 @@ pub struct Config {
 
     pub queue_categories: Vec<ChannelId>,
 
-
     pub member_role: RoleId,
     pub unverified_role: RoleId,
 
-
     pub councils: HashMap<String, Council>,
-
 
     pub banned: RoleId,
     pub ss_support: RoleId,

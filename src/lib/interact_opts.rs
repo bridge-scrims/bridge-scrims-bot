@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
-use serenity::model::interactions::application_command::ApplicationCommandInteraction as ACI;
-use serenity::model::interactions::application_command::ApplicationCommandInteractionDataOption as ACIDO;
+use serenity::model::application::interaction::application_command::ApplicationCommandInteraction as ACI;
+use serenity::model::application::interaction::application_command::CommandDataOption as CDO;
 
 /// Extracts options from an `ApplicationCommandInteraction`
 /// Delegates [`serde_json::Value`] methods
@@ -62,7 +62,7 @@ impl InteractOpts for ACI {
     }
 }
 
-impl InteractOpts for ACIDO {
+impl InteractOpts for CDO {
     fn get_map<T>(&self, query: impl AsRef<str>, map: impl FnOnce(Value) -> T) -> Option<T> {
         self.options
             .iter()

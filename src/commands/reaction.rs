@@ -1,25 +1,27 @@
 use std::error::Error;
 use std::fmt::Display;
 
-use crate::commands::Command;
-
-use bridge_scrims::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
 use serenity::client::Context;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
+use serenity::model::application::interaction::InteractionResponseType;
+use serenity::model::application::interaction::MessageFlags;
 use serenity::model::channel::ReactionType;
 use serenity::model::id::UserId;
-use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
-};
-use serenity::model::interactions::InteractionResponseType;
-use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
+use serenity::model::Permissions;
 use serenity::utils::Color;
 
+use bridge_scrims::interact_opts::InteractOpts;
+
+use crate::commands::Command;
 use crate::consts::CONFIG;
 
 pub struct Reaction;
+
 pub struct DelReaction;
+
 pub struct ListReactions;
 
 #[derive(Debug)]
@@ -74,9 +76,9 @@ impl Command for DelReaction {
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("A Staff Command to delete other users' custom reactions")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|user| {
-                        user.kind(ApplicationCommandOptionType::User)
+                        user.kind(CommandOptionType::User)
                             .name("user")
                             .description("Whose reaction to delete")
                             .required(true)
@@ -88,7 +90,7 @@ impl Command for DelReaction {
             .create_application_command_permission(&ctx, cmd2.id, |p| {
                 for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(role.0)
                             .permission(true)
                     });
@@ -119,7 +121,7 @@ impl Command for DelReaction {
         if let Err(db_error) = crate::consts::DATABASE.remove_custom_reaction(user_id.0) {
             command
                 .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
+                    r.embed(|e| {
                         e.title("Reaction Could Not Be Removed!")
                             .description("There was an error with the database! Try again, and if this happens again contact a developer.")
                             .color(Color::new(0x8b0000))
@@ -133,7 +135,7 @@ impl Command for DelReaction {
         }
         command
             .edit_original_interaction_response(&ctx, |r| {
-                r.create_embed(|e| {
+                r.embed(|e| {
                     e.title("Reaction Removed")
                         .description(format!("<@{}>'s reaction has been removed.", user_id.0))
                         .color(Color::new(0x1abc9c)) // light green
@@ -164,6 +166,7 @@ impl Command for DelReaction {
         Box::new(DelReaction {})
     }
 }
+
 #[async_trait]
 impl Command for Reaction {
     fn name(&self) -> String {
@@ -175,35 +178,31 @@ impl Command for Reaction {
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Allows server boosters to add their own custom reactions to the bot.")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|add| {
-                        add.kind(ApplicationCommandOptionType::SubCommand)
+                        add.kind(CommandOptionType::SubCommand)
                             .name("add")
                             .description("Add your own custom reaction!")
                             .create_sub_option(|emoji| {
                                 // which emoji is it
-                                emoji.kind(ApplicationCommandOptionType::String)
+                                emoji.kind(CommandOptionType::String)
                                     .name("emoji")
                                     .description("The emoji which the bot will react with (only default emojis allowed)")
                                     .required(true)
                             })
                             .create_sub_option(|trigger| {
                                 // what will trigger the emoji to be reacted
-                                trigger.kind(ApplicationCommandOptionType::String)
+                                trigger.kind(CommandOptionType::String)
                                     .name("trigger")
                                     .description("What will trigger the emoji to be reacted")
                                     .required(true)
                             })
-
                     })
                     .create_option(|rem| {
-                        rem.kind(ApplicationCommandOptionType::SubCommand)
+                        rem.kind(CommandOptionType::SubCommand)
                             .name("remove")
                             .description("Remove your custom reaction.")
                     })
-
-
-
             })
             .await?;
         let mut brole = None;
@@ -218,13 +217,13 @@ impl Command for Reaction {
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 if let Some(id) = brole {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(id.0)
                             .permission(true)
                     });
                 }
                 p.create_permission(|perm| {
-                    perm.kind(ApplicationCommandPermissionType::Role)
+                    perm.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
@@ -258,7 +257,7 @@ impl Command for Reaction {
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
+                            r.embed(|e| {
                                 e.title("Reaction Could Not Be Added")
                                     .description(format!(
                                         "You are not allowed to use `{}` as a trigger",
@@ -280,7 +279,7 @@ impl Command for Reaction {
                 if !reactions_with_trigger.is_empty() {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
+                            r.embed(|e| {
                                 e.title("Reaction Could Not Be Added")
                                     .description("That trigger already exists!")
                                     .color(Color::new(0x8b0000))
@@ -294,14 +293,14 @@ impl Command for Reaction {
                 }
 
                 let msg1 = command
-                        .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
-                                e.title("Testing Reaction")
-                                    .description("The bot is currently testing your reaction to see if it is valid.")
-                                    .color(Color::new(0x1abc9c))
-                            })
+                    .edit_original_interaction_response(&ctx, |r| {
+                        r.embed(|e| {
+                            e.title("Testing Reaction")
+                                .description("The bot is currently testing your reaction to see if it is valid.")
+                                .color(Color::new(0x1abc9c))
                         })
-                        .await?;
+                    })
+                    .await?;
 
                 if msg1
                     .react(&ctx, ReactionType::try_from(emoji.as_str()).unwrap())
@@ -310,7 +309,7 @@ impl Command for Reaction {
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
+                            r.embed(|e| {
                                 e.title("Reaction Could Not Be Added")
                                     .description(format!("{} is not a valid default emoji", &emoji))
                                     .color(Color::new(0x8b0000))
@@ -327,14 +326,14 @@ impl Command for Reaction {
 
                 if !user_reactions.is_empty() {
                     command
-                                .edit_original_interaction_response(&ctx, |r| {
-                                    r.create_embed(|e| {
-                                        e.title("Reaction Could Not Be Added")
-                                            .description("You already have a reaction! Remove it with `/reaction remove` and then try again.")
-                                            .color(Color::new(0x8b0000))
-                                    })
-                                })
-                                .await?;
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.embed(|e| {
+                                e.title("Reaction Could Not Be Added")
+                                    .description("You already have a reaction! Remove it with `/reaction remove` and then try again.")
+                                    .color(Color::new(0x8b0000))
+                            })
+                        })
+                        .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::AlreadyExists,
                         db_error: None,
@@ -345,14 +344,14 @@ impl Command for Reaction {
                     crate::consts::DATABASE.add_custom_reaction(command.user.id.0, &emoji, &trigger)
                 {
                     command
-                                    .edit_original_interaction_response(&ctx, |r| {
-                                        r.create_embed(|e| {
-                                            e.title("Reaction Could Not Be Added")
-                                                .description("There was an error with the database! Try again, and if this happens again contact a developer.")
-                                                .color(Color::new(0x8b0000))
-                                        })
-                                    })
-                                    .await?;
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.embed(|e| {
+                                e.title("Reaction Could Not Be Added")
+                                    .description("There was an error with the database! Try again, and if this happens again contact a developer.")
+                                    .color(Color::new(0x8b0000))
+                            })
+                        })
+                        .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::Database,
                         db_error: Some(db_error),
@@ -361,7 +360,7 @@ impl Command for Reaction {
 
                 command
                     .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title("Reaction Added")
                                 .description(format!("The {} reaction has been added.", &emoji))
                                 .color(Color::new(0x1abc9c)) // light green
@@ -385,14 +384,14 @@ impl Command for Reaction {
                     crate::consts::DATABASE.remove_custom_reaction(command.user.id.0)
                 {
                     command
-                            .edit_original_interaction_response(&ctx, |r| {
-                                r.create_embed(|e| {
-                                    e.title("Reaction Could Not Be Removed!")
-                                        .description("There was an error with the database! Try again, and if this happens again contact a developer.")
-                                        .color(Color::new(0x8b0000))
-                                })
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.embed(|e| {
+                                e.title("Reaction Could Not Be Removed!")
+                                    .description("There was an error with the database! Try again, and if this happens again contact a developer.")
+                                    .color(Color::new(0x8b0000))
                             })
-                            .await?;
+                        })
+                        .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::Database,
                         db_error: Some(db_error),
@@ -400,7 +399,7 @@ impl Command for Reaction {
                 }
                 command
                     .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title("Reaction Removed")
                                 .description("Your reaction has been removed.")
                                 .color(Color::new(0x1abc9c)) // light green
@@ -447,7 +446,7 @@ impl Command for ListReactions {
                     .description(
                         "Sends a list of all reactions, their triggers, and associated users.",
                     )
-                    .default_permission(true)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
         Ok(())
@@ -459,10 +458,8 @@ impl Command for ListReactions {
     ) -> crate::Result<()> {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| {
-                    d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-                })
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let reactions = crate::consts::DATABASE.fetch_custom_reactions();
@@ -470,7 +467,7 @@ impl Command for ListReactions {
         if reactions.is_empty() {
             command
                 .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
+                    r.embed(|e| {
                         e.title("No custom reactions found!")
                             .description("There are currently no custom reactions.")
                             .color(Color::BLURPLE)
@@ -483,7 +480,7 @@ impl Command for ListReactions {
             if i == 0 {
                 command
                     .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title(format!(
                                 "Page {} of {}",
                                 i + 1,
@@ -508,7 +505,7 @@ impl Command for ListReactions {
             } else {
                 command
                     .create_followup_message(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title(format!("Page {} of {}", i + 1, (reactions.len() / 10) + 1))
                                 .color(Color::BLURPLE);
                             for reaction in chunk {
@@ -523,7 +520,7 @@ impl Command for ListReactions {
                             }
                             e
                         })
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                     })
                     .await?;
             }

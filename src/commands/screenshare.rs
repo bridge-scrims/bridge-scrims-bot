@@ -1,19 +1,17 @@
 use std::{fmt::Display, time::Duration};
 
+use serenity::model::application::command::CommandOptionType;
+use serenity::model::application::component::ButtonStyle;
 use serenity::{
     async_trait,
     builder::CreateMessage,
     client::Context,
     model::{
+        application::interaction::{
+            application_command::ApplicationCommandInteraction as ACI, MessageFlags,
+        },
         channel::{ChannelType, PermissionOverwrite, PermissionOverwriteType, ReactionType},
         id::UserId,
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction as ACI, ApplicationCommandOptionType,
-            },
-            message_component::ButtonStyle,
-            InteractionApplicationCommandCallbackDataFlags,
-        },
         Permissions,
     },
 };
@@ -23,8 +21,9 @@ use bridge_scrims::{
     interact_opts::InteractOpts,
 };
 
-use super::{close, freeze::Freeze};
 use crate::commands::{Button, Command};
+
+use super::{close, freeze::Freeze};
 
 lazy_static::lazy_static! {
     // allow:
@@ -45,6 +44,7 @@ pub enum Operation {
 pub struct OperationDoesNotExist;
 
 impl std::error::Error for OperationDoesNotExist {}
+
 impl Display for OperationDoesNotExist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Operation does not exist")
@@ -82,14 +82,14 @@ impl Command for Screenshare {
                             .name("player")
                             .description("The person to request a screenshare to.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                     })
                     .create_option(|option| {
                         option
                             .name("ign")
                             .description("The Minecraft ingame name of the person that you want to be screenshared.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                     })
             })
             .await?;
@@ -106,7 +106,7 @@ impl Command for Screenshare {
                             "You already have an active screenshare in <#${}>",
                             screenshare.id
                         ))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -152,7 +152,7 @@ impl Command for Screenshare {
                                 })
                                 .chain(std::iter::once(PermissionOverwrite {
                                     allow: Permissions::empty(),
-                                    deny: Permissions::READ_MESSAGES,
+                                    deny: Permissions::VIEW_CHANNEL,
                                     kind: PermissionOverwriteType::Role(
                                         crate::CONFIG.guild.0.into(),
                                     ),
@@ -182,7 +182,7 @@ impl Command for Screenshare {
                 channel
                     .send_message(
                         &ctx.http,
-                       |x| x.content("An error occured in the database. The ticket may not work as expected."),
+                        |x| x.content("An error occured in the database. The ticket may not work as expected."),
                     )
                     .await?;
             }
@@ -246,7 +246,7 @@ not to log aswell as any other info.
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Ticket created in {}", channel))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -291,7 +291,7 @@ not to log aswell as any other info.
                             "Could not create your ticket: {}",
                             result.as_ref().unwrap_err()
                         ))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;

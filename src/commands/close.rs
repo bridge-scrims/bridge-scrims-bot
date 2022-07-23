@@ -2,14 +2,13 @@ use serenity::{
     async_trait,
     client::Context,
     futures::StreamExt,
-    http::AttachmentType,
     model::{
-        id::{ChannelId, UserId},
-        interactions::{
+        application::interaction::{
             application_command::ApplicationCommandInteraction,
-            message_component::MessageComponentInteraction,
-            InteractionApplicationCommandCallbackDataFlags,
+            message_component::MessageComponentInteraction, MessageFlags,
         },
+        channel::AttachmentType,
+        id::{ChannelId, UserId},
     },
 };
 
@@ -47,7 +46,7 @@ impl Command for Close {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("This is not a screenshare ticket!")
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -101,9 +100,9 @@ pub async fn close_ticket(
     for message in raw_messages.into_iter().flatten() {
         messages.push(format!(
             "[{}] {}: {}",
-            message.timestamp.format("%c"),
+            message.timestamp,
             message.author.tag(),
-            message.content_safe(&ctx.cache).await
+            message.content_safe(&ctx.cache)
         ));
         for embed in message.embeds {
             messages.push(format!("Embed:\n{}", FormatEmbed(embed.into())));

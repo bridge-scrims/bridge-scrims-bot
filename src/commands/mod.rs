@@ -1,7 +1,10 @@
 use serenity::async_trait;
 use serenity::client::Context;
-use serenity::model::interactions::message_component::MessageComponentInteraction;
-use serenity::model::prelude::application_command::ApplicationCommandInteraction;
+use serenity::model::application::interaction::{
+    application_command::ApplicationCommandInteraction,
+    message_component::MessageComponentInteraction,
+};
+
 pub mod ban;
 pub mod close;
 pub mod council;
@@ -28,7 +31,8 @@ pub trait Command: Send + Sync {
     async fn init(&self, _ctx: &Context) {
         // init will only be executed once.
     }
-    async fn register(&self, ctx: &Context) -> crate::Result<()>; // will be exectued on reloads
+    async fn register(&self, ctx: &Context) -> crate::Result<()>;
+    // will be exectued on reloads
     fn is_command(&self, name: String) -> bool {
         self.name() == name
     }

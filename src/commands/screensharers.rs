@@ -2,7 +2,9 @@ use futures::future::join_all;
 use serenity::{
     async_trait,
     client::Context,
-    model::{id::UserId, interactions::application_command::ApplicationCommandInteraction},
+    model::{
+        application::interaction::application_command::ApplicationCommandInteraction, id::UserId,
+    },
 };
 
 use crate::consts::{self, CONFIG};
@@ -50,7 +52,7 @@ impl Command for Screensharers {
 
         command.create_interaction_response(&ctx.http, |resp| {
             resp.interaction_response_data(|data| {
-                data.create_embed(|embed| {
+                data.embed(|embed| {
                     embed.title("Unfreeze leaderboard")
                         .description("List of every screenshare member that has unfrozen someone before and how many times they did it.")
                         .fields(screensharers)

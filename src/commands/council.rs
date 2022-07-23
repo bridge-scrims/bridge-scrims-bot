@@ -1,20 +1,24 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use bridge_scrims::interact_opts::InteractOpts;
 use serenity::async_trait;
 use serenity::client::Context;
 use serenity::futures::StreamExt;
 use serenity::http::Http;
-use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandOptionType,
+use serenity::model::{
+    application::{
+        command::CommandOptionType,
+        interaction::{
+            application_command::ApplicationCommandInteraction,
+            {InteractionResponseType, MessageFlags},
+        },
+    },
+    mention::Mentionable,
 };
-use serenity::model::interactions::InteractionResponseType;
-use serenity::model::misc::Mentionable;
-use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
 use serenity::utils::Color;
-use tokio::sync::Mutex;
-use tokio::time::Duration;
+use tokio::{sync::Mutex, time::Duration};
+
+use bridge_scrims::interact_opts::InteractOpts;
 
 use crate::commands::Command;
 use crate::consts::CONFIG;
@@ -41,7 +45,7 @@ impl Command for Council {
                         o.name("council")
                             .description("The council who's members to display")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String);
+                            .kind(CommandOptionType::String);
                         for name in CONFIG.councils.keys() {
                             o.add_string_choice(name, name);
                         }
@@ -59,10 +63,8 @@ impl Command for Council {
     ) -> crate::Result<()> {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| {
-                    d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-                })
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let name = command.get_str("council").unwrap();
@@ -70,7 +72,7 @@ impl Command for Council {
         if let Some(value) = self.councils.get_council(&name).await {
             command
                 .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
+                    r.embed(|e| {
                         e.title(format!("{} Council", name))
                             .description(value)
                             .color(Color::new(0xbb77fc))
@@ -80,7 +82,7 @@ impl Command for Council {
         } else {
             command
                 .edit_original_interaction_response(&ctx, |r| {
-                    r.create_embed(|e| {
+                    r.embed(|e| {
                         e.title("Invalid Council")
                             .description("The councils are not yet loaded!")
                             .color(Color::new(0xbb77fc))
