@@ -1,11 +1,11 @@
 use std::time::Duration;
 
+use serenity::model::application::command::CommandOptionType;
 use serenity::{
     async_trait,
     client::Context,
-    model::interactions::{
-        application_command::{ApplicationCommandInteraction as ACI, ApplicationCommandOptionType},
-        InteractionApplicationCommandCallbackDataFlags,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction as ACI, MessageFlags,
     },
 };
 
@@ -38,7 +38,7 @@ impl Command for LogTime {
                             .name("ign")
                             .description("The Minecraft ingame name of the person that you want to fetch the log time of.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                     })
             })
             .await?;
@@ -49,11 +49,10 @@ impl Command for LogTime {
             command
                 .create_interaction_response(&ctx.http, |m| {
                     m.interaction_response_data(|d| {
-                        d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-                            .content(format!(
-                                "You are currently on a cooldown for {:.2} seconds.",
-                                t.as_secs_f32()
-                            ))
+                        d.flags(MessageFlags::EPHEMERAL).content(format!(
+                            "You are currently on a cooldown for {:.2} seconds.",
+                            t.as_secs_f32()
+                        ))
                     })
                 })
                 .await?;
@@ -72,11 +71,11 @@ impl Command for LogTime {
             command
                 .create_interaction_response(&ctx.http, |message| {
                     message.interaction_response_data(|d| {
-                        d.create_embed(|em| {
+                        d.embed(|em| {
                             em.title("Invalid User!")
                                 .description(format!("The player `{}` could not be found", name))
                         })
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -90,7 +89,7 @@ impl Command for LogTime {
                 command
                     .create_interaction_response(&ctx.http, |message| {
                         message.interaction_response_data(|d| {
-                            d.create_embed(|em| {
+                            d.embed(|em| {
                                 em.title(format!("Log Time information for {}", name))
                                     .field(
                                         "Last login time",
@@ -112,11 +111,11 @@ impl Command for LogTime {
                 command
                     .create_interaction_response(&ctx.http, |message| {
                         message.interaction_response_data(|d| {
-                            d.create_embed(|em| {
+                            d.embed(|em| {
                                 em.title("API Error!")
                                     .description("The hypixel api has yeileded an error!")
                             })
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                         })
                     })
                     .await?;

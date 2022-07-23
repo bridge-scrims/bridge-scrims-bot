@@ -1,21 +1,20 @@
-use bridge_scrims::interact_opts::InteractOpts;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     builder::CreateEmbed,
     client::Context,
     http::Http,
     model::{
+        application::interaction::{
+            application_command::ApplicationCommandInteraction, MessageFlags,
+        },
         guild::Ban,
         id::{RoleId, UserId},
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionApplicationCommandCallbackDataFlags,
-        },
     },
 };
+
+use bridge_scrims::interact_opts::InteractOpts;
 
 use crate::consts::CONFIG;
 
@@ -62,7 +61,7 @@ impl UnbanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Could not find {} in our bans", user))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -79,7 +78,7 @@ impl UnbanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Could not unban {}: {}", user_id, e))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -187,32 +186,31 @@ impl Command for Unban {
                 c
                     .name(self.name())
                     .description("Removes a ban from the given user in this server. This does not affect the \"Banned\" Role")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|o| {
                         o.name("user")
                             .description("The user to unban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                     })
                     .create_option(|o| {
                         o.name("reason")
                             .description("The reason to remove this user's ban")
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .required(false)
                     })
-
             })
-        .await?;
+            .await?;
         CONFIG
             .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
@@ -249,17 +247,17 @@ impl Command for ScrimUnban {
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Screenshare-unbans the given user.")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|o| {
                         o.name("user")
                             .description("The user to unban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                     })
                     .create_option(|o| {
                         o.name("reason")
                             .description("The reason to remove this user's ban")
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .required(false)
                     })
             })
@@ -268,17 +266,17 @@ impl Command for ScrimUnban {
             .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.ss_support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })

@@ -1,15 +1,14 @@
-use bridge_scrims::interact_opts::InteractOpts;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
-    model::interactions::{
-        application_command::{
-            ApplicationCommandInteraction, ApplicationCommandOptionType,
-            ApplicationCommandPermissionType,
-        },
-        InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction, InteractionResponseType, MessageFlags,
     },
 };
+
+use bridge_scrims::interact_opts::InteractOpts;
 
 use crate::consts::CONFIG;
 
@@ -26,12 +25,12 @@ impl super::Command for Reload {
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
                     .description("Reloads application commands.")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|opt| {
                         let opt = opt
                             .name("command")
                             .description("Which command to remove. Default: all")
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .required(false);
                         for command in crate::handler::COMMANDS.iter() {
                             let name = command.name();
@@ -46,7 +45,7 @@ impl super::Command for Reload {
             .guild
             .create_application_command_permission(&ctx.http, cmd.id, |perm| {
                 perm.create_permission(|perm| {
-                    perm.kind(ApplicationCommandPermissionType::Role)
+                    perm.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
@@ -88,7 +87,7 @@ impl super::Command for Reload {
                     _ => "Removed all commands. Please wait for the bot to add the commands back."
                         .to_string(),
                 })
-                .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                .flags(MessageFlags::EPHEMERAL)
             })
             .await?;
         Ok(())

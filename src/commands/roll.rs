@@ -1,16 +1,14 @@
-use crate::commands::Command;
-
 use rand::seq::SliceRandom;
 use serenity::{
     async_trait,
-    model::interactions::{
-        application_command::ApplicationCommandInteraction,
-        InteractionApplicationCommandCallbackDataFlags, InteractionResponseType,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction, InteractionResponseType, MessageFlags,
     },
     prelude::{Context, Mentionable},
     utils::Color,
 };
 
+use crate::commands::Command;
 use crate::consts::CONFIG;
 
 pub struct Roll;
@@ -45,7 +43,7 @@ impl Command for Roll {
             command
                 .create_interaction_response(&ctx, |r| {
                     r.interaction_response_data(|m| {
-                        m.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        m.flags(MessageFlags::EPHEMERAL)
                             .content("This command is disabled in this channel!")
                     })
                 })
@@ -61,7 +59,7 @@ impl Command for Roll {
 
         let member = command.member.as_ref().unwrap();
 
-        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).unwrap();
 
         let voice_state = guild.voice_states.get(&member.user.id);
 
@@ -77,15 +75,14 @@ impl Command for Roll {
         let channel_id = voice_state.unwrap().channel_id.unwrap();
         let channel = channel_id
             .to_channel_cached(&ctx.cache)
-            .await
             .unwrap()
             .guild()
             .unwrap();
 
-        if channel.category_id.is_none()
+        if channel.parent_id.is_none()
             || !CONFIG
                 .queue_categories
-                .contains(&channel.category_id.unwrap())
+                .contains(&channel.parent_id.unwrap())
         {
             command
                 .edit_original_interaction_response(&ctx, |r| {
@@ -112,7 +109,7 @@ impl Command for Roll {
 
         command
             .edit_original_interaction_response(&ctx, |r| {
-                r.create_embed(|e| {
+                r.embed(|e| {
                     e.title("Team Captains:")
                         .field("First Captain", members[0].mention(), true)
                         .field("Second Captain", members[1].mention(), true)
@@ -155,15 +152,15 @@ impl Command for Teams {
     ) -> crate::Result<()> {
         let channel = command.channel_id.to_channel(&ctx).await?.guild();
         if channel.is_none()
-            || channel.as_ref().unwrap().category_id.is_none()
+            || channel.as_ref().unwrap().parent_id.is_none()
             || !CONFIG
                 .queue_categories
-                .contains(&channel.unwrap().category_id.unwrap())
+                .contains(&channel.unwrap().parent_id.unwrap())
         {
             command
                 .create_interaction_response(&ctx, |r| {
                     r.interaction_response_data(|m| {
-                        m.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        m.flags(MessageFlags::EPHEMERAL)
                             .content("This command is disabled in this channel!")
                     })
                 })
@@ -183,7 +180,6 @@ impl Command for Teams {
             .guild_id
             .ok_or("No guild found")?
             .to_guild_cached(&ctx.cache)
-            .await
             .ok_or("No guild found")?;
 
         let voice_state = guild.voice_states.get(&member.user.id);
@@ -200,15 +196,14 @@ impl Command for Teams {
         let channel_id = voice_state.unwrap().channel_id.unwrap();
         let channel = channel_id
             .to_channel_cached(&ctx.cache)
-            .await
             .unwrap()
             .guild()
             .unwrap();
 
-        if channel.category_id.is_none()
+        if channel.parent_id.is_none()
             || !CONFIG
                 .queue_categories
-                .contains(&channel.category_id.unwrap())
+                .contains(&channel.parent_id.unwrap())
         {
             command
                 .edit_original_interaction_response(&ctx, |r| {
@@ -246,7 +241,7 @@ impl Command for Teams {
 
         command
             .edit_original_interaction_response(&ctx, |r| {
-                r.create_embed(|e| {
+                r.embed(|e| {
                     e.title("Teams:")
                         .field("First Team", x, true)
                         .field("Second Team", y, true)

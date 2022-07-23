@@ -4,13 +4,12 @@ use serenity::async_trait;
 use serenity::builder::CreateApplicationCommand;
 use serenity::client::Context;
 use serenity::futures::StreamExt;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
+use serenity::model::application::interaction::InteractionResponseType;
+use serenity::model::application::interaction::MessageFlags;
 use serenity::model::channel::Message;
-
-use serenity::model::interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandOptionType, ApplicationCommandPermissionType,
-};
-use serenity::model::interactions::InteractionResponseType;
-use serenity::model::prelude::InteractionApplicationCommandCallbackDataFlags;
+use serenity::model::Permissions;
 
 use bridge_scrims::interact_opts::InteractOpts;
 
@@ -48,7 +47,7 @@ impl PurgeOption {
             PurgeOption::FromUser => {
                 cmd.create_option(|user| {
                     user.name("user")
-                        .kind(ApplicationCommandOptionType::User)
+                        .kind(CommandOptionType::User)
                         .description("The user who's messages are to be purged (if the from_user option is selected)")
                         .required(false)
                 });
@@ -56,7 +55,7 @@ impl PurgeOption {
             PurgeOption::Contains => {
                 cmd.create_option(|user| {
                     user.name("text")
-                        .kind(ApplicationCommandOptionType::String)
+                        .kind(CommandOptionType::String)
                         .description("The text to search for in purging messages (if the contains option is selected)")
                         .required(false)
                 });
@@ -113,17 +112,17 @@ impl Command for Purge {
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Purges a specific amount of messages from the channel")
-                    .default_permission(false);
+                    .default_member_permissions(Permissions::empty());
                 c.create_option(|opt| {
                     opt.name("filter")
-                        .kind(ApplicationCommandOptionType::String)
+                        .kind(CommandOptionType::String)
                         .description("The specific type of messages to purge.")
                         .required(true)
                 });
                 c.create_option(|amount| {
                     amount
                         .name("amount")
-                        .kind(ApplicationCommandOptionType::Integer)
+                        .kind(CommandOptionType::Integer)
                         .description(
                             "The amount of messages to go through to purge (total messages)",
                         )
@@ -140,7 +139,7 @@ impl Command for Purge {
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(role.0)
                             .permission(true)
                     });
@@ -158,10 +157,8 @@ impl Command for Purge {
     ) -> crate::Result<()> {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| {
-                    d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-                })
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
 

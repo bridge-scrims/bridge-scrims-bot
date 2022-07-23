@@ -1,16 +1,14 @@
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
     model::{
-        id::{ChannelId, UserId},
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            message_component::MessageComponentInteraction,
-            InteractionApplicationCommandCallbackDataFlags,
+        application::interaction::{
+            application_command::ApplicationCommandInteraction,
+            message_component::MessageComponentInteraction, MessageFlags,
         },
+        id::{ChannelId, UserId},
     },
 };
 use time::OffsetDateTime;
@@ -42,11 +40,11 @@ impl Command for Freeze {
                     .description("Freezes a user")
                     .create_option(|opt| {
                         opt.name("player")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                             .description("The player to be frozen")
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
 
@@ -54,7 +52,7 @@ impl Command for Freeze {
             .guild
             .create_application_command_permission(&ctx, command.id, |p| {
                 p.create_permission(|perm| {
-                    perm.kind(ApplicationCommandPermissionType::Role)
+                    perm.kind(CommandPermissionType::Role)
                         .id(crate::CONFIG.ss_support.0)
                         .permission(true)
                 })
@@ -78,7 +76,7 @@ impl Command for Freeze {
                     Status::Success => data.content(format!("Sucessfully frozen {}", tag)),
                     Status::Ignored => data
                         .content(format!("Ignored your request to freeze {}.", tag))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL),
+                        .flags(MessageFlags::EPHEMERAL),
                 })
             })
             .await?;
@@ -115,7 +113,7 @@ impl Button for Freeze {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("You are not a screensharer!")
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -128,7 +126,7 @@ impl Button for Freeze {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Successfully frozen {}", tag))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -175,7 +173,7 @@ async fn freeze_user(
     let user = target.to_user(&ctx.http).await?;
     let mut member = crate::CONFIG.guild.member(&ctx.http, user.id).await?;
 
-    let roles = member.roles(&ctx.cache).await.unwrap_or_default();
+    let roles = member.roles(&ctx.cache).unwrap_or_default();
     let highest_role = roles
         .iter()
         .fold(0, |acc, x| if x.position > acc { x.position } else { acc });
@@ -184,7 +182,6 @@ async fn freeze_user(
         .member(&ctx.http, staff)
         .await?
         .roles(&ctx.cache)
-        .await
         .unwrap_or_default();
     let has_higher_role = staffroles
         .into_iter()
