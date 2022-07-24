@@ -422,6 +422,7 @@ impl EventHandler for Handler {
             && !has_banned
             && !has_unverified
             && !has_member
+            && crate::consts::DATABASE.fetch_freezes_for(user.user.id.0).is_none()
         {
             if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
                 tracing::error!("{}", err);
