@@ -1,19 +1,18 @@
-use bridge_scrims::interact_opts::InteractOpts;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
     model::{
+        application::interaction::{
+            application_command::ApplicationCommandInteraction, MessageFlags,
+        },
         channel::{PermissionOverwrite, PermissionOverwriteType},
         id::UserId,
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionApplicationCommandCallbackDataFlags,
-        },
     },
 };
+
+use bridge_scrims::interact_opts::InteractOpts;
 
 use crate::consts::{self, CONFIG};
 
@@ -36,17 +35,17 @@ impl Command for Ticket {
                         opt.name("operation")
                             .description("Wether to add or remove someone")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .add_string_choice("Add", "a")
                             .add_string_choice("Remove", "r")
                     })
                     .create_option(|opt| {
                         opt.name("target")
                             .description("The user that is affected by the change")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
 
@@ -55,7 +54,7 @@ impl Command for Ticket {
             .create_application_command_permission(&ctx.http, command.id, |perm| {
                 for role in &[CONFIG.ss_support, CONFIG.staff] {
                     perm.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .permission(true)
                             .id(role.0)
                     });
@@ -88,7 +87,7 @@ impl Command for Ticket {
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("That channel is not a ticket!")
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -133,7 +132,7 @@ impl Command for Ticket {
                     .create_interaction_response(&ctx.http, |resp| {
                         resp.interaction_response_data(|data| {
                             data.content("That is not an option.")
-                                .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                                .flags(MessageFlags::EPHEMERAL)
                         })
                     })
                     .await?;

@@ -1,23 +1,21 @@
-use crate::commands::Command;
+use std::collections::HashMap;
+
 use base64::decode;
 use serde_json::value::Value;
+use serenity::model::{
+    application::command::{CommandOptionType, CommandPermissionType},
+    Permissions,
+};
 use serenity::{
     async_trait,
-    model::{
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionResponseType,
-        },
-        prelude::InteractionApplicationCommandCallbackDataFlags,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction, InteractionResponseType, MessageFlags,
     },
     prelude::Context,
     utils::Color,
 };
-use std::collections::HashMap;
 
+use crate::commands::Command;
 use crate::consts::CONFIG;
 
 type Message = HashMap<String, Value>;
@@ -43,13 +41,13 @@ impl Command for Prefab {
                         o.name("name")
                             .description("Select the prefab that you would like to send.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String);
+                            .kind(CommandOptionType::String);
                         for name in self.prefabs.keys() {
                             o.add_string_choice(name, name);
                         }
                         o
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
         CONFIG
@@ -57,7 +55,7 @@ impl Command for Prefab {
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(role.0)
                             .permission(true)
                     });
@@ -74,10 +72,8 @@ impl Command for Prefab {
     ) -> crate::Result<()> {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| {
-                    d.flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
-                })
-                .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
+                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let s = command.data.options[0]
@@ -95,7 +91,7 @@ impl Command for Prefab {
         }
         command
             .edit_original_interaction_response(&ctx, |r| {
-                r.create_embed(|e| {
+                r.embed(|e| {
                     e.title("Prefab Sent")
                         .description(format!("The prefab `{}` has been sent.", s))
                         .color(Color::new(0x1abc9c))

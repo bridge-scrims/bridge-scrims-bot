@@ -1,6 +1,7 @@
-use serenity::model::id::UserId;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+
+use serenity::model::id::UserId;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 

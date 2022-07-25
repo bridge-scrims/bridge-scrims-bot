@@ -1,11 +1,9 @@
 use bridge_scrims::interact_opts::InteractOpts;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
-    async_trait,
-    client::Context,
-    model::interactions::application_command::{
-        ApplicationCommandInteraction, ApplicationCommandOptionType,
-        ApplicationCommandPermissionType,
-    },
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
 };
 use std::fmt::Write;
 
@@ -31,23 +29,23 @@ impl Command for ListBans {
                         opt.name("type")
                             .description("Wether you want to list scrimbans or server bans")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                             .add_string_choice("Scrim", "sc")
                             .add_string_choice("Server", "sv")
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
         crate::CONFIG
             .guild
             .create_application_command_permission(&ctx.http, command.id, |c| {
                 c.create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
@@ -104,7 +102,7 @@ impl Command for ListBans {
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
-                    data.create_embed(|embed| {
+                    data.embed(|embed| {
                         embed
                             .title(format!(
                                 "{} Bans",
@@ -121,9 +119,7 @@ impl Command for ListBans {
             .await?;
         for d in desc {
             command
-                .create_followup_message(&ctx.http, |resp| {
-                    resp.create_embed(|embed| embed.description(d))
-                })
+                .create_followup_message(&ctx.http, |resp| resp.embed(|embed| embed.description(d)))
                 .await?;
         }
         Ok(())

@@ -1,25 +1,22 @@
+use std::{sync::Arc, time::Duration};
+
+use serenity::model::application::{
+    command::{CommandOptionType, CommandPermissionType},
+    interaction::{application_command::ApplicationCommandInteraction, MessageFlags},
+};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     builder::CreateEmbed,
     client::{Cache, Context},
     http::Http,
-    model::{
-        id::UserId,
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionApplicationCommandCallbackDataFlags,
-        },
-    },
+    model::id::UserId,
 };
-
-use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
-use crate::{commands::Command, consts::CONFIG};
 use bridge_scrims::interact_opts::InteractOpts;
+
+use crate::{commands::Command, consts::CONFIG};
 
 use super::unban::{UnbanEntry, UnbanType};
 
@@ -70,8 +67,8 @@ impl BanType {
         });
 
         let mut member = CONFIG.guild.member(&http, id).await?;
-        let roles = member.roles(&cache).await.unwrap_or_default();
-        let cmd_roles = cmd_member.roles(&cache).await.unwrap_or_default();
+        let roles = member.roles(&cache).unwrap_or_default();
+        let cmd_roles = cmd_member.roles(&cache).unwrap_or_default();
 
         let top_role = roles.iter().max();
         let cmd_top_role = cmd_roles.iter().max();
@@ -81,7 +78,7 @@ impl BanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("You do not have permission to ban {}", user.tag()))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -118,7 +115,7 @@ impl BanType {
             command
                 .create_followup_message(http, |msg| {
                     msg.content(format!("Unfreezing {} before banning them.", user.tag()))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                 })
                 .await?;
         }
@@ -198,7 +195,7 @@ impl BanType {
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content(format!("Could not ban {}: {}", user.tag(), e))
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -225,6 +222,7 @@ impl BanType {
 }
 
 pub struct Ban;
+
 #[async_trait]
 impl Command for Ban {
     fn name(&self) -> String {
@@ -239,30 +237,30 @@ impl Command for Ban {
                 c
                     .name(self.name())
                     .description("Bans the given user from the server. This is not meant for screenshare bans.")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|o| {
                         o.name("user")
                             .description("The user to ban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                     })
                     .create_option(|o| {
                         o.name("reason")
                             .description("Reason for the ban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                     })
                     .create_option(|o| {
                         o.name("duration")
                             .description("The ban duration. Default: forever")
                             .required(false)
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                     })
                     .create_option(|o| {
                         o.name("type")
                             .description("The ban duration type. Default: Days")
                             .required(false)
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                             .add_int_choice("Seconds", 1)
                             .add_int_choice("Minutes", 60)
                             .add_int_choice("Hours", 60 * 60)
@@ -272,20 +270,20 @@ impl Command for Ban {
                         o.name("dmd")
                             .description("Should the last 7d of messages be removed?")
                             .required(false)
-                            .kind(ApplicationCommandOptionType::Boolean)
+                            .kind(CommandOptionType::Boolean)
                     })
             })
-        .await?;
+            .await?;
         CONFIG
             .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
@@ -331,6 +329,7 @@ async fn update_loop(ctx: Arc<Http>) {
 }
 
 pub struct ScrimBan;
+
 #[async_trait]
 impl Command for ScrimBan {
     fn name(&self) -> String {
@@ -345,30 +344,30 @@ impl Command for ScrimBan {
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
                     .description("Screenshare-bans the given user.")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|o| {
                         o.name("user")
                             .description("The user to ban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                     })
                     .create_option(|o| {
                         o.name("reason")
                             .description("Reason for the ban")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::String)
+                            .kind(CommandOptionType::String)
                     })
                     .create_option(|o| {
                         o.name("duration")
                             .description("The ban duration. Default: 30")
                             .required(false)
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                     })
                     .create_option(|o| {
                         o.name("type")
                             .description("The ban duration type. Default: days")
                             .required(false)
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                             .add_int_choice("Seconds", 1)
                             .add_int_choice("Minutes", 60)
                             .add_int_choice("Hours", 60 * 60)
@@ -380,17 +379,17 @@ impl Command for ScrimBan {
             .guild
             .create_application_command_permission(&ctx, command.id, |c| {
                 c.create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.ss_support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.support.0)
                         .permission(true)
                 })
                 .create_permission(|p| {
-                    p.kind(ApplicationCommandPermissionType::Role)
+                    p.kind(CommandPermissionType::Role)
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })

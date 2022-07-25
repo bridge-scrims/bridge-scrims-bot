@@ -1,25 +1,24 @@
-use crate::commands::Command;
-use bridge_scrims::interact_opts::InteractOpts;
 use chrono::{
     prelude::{DateTime, Utc},
     Duration,
 };
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::{Permissions, Timestamp};
 use serenity::{
     async_trait,
     model::{
-        id::UserId,
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionResponseType,
+        application::interaction::{
+            application_command::ApplicationCommandInteraction, InteractionResponseType,
         },
+        id::UserId,
     },
     prelude::Context,
     utils::Color,
 };
 
+use bridge_scrims::interact_opts::InteractOpts;
+
+use crate::commands::Command;
 use crate::consts::CONFIG;
 
 pub struct Timeout {}
@@ -39,25 +38,25 @@ impl Command for Timeout {
                         o.name("user")
                             .description("The person you would like to time out.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                     })
                     .create_option(|o| {
                         o.name("duration")
                             .description("The time you would like to time someone out for.")
                             .required(true)
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                     })
                     .create_option(|o| {
                         o.name("type")
                             .description("The type of time you would like to use.")
-                            .kind(ApplicationCommandOptionType::Integer)
+                            .kind(CommandOptionType::Integer)
                             .required(true)
                             .add_int_choice("Seconds", 1)
                             .add_int_choice("Minutes", 60)
                             .add_int_choice("Hours", 60 * 60)
                             .add_int_choice("Days", 60 * 60 * 24)
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
         CONFIG
@@ -65,7 +64,7 @@ impl Command for Timeout {
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(role.0)
                             .permission(true)
                     });
@@ -102,8 +101,8 @@ impl Command for Timeout {
         let mut member = ctx.http.get_member(CONFIG.guild.0, user.id.0).await?;
         let cmd_member = command.clone().member.unwrap();
 
-        let roles = member.roles(&ctx.cache).await.unwrap_or_default();
-        let cmd_roles = cmd_member.roles(&ctx.cache).await.unwrap_or_default();
+        let roles = member.roles(&ctx.cache).unwrap_or_default();
+        let cmd_roles = cmd_member.roles(&ctx.cache).unwrap_or_default();
 
         let top_role = roles.iter().max();
         let cmd_top_role = cmd_roles.iter().max();
@@ -121,12 +120,12 @@ impl Command for Timeout {
         }
 
         let resp = member
-            .disable_communication_until_datetime(&ctx.http, end)
+            .disable_communication_until_datetime(&ctx.http, Timestamp::from(end))
             .await;
 
         command
             .edit_original_interaction_response(&ctx, |r| match resp {
-                Ok(()) => r.create_embed(|e| {
+                Ok(()) => r.embed(|e| {
                     e.title("User Timed out!")
                         .description(format!(
                             "The user {} has been timed out until <t:{}>.",

@@ -1,16 +1,14 @@
 use crate::commands::Command;
 use bridge_scrims::interact_opts::InteractOpts;
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     model::{
-        id::UserId,
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionResponseType,
+        application::interaction::{
+            application_command::ApplicationCommandInteraction, InteractionResponseType,
         },
+        id::UserId,
     },
     prelude::Context,
     utils::Color,
@@ -35,51 +33,51 @@ impl Command for Notes {
                     // Sub command Options:
                     .create_option(|list| {
                         // list
-                        list.kind(ApplicationCommandOptionType::SubCommand)
+                        list.kind(CommandOptionType::SubCommand)
                             .name("list")
                             .description("The notes for a given user.")
                             .create_sub_option(|opt| {
-                                opt.kind(ApplicationCommandOptionType::User)
+                                opt.kind(CommandOptionType::User)
                                     .name("user")
                                     .description("The user who's notes to retrieve.")
                                     .required(true)
                             })
                     })
                     .create_option(|add| {
-                        add.kind(ApplicationCommandOptionType::SubCommand)
+                        add.kind(CommandOptionType::SubCommand)
                             .name("add")
                             .description("Add a note for a given user.")
                             .create_sub_option(|opt| {
-                                opt.kind(ApplicationCommandOptionType::User)
+                                opt.kind(CommandOptionType::User)
                                     .name("user")
                                     .description("The user to add a note to.")
                                     .required(true)
                             })
                             .create_sub_option(|opt| {
-                                opt.kind(ApplicationCommandOptionType::String)
+                                opt.kind(CommandOptionType::String)
                                     .name("note")
                                     .description("The note to add.")
                                     .required(true)
                             })
                     })
                     .create_option(|del| {
-                        del.kind(ApplicationCommandOptionType::SubCommand)
+                        del.kind(CommandOptionType::SubCommand)
                             .name("remove")
                             .description("Delete a note from a user.")
                             .create_sub_option(|opt| {
-                                opt.kind(ApplicationCommandOptionType::User)
+                                opt.kind(CommandOptionType::User)
                                     .name("user")
                                     .description("The user to remove a note from.")
                                     .required(true)
                             })
                             .create_sub_option(|opt| {
-                                opt.kind(ApplicationCommandOptionType::Integer)
+                                opt.kind(CommandOptionType::Integer)
                                     .name("noteid")
                                     .description("The note id to delete.")
                                     .required(true)
                             })
                     })
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
             })
             .await?;
         CONFIG
@@ -87,7 +85,7 @@ impl Command for Notes {
             .create_application_command_permission(&ctx, cmd.id, |p| {
                 for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
                     p.create_permission(|perm| {
-                        perm.kind(ApplicationCommandPermissionType::Role)
+                        perm.kind(CommandPermissionType::Role)
                             .id(role.0)
                             .permission(true)
                     });
@@ -120,7 +118,7 @@ impl Command for Notes {
                 if notes.is_empty() {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
+                            r.embed(|e| {
                                 e.title("No notes found!")
                                     .description(format!(
                                         "<@{}> currently has no notes.",
@@ -136,7 +134,7 @@ impl Command for Notes {
                     if i == 0 {
                         command
                             .edit_original_interaction_response(&ctx, |r| {
-                                r.create_embed(|e| {
+                                r.embed(|e| {
                                     e.title(format!(
                                         "Page {} of {}",
                                         i + 1,
@@ -166,7 +164,7 @@ impl Command for Notes {
                     } else {
                         command
                             .create_followup_message(&ctx, |r| {
-                                r.create_embed(|e| {
+                                r.embed(|e| {
                                     e.title(format!(
                                         "Page {} of {}",
                                         i + 1,
@@ -206,7 +204,7 @@ impl Command for Notes {
                 if noteid == -1 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
-                            r.create_embed(|e| {
+                            r.embed(|e| {
                                 e.title("Database Error!")
                                     .description(
                                         "There was an error when communicating with the database.",
@@ -218,7 +216,7 @@ impl Command for Notes {
                 }
                 command
                     .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title("Note Added")
                                 .description(format!(
                                     "The note `{}` has been added to <@{}> with id {}.",
@@ -241,7 +239,7 @@ impl Command for Notes {
 
                 command
                     .edit_original_interaction_response(&ctx, |r| {
-                        r.create_embed(|e| {
+                        r.embed(|e| {
                             e.title("Note Removed")
                                 .description(format!(
                                     "The note has been deleted from <@{}> with id {}.",

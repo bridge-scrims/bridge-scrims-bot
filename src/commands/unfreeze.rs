@@ -1,13 +1,11 @@
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
     http::Http,
     model::{
-        id::UserId,
-        interactions::application_command::{
-            ApplicationCommandInteraction, ApplicationCommandOptionType,
-            ApplicationCommandPermissionType,
-        },
+        application::interaction::application_command::ApplicationCommandInteraction, id::UserId,
     },
 };
 
@@ -29,11 +27,11 @@ impl Command for Unfreeze {
                 command
                     .name(self.name())
                     .description("Unfreezes a user")
-                    .default_permission(false)
+                    .default_member_permissions(Permissions::empty())
                     .create_option(|opt| {
                         opt.name("player")
                             .description("The player to unfreeze")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                     })
             })
@@ -42,7 +40,7 @@ impl Command for Unfreeze {
             .guild
             .create_application_command_permission(&ctx, command.id, |p| {
                 p.create_permission(|perm| {
-                    perm.kind(ApplicationCommandPermissionType::Role)
+                    perm.kind(CommandPermissionType::Role)
                         .id(crate::CONFIG.ss_support.0)
                         .permission(true)
                 })
@@ -65,7 +63,7 @@ impl Command for Unfreeze {
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
                     if !unfreeze {
-                        data.create_embed(|embed| {
+                        data.embed(|embed| {
                             embed
                                 .title("Not frozen")
                                 .description(format!("{} is not frozen", user))

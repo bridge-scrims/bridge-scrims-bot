@@ -1,22 +1,21 @@
+use std::time::Duration;
+
+use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::Permissions;
 use serenity::{
     async_trait,
     model::{
-        id::RoleId,
-        prelude::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandOptionType,
-                ApplicationCommandPermissionType,
-            },
-            InteractionApplicationCommandCallbackDataFlags,
+        application::interaction::{
+            application_command::ApplicationCommandInteraction, MessageFlags,
         },
+        id::RoleId,
     },
     prelude::Context,
 };
-use std::time::Duration;
+
+use bridge_scrims::{cooldown::Cooldowns, interact_opts::InteractOpts};
 
 use crate::{commands::Command, consts::CONFIG};
-use bridge_scrims::cooldown::Cooldowns;
-use bridge_scrims::interact_opts::InteractOpts;
 
 pub struct Ping {
     cooldowns: Cooldowns,
@@ -34,10 +33,10 @@ impl Command for Ping {
                 .create_application_command(&ctx.http, |cmd| {
                     cmd.name(option.name.clone())
                         .description("Ping a desired role uppon request")
-                        .default_permission(false)
+                        .default_member_permissions(Permissions::empty())
                         .create_option(|m| {
                             m.name("role")
-                                .kind(ApplicationCommandOptionType::String)
+                                .kind(CommandOptionType::String)
                                 .description("The role you would like to mention")
                                 .required(true);
                             for (name, role) in &option.options {
@@ -47,7 +46,7 @@ impl Command for Ping {
                         })
                         .create_option(|x| {
                             x.name("text")
-                                .kind(ApplicationCommandOptionType::String)
+                                .kind(CommandOptionType::String)
                                 .required(false)
                                 .description("An optional additional text to put in the message")
                         });
@@ -59,13 +58,11 @@ impl Command for Ping {
                 .create_application_command_permission(&ctx.http, cmd.id, |perms| {
                     for r in &option.required_roles {
                         perms.create_permission(|p| {
-                            p.kind(ApplicationCommandPermissionType::Role)
-                                .id(r.0)
-                                .permission(true)
+                            p.kind(CommandPermissionType::Role).id(r.0).permission(true)
                         });
                     }
                     perms.create_permission(|p| {
-                        p.kind(ApplicationCommandPermissionType::Role)
+                        p.kind(CommandPermissionType::Role)
                             .id(CONFIG.staff.0)
                             .permission(true)
                     })
@@ -95,7 +92,7 @@ impl Command for Ping {
                     .await?
                     .guild()
                     .unwrap()
-                    .category_id;
+                    .parent_id;
                 if !channels
                     .iter()
                     .any(|c| c == &command.channel_id || Some(*c) == cat)
@@ -104,9 +101,7 @@ impl Command for Ping {
                         .create_interaction_response(&ctx.http, |r| {
                             r.interaction_response_data(|d| {
                                 d.content("This command is disabled in this channel.")
-                                    .flags(
-                                        InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
-                                    )
+                                    .flags(MessageFlags::EPHEMERAL)
                             })
                         })
                         .await?;
@@ -127,7 +122,7 @@ impl Command for Ping {
                             "You are on a cooldown. Please wait {:.2} seconds.",
                             t.as_secs_f32()
                         ))
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                        .flags(MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -150,8 +145,7 @@ impl Command for Ping {
         command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| {
-                    d.content("Ping sent!")
-                        .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                    d.content("Ping sent!").flags(MessageFlags::EPHEMERAL)
                 })
             })
             .await?;

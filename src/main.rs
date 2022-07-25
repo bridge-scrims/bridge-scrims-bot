@@ -1,11 +1,12 @@
-use crate::consts::CONFIG;
-use crate::handler::Handler;
-use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::http::Http;
+use serenity::model::gateway::GatewayIntents;
 use serenity::Client;
 use tracing_subscriber::{
     filter::LevelFilter, fmt::Layer, layer::SubscriberExt, Layer as _, Registry,
 };
+
+use crate::consts::CONFIG;
+use crate::handler::Handler;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -33,20 +34,20 @@ async fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let application_id = Http::new_with_token(&CONFIG.bot_token)
+    let application_id = Http::new(&CONFIG.bot_token)
         .get_current_application_info()
         .await?
         .id
         .0;
     let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MEMBERS
         | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_VOICE_STATES;
 
-    let mut client = Client::builder(&CONFIG.bot_token)
+    let mut client = Client::builder(&CONFIG.bot_token, intents)
         .application_id(application_id)
         .event_handler(Handler::new())
-        .intents(intents)
         .await?;
     let shard_manager = client.shard_manager.clone();
     tokio::spawn(async move {

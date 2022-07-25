@@ -1,5 +1,21 @@
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
+
+use lazy_static::lazy_static;
+use rand::seq::SliceRandom;
+use regex::Regex;
+use serenity::async_trait;
+use serenity::builder::CreateEmbed;
+use serenity::client::{Context, EventHandler};
+use serenity::model::application::interaction::{Interaction, MessageFlags};
+use serenity::model::channel::{Message, MessageType, ReactionType};
+use serenity::model::gateway::Ready;
+use serenity::model::id::GuildId;
+use serenity::model::id::{ChannelId, EmojiId};
+use serenity::model::prelude::Member;
+use serenity::model::user::User;
+use serenity::prelude::Mentionable;
+use serenity::utils::Color;
 use tokio::sync::Mutex;
 
 use crate::commands::ban::{Ban, ScrimBan};
@@ -20,29 +36,11 @@ use crate::commands::screensharers::Screensharers;
 use crate::commands::ticket::Ticket;
 use crate::commands::timeout::Timeout;
 use crate::commands::unban::{ScrimUnban, Unban};
-use crate::commands::Command as _;
-
 use crate::commands::unfreeze::Unfreeze;
+use crate::commands::Command as _;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
-use rand::seq::SliceRandom;
-use serenity::async_trait;
-use serenity::builder::CreateEmbed;
-use serenity::client::{Context, EventHandler};
-use serenity::model::channel::{Message, MessageType, ReactionType};
-use serenity::model::gateway::Ready;
-use serenity::model::id::EmojiId;
-use serenity::model::interactions::{Interaction, InteractionApplicationCommandCallbackDataFlags};
-use serenity::model::prelude::Member;
-use serenity::prelude::Mentionable;
-use serenity::utils::Color;
-
-use serenity::model::id::GuildId;
-use serenity::model::user::User;
-
-use lazy_static::lazy_static;
-use regex::Regex;
 
 type Command = Box<dyn crate::commands::Command>;
 
@@ -124,7 +122,7 @@ impl EventHandler for Handler {
                                 Ok(_) => "Successfully reloaded!".to_string(),
                                 Err(e) => format!("Reloading failed: {}", e),
                             })
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+                            .flags(MessageFlags::EPHEMERAL)
                         })
                         .await;
                     if let Err(e) = response {
@@ -170,7 +168,14 @@ impl EventHandler for Handler {
         }
         let member = msg.author.clone();
 
-        let guild = CONFIG.guild.to_guild_cached(&ctx.cache).await.unwrap();
+        let guild;
+        if let Some(g) = msg.guild(&ctx) {
+            guild = g;
+        } else {
+            tracing::warn!("Message from a user in a dm {:?}", msg);
+            return;
+        }
+
         if msg.channel_id == CONFIG.q_and_a_channel {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
@@ -191,10 +196,10 @@ impl EventHandler for Handler {
         let channel = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild();
         if roll_commands.is_match(&msg.content)
             && channel.as_ref().is_some()
-            && channel.as_ref().unwrap().category_id.is_some()
+            && channel.as_ref().unwrap().parent_id.is_some()
             && CONFIG
                 .queue_categories
-                .contains(&channel.unwrap().category_id.unwrap())
+                .contains(&channel.unwrap().parent_id.unwrap())
         {
             let voice_state = guild.voice_states.get(&member.id);
 
@@ -208,13 +213,12 @@ impl EventHandler for Handler {
             let channel_id = voice_state.unwrap().channel_id.unwrap();
             let channel = channel_id
                 .to_channel_cached(&ctx.cache)
-                .await
                 .unwrap()
                 .guild()
                 .unwrap();
             if !CONFIG
                 .queue_categories
-                .contains(&channel.category_id.unwrap())
+                .contains(&channel.parent_id.unwrap_or(ChannelId(0)))
             {
                 let _ = msg
                     .reply(&ctx, "Please join a queue before using this command.")
@@ -328,13 +332,13 @@ impl EventHandler for Handler {
                         tracing::error!("Error in removal of reaction: {}", err);
                     }
                     if let Err(err) = msg.reply(&ctx, format!(
-                            "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
-                            &reaction.user)
-                            )
-                            .await
-                            {
-                                tracing::error!("{}", err);
-                            }
+                        "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
+                        &reaction.user),
+                    )
+                        .await
+                    {
+                        tracing::error!("{}", err);
+                    }
                 } else {
                     tracing::error!("Error in addition of reaction: {}", err);
                 }
@@ -342,8 +346,8 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_addition(&self, ctx: Context, guild_id: GuildId, _member: Member) {
-        if let Err(err) = CONFIG.member_count.update(ctx, guild_id).await {
+    async fn guild_member_addition(&self, ctx: Context, member: Member) {
+        if let Err(err) = CONFIG.member_count.update(ctx, member.guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
@@ -362,7 +366,7 @@ impl EventHandler for Handler {
     async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, mut user: Member) {
         let mut x = false;
 
-        for role in user.roles(&ctx.cache).await.unwrap() {
+        for role in user.roles(&ctx.cache).unwrap() {
             if role.tags.premium_subscriber || role.id == CONFIG.staff {
                 x = true;
             }
@@ -389,11 +393,11 @@ impl EventHandler for Handler {
         }
 
         if !x {
-            for role in user.roles(&ctx.cache).await.unwrap() {
+            for role in user.roles(&ctx.cache).unwrap() {
                 for a in &CONFIG.color_roles {
                     if &role.id == a {
                         if let Err(err) = user.remove_role(&ctx.http, a).await {
-                                tracing::error!("{}", err);
+                            tracing::error!("{}", err);
                         }
                     }
                 }
@@ -403,24 +407,26 @@ impl EventHandler for Handler {
         let mut has_banned = false;
         let mut has_member = false;
         let mut has_unverified = false;
-        for role in user.roles(&ctx.cache).await.unwrap() {
+        for role in user.roles(&ctx.cache).unwrap() {
             if role.id == CONFIG.member_role {
-                    has_member = true;
-                }
+                has_member = true;
+            }
             if role.id == CONFIG.unverified_role {
-                    has_unverified = true;
-                }
+                has_unverified = true;
+            }
             if role.id == CONFIG.banned {
-                    has_banned = true;
-                }
+                has_banned = true;
             }
-        if user.roles(&ctx.cache).await.unwrap().len() > 0 && !has_banned && !has_unverified && !has_member {
-            if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
-                    tracing::error!("{}", err);
-            }
-            has_member = true;
         }
-
+        if !user.roles(&ctx.cache).unwrap().is_empty()
+            && !has_banned
+            && !has_unverified
+            && !has_member
+        {
+            if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
+                tracing::error!("{}", err);
+            }
+        }
     }
 }
 
@@ -432,8 +438,6 @@ async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     }
 }
 
-
-
 async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     let mut lock = m.lock().await;
     let mut x = HashMap::new();
@@ -444,6 +448,7 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
 }
 
 async fn register_commands(ctx: &Context) -> Result<(), String> {
+    #[allow(unused_mut)]
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
 
@@ -458,11 +463,11 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        let result = command.register(ctx).await.map_err(|x| x.to_string());
-        if let Err(ref err) = result.as_ref() {
-            tracing::error!("Could not register command {}: {}", name, err);
-        }
-        res = res.and(result);
+        // let result = command.register(ctx).await.map_err(|x| x.to_string());
+        // if let Err(ref err) = result.as_ref() {
+        //     tracing::error!("Could not register command {}: {}", name, err);
+        // }
+        // res = res.and(result);
     }
     res
 }

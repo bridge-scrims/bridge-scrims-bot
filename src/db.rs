@@ -1,4 +1,3 @@
-pub use crate::model::*;
 use std::{
     cmp::Reverse,
     str::FromStr,
@@ -9,7 +8,10 @@ use serenity::model::id::RoleId;
 use sqlite::Connection;
 use time::OffsetDateTime;
 
+pub use crate::model::*;
+
 type SqliteResult<T = ()> = Result<T, sqlite::Error>;
+
 pub struct Database {
     pub sqlite: Mutex<Connection>,
 }
@@ -355,7 +357,7 @@ impl Database {
             db.execute(format!(
                 "INSERT INTO 'Notes' (userid,id,created_at,note,creator) values ({},{},\"{}\",\"{}\",{})",
                 userid,
-                count+1,
+                count + 1,
                 created_at.unix_timestamp(),
                 note,
                 creator

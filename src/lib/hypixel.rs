@@ -208,7 +208,7 @@ impl Display for LogTime {
         if self.0 == 0 {
             write!(f, "API Disabled")
         } else {
-            write!(f, "<t:{}:R>", self.0/1000)
+            write!(f, "<t:{}:R>", self.0 / 1000)
         }
     }
 }
@@ -268,6 +268,7 @@ mod tests {
         assert_eq!(format!("{}", parsed_uuid), simple_uuid);
         assert_eq!(format!("{:#}", parsed_uuid), uuid);
     }
+
     #[tokio::test]
     async fn notch_uuid() {
         let player = Player::fetch_from_username(String::from("Notch"))
@@ -278,6 +279,7 @@ mod tests {
             "069a79f444e94726a5befca90e38aaf5"
         );
     }
+
     #[tokio::test]
     async fn fetch_notch_info() {
         let player = Player::fetch_from_username(String::from("Notch"))
