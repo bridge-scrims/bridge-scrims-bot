@@ -6,7 +6,6 @@ use serenity::model::application::component::ButtonStyle;
 use serenity::model::application::interaction::InteractionResponseType;
 use serenity::{
     async_trait,
-    builder::CreateMessage,
     client::Context,
     model::{
         application::interaction::{
@@ -166,8 +165,6 @@ impl Command for Screenshare {
         };
 
         if let Ok(channel) = result {
-            let mut message = CreateMessage::default();
-
             let name = command.get_str("ign").unwrap();
             let player = Player::fetch_from_username(name.clone()).await?;
             let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
@@ -188,8 +185,7 @@ impl Command for Screenshare {
                     )
                     .await?;
             }
-
-            message.content(format!(
+            let mut m = channel.send_message(&ctx.http, |m| m.content(format!(
                 "<@&{}>
 <@{}> Please explain how <@{}> is cheating and screenshots of you telling them
 not to log aswell as any other info.
@@ -197,9 +193,7 @@ not to log aswell as any other info.
                 crate::consts::CONFIG.ss_support,
                 command.user.id.0,
                 in_question
-            ));
-
-            message.embed(|embed| {
+            )).embed(|embed| {
                 embed
                     .title("Screenshare Request")
                     .description(
@@ -221,8 +215,7 @@ not to log aswell as any other info.
                         playerstats.last_logout.unwrap_or_default(),
                         false,
                     )
-            });
-            message.components(|components| {
+            }).components(|components| {
                 components.create_action_row(|row| {
                     row.create_button(|button| {
                         button
@@ -235,16 +228,15 @@ not to log aswell as any other info.
                             })
                             .custom_id(format!("freeze:{}", in_question))
                     })
-                    .create_button(|button| {
-                        button
-                            .label("Close")
-                            .style(ButtonStyle::Danger)
-                            .emoji(ReactionType::Unicode(From::from("⛔")))
-                            .custom_id(format!("close:{}", channel.id))
-                    })
+                        .create_button(|button| {
+                            button
+                                .label("Close")
+                                .style(ButtonStyle::Danger)
+                                .emoji(ReactionType::Unicode(From::from("⛔")))
+                                .custom_id(format!("close:{}", channel.id))
+                        })
                 })
-            });
-            let mut m = channel.send_message(&ctx.http, |_| &mut message).await?;
+            })).await?;
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
