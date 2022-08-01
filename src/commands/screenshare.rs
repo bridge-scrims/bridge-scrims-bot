@@ -185,58 +185,64 @@ impl Command for Screenshare {
                     )
                     .await?;
             }
-            let mut m = channel.send_message(&ctx.http, |m| m.content(format!(
-                "<@&{}>
+            let mut m = channel
+                .send_message(&ctx.http, |m| {
+                    m.content(format!(
+                        "<@&{}>
 <@{}> Please explain how <@{}> is cheating and screenshots of you telling them
 not to log aswell as any other info.
 ",
-                crate::consts::CONFIG.ss_support,
-                command.user.id.0,
-                in_question
-            )).embed(|embed| {
-                embed
-                    .title("Screenshare Request")
-                    .description(
-                        "- Why did you request a screenshare on this member?
+                        crate::consts::CONFIG.ss_support,
+                        command.user.id.0,
+                        in_question
+                    ))
+                    .embed(|embed| {
+                        embed
+                            .title("Screenshare Request")
+                            .description(
+                                "- Why did you request a screenshare on this member?
 - __**Please provide evidence of you telling him not to log.**__
 - Anything else?
 
 **NOTE**: If you do not get frozen within 15 minutes you may logout.
 ",
-                    )
-                    .field("Ign", name, false)
-                    .field(
-                        "Last login time",
-                        playerstats.last_login.unwrap_or_default(),
-                        false,
-                    )
-                    .field(
-                        "Last logout time",
-                        playerstats.last_logout.unwrap_or_default(),
-                        false,
-                    )
-            }).components(|components| {
-                components.create_action_row(|row| {
-                    row.create_button(|button| {
-                        button
-                            .label("Freeze")
-                            .style(ButtonStyle::Primary)
-                            .emoji(ReactionType::Custom {
-                                animated: false,
-                                id: crate::CONFIG.freeze_emoji,
-                                name: None,
-                            })
-                            .custom_id(format!("freeze:{}", in_question))
+                            )
+                            .field("Ign", name, false)
+                            .field(
+                                "Last login time",
+                                playerstats.last_login.unwrap_or_default(),
+                                false,
+                            )
+                            .field(
+                                "Last logout time",
+                                playerstats.last_logout.unwrap_or_default(),
+                                false,
+                            )
                     })
-                        .create_button(|button| {
-                            button
-                                .label("Close")
-                                .style(ButtonStyle::Danger)
-                                .emoji(ReactionType::Unicode(From::from("⛔")))
-                                .custom_id(format!("close:{}", channel.id))
+                    .components(|components| {
+                        components.create_action_row(|row| {
+                            row.create_button(|button| {
+                                button
+                                    .label("Freeze")
+                                    .style(ButtonStyle::Primary)
+                                    .emoji(ReactionType::Custom {
+                                        animated: false,
+                                        id: crate::CONFIG.freeze_emoji,
+                                        name: None,
+                                    })
+                                    .custom_id(format!("freeze:{}", in_question))
+                            })
+                            .create_button(|button| {
+                                button
+                                    .label("Close")
+                                    .style(ButtonStyle::Danger)
+                                    .emoji(ReactionType::Unicode(From::from("⛔")))
+                                    .custom_id(format!("close:{}", channel.id))
+                            })
                         })
+                    })
                 })
-            })).await?;
+                .await?;
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
