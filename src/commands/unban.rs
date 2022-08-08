@@ -149,10 +149,8 @@ impl UnbanType {
                 }
 
                 // If roles cannot be added, don't remove the unban from the database either
-                if result.is_ok() {
-                    db_result =
-                        crate::consts::DATABASE.remove_entry("ScheduledScrimUnbans", to_unban.id.0);
-                }
+                db_result =
+                    crate::consts::DATABASE.remove_entry("ScheduledScrimUnbans", to_unban.id.0);
             }
         }
         if result.is_ok() {
