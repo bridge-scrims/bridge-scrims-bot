@@ -90,8 +90,7 @@ pub struct Config {
 
 lazy_static::lazy_static! {
     // Database related
-    pub static ref DATABASE_PATH: PathBuf = dirs::cache_dir()
-        .unwrap_or_else(|| std::env::current_dir().unwrap());
+    pub static ref DATABASE_PATH: PathBuf = std::env::current_dir().unwrap();
     pub static ref DATABASE: Database = Database::init();
 
     pub static ref CONFIG_STRING: String = fs::read_to_string("config.toml").expect("Config Not Supplied");
