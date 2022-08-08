@@ -75,7 +75,7 @@ impl Display for FormatEmbed {
 
 #[cfg(test)]
 mod tests {
-    use serenity::{builder::CreateEmbed, utils::Colour};
+    use serenity::{builder::CreateEmbed, model::Timestamp, utils::Colour};
 
     use super::*;
 
@@ -96,7 +96,7 @@ mod tests {
             .footer(|footer| footer.icon_url("https://example.com").text("Bridge Scrims"))
             .image("http://via.placeholder.com/150")
             .thumbnail("http://via.placeholder.com/150")
-            .timestamp("1 jan 1970")
+            .timestamp(Timestamp::from_unix_timestamp(0).unwrap())
             .title("A very nice embed")
             .url("http://bridgescrims.com");
 
@@ -122,8 +122,8 @@ Image: http://via.placeholder.com/150
 Thumbnail: http://via.placeholder.com/150
 > Bridge Scrims
 Icon: https://example.com
-Timestamp: 1 jan 1970
-"
+Timestamp: 1970-01-01T00:00:00.000Z
+" // yes i did just make it ugly
             )
         );
     }

@@ -1,10 +1,11 @@
 use std::{fmt::Display, time::Duration};
 
+use futures::StreamExt;
 use serenity::model::application::command::CommandOptionType;
 use serenity::model::application::component::ButtonStyle;
+use serenity::model::application::interaction::InteractionResponseType;
 use serenity::{
     async_trait,
-    builder::CreateMessage,
     client::Context,
     model::{
         application::interaction::{
@@ -164,8 +165,6 @@ impl Command for Screenshare {
         };
 
         if let Ok(channel) = result {
-            let mut message = CreateMessage::default();
-
             let name = command.get_str("ign").unwrap();
             let player = Player::fetch_from_username(name.clone()).await?;
             let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
@@ -186,62 +185,64 @@ impl Command for Screenshare {
                     )
                     .await?;
             }
-
-            message.content(format!(
-                "<@&{}>
-Please explain how <@{}> is cheating and screenshots of you telling them
+            let mut m = channel
+                .send_message(&ctx.http, |m| {
+                    m.content(format!(
+                        "<@&{}>
+<@{}> Please explain how <@{}> is cheating and screenshots of you telling them
 not to log aswell as any other info.
 ",
-                crate::consts::CONFIG.ss_support,
-                in_question
-            ));
-
-            message.embed(|embed| {
-                embed
-                    .title("Screenshare Request")
-                    .description(
-                        "- Why did you request a screenshare on this member?
-- Please provide evidence of you telling him not to log.
+                        crate::consts::CONFIG.ss_support,
+                        command.user.id.0,
+                        in_question
+                    ))
+                    .embed(|embed| {
+                        embed
+                            .title("Screenshare Request")
+                            .description(
+                                "- Why did you request a screenshare on this member?
+- __**Please provide evidence of you telling him not to log.**__
 - Anything else?
 
 **NOTE**: If you do not get frozen within 15 minutes you may logout.
 ",
-                    )
-                    .field("Ign", name, false)
-                    .field(
-                        "Last login time",
-                        playerstats.last_login.unwrap_or_default(),
-                        false,
-                    )
-                    .field(
-                        "Last logout time",
-                        playerstats.last_logout.unwrap_or_default(),
-                        false,
-                    )
-            });
-            message.components(|components| {
-                components.create_action_row(|row| {
-                    row.create_button(|button| {
-                        button
-                            .label("Freeze")
-                            .style(ButtonStyle::Primary)
-                            .emoji(ReactionType::Custom {
-                                animated: false,
-                                id: crate::CONFIG.freeze_emoji,
-                                name: None,
-                            })
-                            .custom_id(format!("freeze:{}", in_question))
+                            )
+                            .field("Ign", name, false)
+                            .field(
+                                "Last login time",
+                                playerstats.last_login.unwrap_or_default(),
+                                false,
+                            )
+                            .field(
+                                "Last logout time",
+                                playerstats.last_logout.unwrap_or_default(),
+                                false,
+                            )
                     })
-                    .create_button(|button| {
-                        button
-                            .label("Close")
-                            .style(ButtonStyle::Danger)
-                            .emoji(ReactionType::Unicode(From::from("⛔")))
-                            .custom_id(format!("close:{}", channel.id))
+                    .components(|components| {
+                        components.create_action_row(|row| {
+                            row.create_button(|button| {
+                                button
+                                    .label("Freeze")
+                                    .style(ButtonStyle::Primary)
+                                    .emoji(ReactionType::Custom {
+                                        animated: false,
+                                        id: crate::CONFIG.freeze_emoji,
+                                        name: None,
+                                    })
+                                    .custom_id(format!("freeze:{}", in_question))
+                            })
+                            .create_button(|button| {
+                                button
+                                    .label("Close")
+                                    .style(ButtonStyle::Danger)
+                                    .emoji(ReactionType::Unicode(From::from("⛔")))
+                                    .custom_id(format!("close:{}", channel.id))
+                            })
+                        })
                     })
                 })
-            });
-            let mut m = channel.send_message(&ctx.http, |_| &mut message).await?;
+                .await?;
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
@@ -251,18 +252,30 @@ not to log aswell as any other info.
                 })
                 .await?;
 
-            let reactions = m
-                .await_component_interaction(&ctx)
+            let mut reactions = m
+                .await_component_interactions(&ctx)
                 .timeout(Duration::from_secs(60 * 15))
-                .await;
+                .build();
 
-            if let Some(reactions) = reactions {
+            while let Some(reaction) = reactions.next().await {
+                if reaction.user.id == in_question || reaction.user.id == command.user.id {
+                    let _ = reaction
+                        .create_interaction_response(&ctx, |r| {
+                            r.kind(InteractionResponseType::ChannelMessageWithSource)
+                                .interaction_response_data(|r| {
+                                    r.flags(MessageFlags::EPHEMERAL)
+                                        .content("You do not have permission to do that")
+                                })
+                        })
+                        .await;
+                    continue;
+                }
                 m.edit(&ctx, |m| {
                     m.components(|comp| comp.set_action_rows(Default::default()))
                 })
                 .await?;
 
-                let mut chunks = reactions.data.custom_id.split(':');
+                let mut chunks = reaction.data.custom_id.split(':');
                 let operation = chunks.next().unwrap_or_default();
                 let operation = Operation::try_from(operation)?;
                 let operation: Box<dyn Button> = match operation {
@@ -271,17 +284,17 @@ not to log aswell as any other info.
                 };
 
                 operation
-                    .click(ctx, &*reactions)
+                    .click(ctx, &*reaction)
                     .await
                     .map_err(|x| format!("While handling button: {}", x))?;
-            } else {
-                // This is so you also can use /freeze
-                if crate::consts::DATABASE
-                    .fetch_freezes_for(in_question.0)
-                    .is_none()
-                {
-                    close::close_ticket(ctx, command.user.id, channel.id).await?;
-                }
+                return Ok(());
+            }
+            // This is so you also can use /freeze
+            if crate::consts::DATABASE
+                .fetch_freezes_for(in_question.0)
+                .is_none()
+            {
+                close::close_ticket(ctx, command.user.id, channel.id).await?;
             }
         } else {
             command
