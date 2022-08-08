@@ -422,6 +422,7 @@ impl EventHandler for Handler {
             && !has_banned
             && !has_unverified
             && !has_member
+            && user.permissions.map_or(false, |p| !p.administrator()) 
         {
             if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
                 tracing::error!("{}", err);
