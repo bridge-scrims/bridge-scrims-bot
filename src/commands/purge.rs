@@ -119,9 +119,9 @@ impl Command for Purge {
                         .kind(CommandOptionType::String)
                         .description("The specific type of messages to purge.")
                         .required(true);
-                    for s in self.options.keys() {
-                        x.add_string_choice(s, s);
-                    }
+                    // for s in self.options.keys() {
+                    //     x.add_string_choice(s, s);
+                    // }
                     x
                 });
                 c.create_option(|amount| {
