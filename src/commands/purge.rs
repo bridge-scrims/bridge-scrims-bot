@@ -114,10 +114,15 @@ impl Command for Purge {
                     .description("Purges a specific amount of messages from the channel")
                     .default_member_permissions(Permissions::empty());
                 c.create_option(|opt| {
-                    opt.name("filter")
+                    let x = opt
+                        .name("filter")
                         .kind(CommandOptionType::String)
                         .description("The specific type of messages to purge.")
-                        .required(true)
+                        .required(true);
+                    for s in self.options.keys() {
+                        x.add_string_choice(s, s);
+                    }
+                    x
                 });
                 c.create_option(|amount| {
                     amount
@@ -182,10 +187,23 @@ impl Command for Purge {
             }
         }
         for chunk in message_ids.chunks(100) {
-            command
+            // ignore errors cause we are giga chad
+            let _ = command
                 .channel_id
                 .delete_messages(&ctx.http, chunk.to_vec())
-                .await?;
+                .await
+                .map_err(|_e| async {
+                    for msgid in chunk {
+                        command
+                            .channel_id
+                            .delete_message(&ctx.http, msgid)
+                            .await
+                            .map_err(|_e| {
+                                println!("Failed to delete message: {}", msgid);
+                            })
+                            .ok();
+                    }  
+                });
         }
         command
             .edit_original_interaction_response(&ctx.http, |r| {
