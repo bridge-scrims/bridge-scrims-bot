@@ -60,6 +60,7 @@ pub struct Config {
 
     pub banned: RoleId,
     pub ss_support: RoleId,
+    pub head_of_ss: RoleId,
     pub staff: RoleId,
     pub support: RoleId,
     pub trial_support: RoleId,
