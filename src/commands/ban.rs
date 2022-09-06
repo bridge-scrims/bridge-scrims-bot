@@ -287,6 +287,11 @@ impl Command for Ban {
                         .id(CONFIG.staff.0)
                         .permission(true)
                 })
+                    .create_permission(|p| {
+                        p.kind(CommandPermissionType::Role)
+                            .id(CONFIG.head_of_ss.0)
+                            .permission(true)
+                    })
             })
             .await?;
         Ok(())
