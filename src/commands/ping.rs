@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -28,7 +28,7 @@ impl Command for Ping {
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         for option in &CONFIG.pings {
-            let cmd = CONFIG
+            CONFIG
                 .guild
                 .create_application_command(&ctx.http, |cmd| {
                     cmd.name(option.name.clone())
@@ -51,21 +51,6 @@ impl Command for Ping {
                                 .description("An optional additional text to put in the message")
                         });
                     cmd
-                })
-                .await?;
-            CONFIG
-                .guild
-                .create_application_command_permission(&ctx.http, cmd.id, |perms| {
-                    for r in &option.required_roles {
-                        perms.create_permission(|p| {
-                            p.kind(CommandPermissionType::Role).id(r.0).permission(true)
-                        });
-                    }
-                    perms.create_permission(|p| {
-                        p.kind(CommandPermissionType::Role)
-                            .id(CONFIG.staff.0)
-                            .permission(true)
-                    })
                 })
                 .await?;
         }

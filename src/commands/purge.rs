@@ -4,7 +4,7 @@ use serenity::async_trait;
 use serenity::builder::CreateApplicationCommand;
 use serenity::client::Context;
 use serenity::futures::StreamExt;
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
 use serenity::model::application::interaction::InteractionResponseType;
 use serenity::model::application::interaction::MessageFlags;
@@ -107,7 +107,7 @@ impl Command for Purge {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -137,19 +137,6 @@ impl Command for Purge {
                     option.register_options(c);
                 }
                 c
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(role.0)
-                            .permission(true)
-                    });
-                }
-                p
             })
             .await?;
         Ok(())
@@ -202,7 +189,7 @@ impl Command for Purge {
                                 println!("Failed to delete message: {}", msgid);
                             })
                             .ok();
-                    }  
+                    }
                 });
         }
         command

@@ -4,7 +4,7 @@ use std::fmt::Display;
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
 use serenity::client::Context;
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
 use serenity::model::application::interaction::InteractionResponseType;
 use serenity::model::application::interaction::MessageFlags;
@@ -71,7 +71,7 @@ impl Command for DelReaction {
         "delete_reaction".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd2 = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -85,20 +85,6 @@ impl Command for DelReaction {
                     })
             })
             .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd2.id, |p| {
-                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(role.0)
-                            .permission(true)
-                    });
-                }
-                p
-            })
-            .await?;
-
         Ok(())
     }
     async fn run(
@@ -173,7 +159,7 @@ impl Command for Reaction {
         "reaction".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -205,31 +191,6 @@ impl Command for Reaction {
                     })
             })
             .await?;
-        let mut brole = None;
-        for (id, role) in CONFIG.guild.roles(&ctx.http).await? {
-            if role.tags.premium_subscriber {
-                brole = Some(id);
-                break;
-            }
-        }
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                if let Some(id) = brole {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(id.0)
-                            .permission(true)
-                    });
-                }
-                p.create_permission(|perm| {
-                    perm.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
-            })
-            .await?;
-
         Ok(())
     }
     async fn run(

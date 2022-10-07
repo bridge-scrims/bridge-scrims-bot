@@ -1,4 +1,4 @@
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -179,7 +179,7 @@ impl Command for Unban {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = CONFIG.guild
+        CONFIG.guild
             .create_application_command(&ctx, |c| {
                 c
                     .name(self.name())
@@ -197,21 +197,6 @@ impl Command for Unban {
                             .kind(CommandOptionType::String)
                             .required(false)
                     })
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |c| {
-                c.create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
             })
             .await?;
         Ok(())
@@ -240,7 +225,7 @@ impl Command for ScrimUnban {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -258,26 +243,6 @@ impl Command for ScrimUnban {
                             .kind(CommandOptionType::String)
                             .required(false)
                     })
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |c| {
-                c.create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.ss_support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
             })
             .await?;
         Ok(())

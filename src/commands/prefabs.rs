@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use base64::decode;
 use serde_json::value::Value;
-use serenity::model::{
-    application::command::{CommandOptionType, CommandPermissionType},
-    Permissions,
-};
+use serenity::model::{application::command::CommandOptionType, Permissions};
 use serenity::{
     async_trait,
     model::application::interaction::{
@@ -32,7 +29,7 @@ impl Command for Prefab {
         "prefab".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -48,19 +45,6 @@ impl Command for Prefab {
                         o
                     })
                     .default_member_permissions(Permissions::empty())
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(role.0)
-                            .permission(true)
-                    });
-                }
-                p
             })
             .await?;
         Ok(())

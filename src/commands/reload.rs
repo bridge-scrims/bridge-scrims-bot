@@ -1,4 +1,4 @@
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -20,7 +20,7 @@ impl super::Command for Reload {
         String::from("reload")
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
@@ -38,17 +38,6 @@ impl super::Command for Reload {
                         }
                         opt
                     })
-            })
-            .await?;
-
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx.http, cmd.id, |perm| {
-                perm.create_permission(|perm| {
-                    perm.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
             })
             .await?;
 

@@ -1,13 +1,13 @@
-use bridge_scrims::interact_opts::InteractOpts;
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use std::fmt::Write;
+
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait, client::Context,
     model::application::interaction::application_command::ApplicationCommandInteraction,
 };
-use std::fmt::Write;
 
-use crate::consts::CONFIG;
+use bridge_scrims::interact_opts::InteractOpts;
 
 use super::Command;
 
@@ -20,7 +20,7 @@ impl Command for ListBans {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::CONFIG
+        crate::CONFIG
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
@@ -34,21 +34,6 @@ impl Command for ListBans {
                             .add_string_choice("Server", "sv")
                     })
                     .default_member_permissions(Permissions::empty())
-            })
-            .await?;
-        crate::CONFIG
-            .guild
-            .create_application_command_permission(&ctx.http, command.id, |c| {
-                c.create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
             })
             .await?;
         Ok(())

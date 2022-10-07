@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use serenity::model::application::{
-    command::{CommandOptionType, CommandPermissionType},
+    command::CommandOptionType,
     interaction::{application_command::ApplicationCommandInteraction, MessageFlags},
 };
 use serenity::model::Permissions;
@@ -232,7 +232,7 @@ impl Command for Ban {
         tokio::spawn(update_loop(ctx.http.clone()));
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = CONFIG.guild
+        CONFIG.guild
             .create_application_command(&ctx, |c| {
                 c
                     .name(self.name())
@@ -271,26 +271,6 @@ impl Command for Ban {
                             .description("Should the last 7d of messages be removed?")
                             .required(false)
                             .kind(CommandOptionType::Boolean)
-                    })
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |c| {
-                c.create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
-                    .create_permission(|p| {
-                        p.kind(CommandPermissionType::Role)
-                            .id(CONFIG.head_of_ss.0)
-                            .permission(true)
                     })
             })
             .await?;
@@ -344,7 +324,7 @@ impl Command for ScrimBan {
         tokio::spawn(scrim_update_loop(ctx.http.clone()));
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -378,26 +358,6 @@ impl Command for ScrimBan {
                             .add_int_choice("Hours", 60 * 60)
                             .add_int_choice("Days", 60 * 60 * 24)
                     })
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |c| {
-                c.create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.ss_support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.support.0)
-                        .permission(true)
-                })
-                .create_permission(|p| {
-                    p.kind(CommandPermissionType::Role)
-                        .id(CONFIG.staff.0)
-                        .permission(true)
-                })
             })
             .await?;
         Ok(())

@@ -2,7 +2,7 @@ use chrono::{
     prelude::{DateTime, Utc},
     Duration,
 };
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::{Permissions, Timestamp};
 use serenity::{
     async_trait,
@@ -29,7 +29,7 @@ impl Command for Timeout {
         "timeout".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -57,19 +57,6 @@ impl Command for Timeout {
                             .add_int_choice("Days", 60 * 60 * 24)
                     })
                     .default_member_permissions(Permissions::empty())
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(role.0)
-                            .permission(true)
-                    });
-                }
-                p
             })
             .await?;
         Ok(())

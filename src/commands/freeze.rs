@@ -1,4 +1,4 @@
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -33,7 +33,7 @@ impl Command for Freeze {
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::CONFIG
+        crate::CONFIG
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
@@ -47,18 +47,6 @@ impl Command for Freeze {
                     .default_member_permissions(Permissions::empty())
             })
             .await?;
-
-        crate::CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |p| {
-                p.create_permission(|perm| {
-                    perm.kind(CommandPermissionType::Role)
-                        .id(crate::CONFIG.ss_support.0)
-                        .permission(true)
-                })
-            })
-            .await?;
-
         Ok(())
     }
 
@@ -192,10 +180,10 @@ async fn freeze_user(
                 msg.embed(|emb| {
                     emb.title("Cannot freeze")
                         .description(format!(
-                        "<@{}>, you are not allowed to freeze <@!{}> as they have a higher role than you.",
-                        staff.0,
-                        target.0
-                    ))
+                            "<@{}>, you are not allowed to freeze <@!{}> as they have a higher role than you.",
+                            staff.0,
+                            target.0
+                        ))
                 })
             })
             .await?;

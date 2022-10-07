@@ -9,13 +9,13 @@ use serenity::{
     },
 };
 
-use crate::commands::Command;
-
 use bridge_scrims::{
     cooldown::Cooldowns,
     hypixel::{Player, PlayerDataRequest},
     interact_opts::InteractOpts,
 };
+
+use crate::commands::Command;
 
 pub struct LogTime {
     cooldowns: Cooldowns,

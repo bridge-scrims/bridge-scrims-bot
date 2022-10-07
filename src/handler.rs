@@ -422,7 +422,7 @@ impl EventHandler for Handler {
             && !has_banned
             && !has_unverified
             && !has_member
-            && user.permissions.map_or(false, |p| !p.administrator()) 
+            && user.permissions.map_or(false, |p| !p.administrator())
         {
             if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
                 tracing::error!("{}", err);
@@ -464,11 +464,11 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        // let result = command.register(ctx).await.map_err(|x| x.to_string());
-        // if let Err(ref err) = result.as_ref() {
-        //     tracing::error!("Could not register command {}: {}", name, err);
-        // }
-        // res = res.and(result);
+        let result = command.register(ctx).await.map_err(|x| x.to_string());
+        if let Err(ref err) = result.as_ref() {
+            tracing::error!("Could not register command {}: {}", name, err);
+        }
+        res = res.and(result);
     }
     res
 }

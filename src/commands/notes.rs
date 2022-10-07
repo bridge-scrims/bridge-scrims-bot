@@ -1,6 +1,4 @@
-use crate::commands::Command;
-use bridge_scrims::interact_opts::InteractOpts;
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -15,6 +13,9 @@ use serenity::{
 };
 use time::OffsetDateTime;
 
+use bridge_scrims::interact_opts::InteractOpts;
+
+use crate::commands::Command;
 use crate::consts::CONFIG;
 
 pub struct Notes;
@@ -25,7 +26,7 @@ impl Command for Notes {
         "notes".to_string()
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let cmd = CONFIG
+        CONFIG
             .guild
             .create_application_command(&ctx, |c| {
                 c.name(self.name())
@@ -78,19 +79,6 @@ impl Command for Notes {
                             })
                     })
                     .default_member_permissions(Permissions::empty())
-            })
-            .await?;
-        CONFIG
-            .guild
-            .create_application_command_permission(&ctx, cmd.id, |p| {
-                for role in &[CONFIG.support, CONFIG.trial_support, CONFIG.staff] {
-                    p.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .id(role.0)
-                            .permission(true)
-                    });
-                }
-                p
             })
             .await?;
         Ok(())

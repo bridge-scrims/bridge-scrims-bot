@@ -1,4 +1,4 @@
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -14,7 +14,7 @@ use serenity::{
 
 use bridge_scrims::interact_opts::InteractOpts;
 
-use crate::consts::{self, CONFIG};
+use crate::consts;
 
 use super::Command;
 
@@ -26,7 +26,7 @@ impl Command for Ticket {
         String::from("ticket")
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::CONFIG
+        crate::CONFIG
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
@@ -48,21 +48,6 @@ impl Command for Ticket {
                     .default_member_permissions(Permissions::empty())
             })
             .await?;
-
-        crate::CONFIG
-            .guild
-            .create_application_command_permission(&ctx.http, command.id, |perm| {
-                for role in &[CONFIG.ss_support, CONFIG.staff] {
-                    perm.create_permission(|perm| {
-                        perm.kind(CommandPermissionType::Role)
-                            .permission(true)
-                            .id(role.0)
-                    });
-                }
-                perm
-            })
-            .await?;
-
         Ok(())
     }
     async fn run(

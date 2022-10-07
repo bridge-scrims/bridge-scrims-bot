@@ -1,4 +1,4 @@
-use serenity::model::application::command::{CommandOptionType, CommandPermissionType};
+use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
@@ -21,7 +21,7 @@ impl Command for Unfreeze {
         String::from("unfreeze")
     }
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
-        let command = crate::CONFIG
+        crate::CONFIG
             .guild
             .create_application_command(&ctx.http, |command| {
                 command
@@ -34,16 +34,6 @@ impl Command for Unfreeze {
                             .kind(CommandOptionType::User)
                             .required(true)
                     })
-            })
-            .await?;
-        crate::CONFIG
-            .guild
-            .create_application_command_permission(&ctx, command.id, |p| {
-                p.create_permission(|perm| {
-                    perm.kind(CommandPermissionType::Role)
-                        .id(crate::CONFIG.ss_support.0)
-                        .permission(true)
-                })
             })
             .await?;
         Ok(())
