@@ -53,3 +53,7 @@ features = [
 [dependencies.tokio]
 features = ["full"]
 version = "1.13.0"
+
+[profile.release]
+strip = "symbols"
+lto = true
