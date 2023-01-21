@@ -1,14 +1,16 @@
 use std::time::Duration;
+use regex::Regex;
 
 use serenity::model::application::command::CommandOptionType;
 use serenity::model::Permissions;
 use serenity::{
     async_trait,
     model::{
+        channel::MessageFlags,
         application::interaction::{
-            application_command::ApplicationCommandInteraction, MessageFlags,
+            application_command::ApplicationCommandInteraction, MessageFlags as InteractionMessageFlags,
         },
-        id::RoleId,
+        id::RoleId,  
     },
     prelude::Context,
 };
@@ -32,7 +34,7 @@ impl Command for Ping {
                 .guild
                 .create_application_command(&ctx.http, |cmd| {
                     cmd.name(option.name.clone())
-                        .description("Ping a desired role uppon request")
+                        .description("Ping a desired role upon request")
                         .default_member_permissions(Permissions::empty())
                         .create_option(|m| {
                             m.name("role")
@@ -86,7 +88,7 @@ impl Command for Ping {
                         .create_interaction_response(&ctx.http, |r| {
                             r.interaction_response_data(|d| {
                                 d.content("This command is disabled in this channel.")
-                                    .flags(MessageFlags::EPHEMERAL)
+                                    .flags(InteractionMessageFlags::EPHEMERAL)
                             })
                         })
                         .await?;
@@ -107,7 +109,7 @@ impl Command for Ping {
                             "You are on a cooldown. Please wait {:.2} seconds.",
                             t.as_secs_f32()
                         ))
-                        .flags(MessageFlags::EPHEMERAL)
+                        .flags(InteractionMessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
@@ -120,17 +122,20 @@ impl Command for Ping {
             .add_user_cooldown_key(cid.clone(), Duration::from_secs(35), command.user.id)
             .await;
         let text = command.get_str("text").unwrap_or_else(|| "".to_string());
+        let re = Regex::new(r"(https?://)?(www\.)?(((discord(app)?)?\.com/invite)|((discord(app)?)?\.gg))/(.+)").unwrap();
+        let invite_free_text = re.replace_all(&text, "").to_string();
         command
             .channel_id
             .send_message(&ctx.http, |r| {
-                r.content(format!("<@!{}>: <@&{}> {}", command.user.id, role.0, text))
+                r.content(format!("<@{}>: <@&{}> {}", command.user.id, role.0, invite_free_text.trim()))
                     .allowed_mentions(|m| m.roles(vec![role]))
+                    .flags(MessageFlags::SUPPRESS_EMBEDS)
             })
             .await?;
         command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| {
-                    d.content("Ping sent!").flags(MessageFlags::EPHEMERAL)
+                    d.content("Ping sent!").flags(InteractionMessageFlags::EPHEMERAL)
                 })
             })
             .await?;
