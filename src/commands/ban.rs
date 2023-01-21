@@ -42,10 +42,11 @@ impl BanType {
     ) -> crate::Result<()> {
         let cmd_member = command.clone().member.unwrap();
 
-        let user = UserId(command.get_str("user").unwrap().parse()?)
-            .to_user(&http)
-            .await?;
-        let id = user.id;
+        let id = UserId(command.get_str("user").unwrap().parse()?);
+        let user_string = match id.to_user(&http).await {
+            Ok(user) => user.tag(),
+            Err(_) => id.to_string()
+        };
 
         let reason = command
             .get_str("reason")
@@ -66,27 +67,29 @@ impl BanType {
             now + duration
         });
 
-        let mut member = CONFIG.guild.member(&http, id).await?;
-        let roles = member.roles(&cache).unwrap_or_default();
-        let cmd_roles = cmd_member.roles(&cache).unwrap_or_default();
+        let member = CONFIG.guild.member(&http, id).await;
+        if let Ok(ref member) = member {
+            let roles = member.roles(&cache).unwrap_or_default();
+            let cmd_roles = cmd_member.roles(&cache).unwrap_or_default();
+    
+            let top_role = roles.iter().max();
+            let cmd_top_role = cmd_roles.iter().max();
 
-        let top_role = roles.iter().max();
-        let cmd_top_role = cmd_roles.iter().max();
-
-        if top_role >= cmd_top_role || user.bot {
-            command
-                .create_interaction_response(&http, |resp| {
-                    resp.interaction_response_data(|data| {
-                        data.content(format!("You do not have permission to ban {}", user.tag()))
-                            .flags(MessageFlags::EPHEMERAL)
+            if top_role >= cmd_top_role || member.user.bot {
+                command
+                    .create_interaction_response(&http, |resp| {
+                        resp.interaction_response_data(|data| {
+                            data.content(format!("You do not have permission to ban {}", user_string))
+                                .flags(MessageFlags::EPHEMERAL)
+                        })
                     })
-                })
-                .await?;
-            return Ok(());
+                    .await?;
+                return Ok(());
+            }
         }
-
+        
         let mut embed = CreateEmbed::default();
-        embed.title(format!("{} recieved a ban", user.tag()));
+        embed.title(format!("{} recieved a ban", user_string));
         embed.field("User", format!("<@{}>", id), false);
         if let Some(unban_date) = unban_date {
             embed.field(
@@ -102,9 +105,8 @@ impl BanType {
         if matches!(self, BanType::Server) {
             embed.description("[Click to appeal](https://dyno.gg/form/31ac5763)");
         }
-        let dm_result = user.dm(&http, |msg| msg.set_embed(embed.clone())).await;
-        if let Err(e) = dm_result {
-            tracing::error!("Could not DM user {} about their ban: {}", user.tag(), e);
+        if let Ok(ref member) = member {
+            let _ = member.user.dm(&http, |msg| msg.set_embed(embed.clone())).await;
         }
         embed.description("");
         let mut result = Ok(());
@@ -114,7 +116,7 @@ impl BanType {
             super::unfreeze::unfreeze_user(http, id).await?;
             command
                 .create_followup_message(http, |msg| {
-                    msg.content(format!("Unfreezing {} before banning them.", user.tag()))
+                    msg.content(format!("Unfreezing {} before banning them.", user_string))
                         .flags(MessageFlags::EPHEMERAL)
                 })
                 .await?;
@@ -130,7 +132,7 @@ impl BanType {
                         .iter()
                         .any(|x| x.id == id.0)
                     {
-                        embed.title(format!("{}'s ban has been modified", user.tag()));
+                        embed.title(format!("{}'s ban has been modified", user_string));
                         db_result = crate::consts::DATABASE.modify_unban_date(
                             "ScheduledUnbans",
                             *id.as_u64(),
@@ -158,7 +160,7 @@ impl BanType {
                     .iter()
                     .any(|x| x.id == id.0)
                 {
-                    embed.title(format!("{}'s ban has been modified", user.tag()));
+                    embed.title(format!("{}'s ban has been modified", user_string));
                     db_result = crate::consts::DATABASE.modify_unban_date(
                         "ScheduledScrimUnbans",
                         *id.as_u64(),
@@ -166,15 +168,18 @@ impl BanType {
                     );
                 } else {
                     let mut removed_roles = Vec::new();
-                    for role in roles.iter().filter(|x| !x.managed) {
-                        if let Err(e) = member.remove_role(&http, role).await {
-                            result = result.and(Err(e));
-                        } else {
-                            removed_roles.push(role.id);
+                    if let Ok(mut member) = member {
+                        let roles = member.roles(&cache).unwrap_or_default();
+                        for role in roles.iter().filter(|x| !x.managed) {
+                            if let Err(e) = member.remove_role(&http, role).await {
+                                result = result.and(Err(e));
+                            } else {
+                                removed_roles.push(role.id);
+                            }
                         }
+                        result = result.and(member.add_role(&http, CONFIG.banned.0).await);
                     }
-                    result = result.and(member.add_role(&http, CONFIG.banned.0).await);
-
+                    
                     db_result = crate::consts::DATABASE.add_scrim_unban(
                         *id.as_u64(),
                         // NOTE: In the case of a `ScrimBan`, this is always `Some`
@@ -194,7 +199,7 @@ impl BanType {
             command
                 .create_interaction_response(&http, |resp| {
                     resp.interaction_response_data(|data| {
-                        data.content(format!("Could not ban {}: {}", user.tag(), e))
+                        data.content(format!("Could not ban {}: {}", user_string, e))
                             .flags(MessageFlags::EPHEMERAL)
                     })
                 })
