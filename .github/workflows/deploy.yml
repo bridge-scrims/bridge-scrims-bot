@@ -1,0 +1,57 @@
+name: Deployment
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Cargo Check
+      run: cargo check --verbose
+
+    - name: Cargo Test
+      run: cargo test --verbose
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Cargo Build
+      run: cargo build --verbose --release
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: bridge-scrims
+        path: target/release/bridge-scrims
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: self-hosted
+    steps:
+    - name: Stop Service
+      run: sudo systemctl stop scrims_main_bot
+
+    - uses: actions/download-artifact@v3
+      with:
+        name: bridge-scrims
+    
+    - name: Make Executable
+      run: chmod +x bridge-scrims
+
+    - name: Restart Service
+      run: sudo systemctl restart scrims_main_bot
