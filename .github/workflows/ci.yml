@@ -1,0 +1,41 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Cargo Build
+      run: cargo build --verbose --release
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: bridge-scrims
+        path: target/release/bridge-scrims
+
+    - name: Upload to Server
+      uses: easingthemes/ssh-deploy@v4
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        ARGS: "-rlgoDzvc -i"
+        SOURCE: "target/release/bridge-scrims"
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+        REMOTE_USER: ${{ secrets.REMOTE_USER }}
+        TARGET: ${{ secrets.REMOTE_TARGET }}
+        SCRIPT_BEFORE: sudo systemctl stop scrims_main_bot
+        SCRIPT_AFTER: |
+          chmod +x ${{ secrets.REMOTE_TARGET }}bridge-scrims
+          sudo systemctl start scrims_main_bot
