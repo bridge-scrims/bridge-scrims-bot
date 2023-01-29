@@ -2,8 +2,6 @@ use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 
 use lazy_static::lazy_static;
-use rand::seq::SliceRandom;
-use regex::Regex;
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
@@ -11,11 +9,9 @@ use serenity::model::application::interaction::{Interaction, MessageFlags};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::id::GuildId;
-use serenity::model::id::{ChannelId, EmojiId};
+use serenity::model::id::{EmojiId};
 use serenity::model::prelude::Member;
 use serenity::model::user::User;
-use serenity::prelude::Mentionable;
-use serenity::utils::Color;
 use tokio::sync::Mutex;
 
 use crate::commands::ban::{Ban, ScrimBan};
@@ -30,7 +26,7 @@ use crate::commands::prefabs::Prefab;
 use crate::commands::purge::Purge;
 use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
 use crate::commands::reload::Reload;
-use crate::commands::roll::{Roll, Teams};
+use crate::commands::teams::Teams;
 use crate::commands::screenshare::Screenshare;
 use crate::commands::screensharers::Screensharers;
 use crate::commands::ticket::Ticket;
@@ -54,7 +50,6 @@ lazy_static! {
         Unban::new(),
         ScrimBan::new(),
         ScrimUnban::new(),
-        Roll::new(),
         Teams::new(),
         Purge::new(),
         Reaction::new(),
@@ -166,13 +161,9 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        let member = msg.author.clone();
 
-        let guild;
-        if let Some(g) = msg.guild(&ctx) {
-            guild = g;
-        } else {
-            tracing::warn!("Message from a user in a dm {:?}", msg);
+        if msg.guild_id.is_none() {
+            tracing::info!("Message from a user in a DM {:?}", msg);
             return;
         }
 
@@ -189,68 +180,6 @@ impl EventHandler for Handler {
                 }
                 Err(err) => tracing::error!("{}", err),
             }
-        }
-
-        let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
-
-        let channel = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild();
-        if roll_commands.is_match(&msg.content)
-            && channel.as_ref().is_some()
-            && channel.as_ref().unwrap().parent_id.is_some()
-            && CONFIG
-                .queue_categories
-                .contains(&channel.unwrap().parent_id.unwrap())
-        {
-            let voice_state = guild.voice_states.get(&member.id);
-
-            if voice_state.is_none() || voice_state.unwrap().channel_id.is_none() {
-                let _ = msg
-                    .reply(&ctx, "Please join a queue before using this command.")
-                    .await;
-                return;
-            }
-
-            let channel_id = voice_state.unwrap().channel_id.unwrap();
-            let channel = channel_id
-                .to_channel_cached(&ctx.cache)
-                .unwrap()
-                .guild()
-                .unwrap();
-            if !CONFIG
-                .queue_categories
-                .contains(&channel.parent_id.unwrap_or(ChannelId(0)))
-            {
-                let _ = msg
-                    .reply(&ctx, "Please join a queue before using this command.")
-                    .await;
-                return;
-            }
-
-            let mut members = channel.members(&ctx.cache).await.unwrap();
-
-            let user_limit: usize = channel.user_limit.unwrap_or(4).try_into().unwrap();
-
-            if members.len() < user_limit {
-                let _ = msg.reply(&ctx.http, "This queue is not full yet.").await;
-                return;
-            }
-
-            members.shuffle(&mut rand::thread_rng());
-
-            let _ = msg
-                .channel_id
-                .send_message(&ctx, |r| {
-                    r.add_embed(|e| {
-                        e.title("Team Captains:")
-                            .field("First Captain", members[0].mention(), true)
-                            .field("Second Captain", members[1].mention(), true)
-                            .color(Color::new(0x1abc9c))
-                            .footer(|f| f.text("Hint: use the /roll command to roll!"))
-                    })
-                    .reference_message(&msg)
-                    .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
-                })
-                .await;
         }
 
         if msg.channel_id.as_u64() == CONFIG.clips.as_u64() {

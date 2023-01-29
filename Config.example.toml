@@ -5,9 +5,9 @@ hypixel_token = "my token"
 
 guild = 759894401957888031
 
-member_role = 1234567890
+member_role = 759939347226427392
 unverified_role = 1234567890
-
+member_count = 940907252099997747
 
 head_of_ss = 844730115727818772
 ss_support = 774457162759012412
@@ -34,10 +34,11 @@ color_roles = [900028272019116043, 867112725283602463, 867112990159667230,
 801867770190757908, 799885648802349056, 799885647552708609]
 
 # Queue channels for rolling
-queue_categories = [913134187131838466, 1234, 1235]
-
-member_count = 940907252099997747
-member_role = 759939347226427392
+[queue_categories]
+member = []
+prime = []
+private = []
+premium = []
 
 q_and_a_channel = 1234
 q_and_a_role = 1234

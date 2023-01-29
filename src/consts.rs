@@ -51,7 +51,7 @@ pub struct Config {
 
     pub guild: GuildId,
 
-    pub queue_categories: Vec<ChannelId>,
+    pub queue_categories: HashMap<String, Vec<ChannelId>>,
 
     pub member_role: RoleId,
     pub unverified_role: RoleId,
