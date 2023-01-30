@@ -88,7 +88,7 @@ impl Command for Screenshare {
                     .create_option(|option| {
                         option
                             .name("ign")
-                            .description("The Minecraft ingame name of the person that you want to be screenshared.")
+                            .description("The Minecraft in-game name of the person that you want to be screenshared.")
                             .required(true)
                             .kind(CommandOptionType::String)
                     })
@@ -167,7 +167,7 @@ impl Command for Screenshare {
         if let Ok(channel) = result {
             let name = command.get_str("ign").unwrap();
             let player = Player::fetch_from_username(name.clone()).await?;
-            let playerstats = PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player)
+            let player_stats = PlayerDataRequest(crate::SECRETS.hypixel_token.clone(), player)
                 .send()
                 .await
                 .unwrap_or_default();
@@ -181,7 +181,7 @@ impl Command for Screenshare {
                 channel
                     .send_message(
                         &ctx.http,
-                        |x| x.content("An error occured in the database. The ticket may not work as expected."),
+                        |x| x.content("An error occurred in the database. The ticket may not work as expected."),
                     )
                     .await?;
             }
@@ -190,7 +190,7 @@ impl Command for Screenshare {
                     m.content(format!(
                         "<@&{}>
 <@{}> Please explain how <@{}> is cheating and screenshots of you telling them
-not to log aswell as any other info.
+not to log as well as any other info.
 ",
                         crate::consts::CONFIG.ss_support,
                         command.user.id.0,
@@ -210,12 +210,12 @@ not to log aswell as any other info.
                             .field("Ign", name, false)
                             .field(
                                 "Last login time",
-                                playerstats.last_login.unwrap_or_default(),
+                                player_stats.last_login.unwrap_or_default(),
                                 false,
                             )
                             .field(
                                 "Last logout time",
-                                playerstats.last_logout.unwrap_or_default(),
+                                player_stats.last_logout.unwrap_or_default(),
                                 false,
                             )
                     })
