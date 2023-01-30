@@ -2,6 +2,5 @@
 /.idea
 /Cargo.lock
 /.env
-/Config.toml
 /.cargo
 /logs.txt.*
