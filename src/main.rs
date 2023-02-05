@@ -5,7 +5,7 @@ use tracing_subscriber::{
     filter::LevelFilter, fmt::Layer, layer::SubscriberExt, Layer as _, Registry,
 };
 
-use crate::consts::CONFIG;
+use crate::consts::{CONFIG, SECRETS};
 use crate::handler::Handler;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let application_id = Http::new(&CONFIG.bot_token)
+    let application_id = Http::new(&SECRETS.bot_token)
         .get_current_application_info()
         .await?
         .id
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
         | GatewayIntents::GUILDS
         | GatewayIntents::GUILD_VOICE_STATES;
 
-    let mut client = Client::builder(&CONFIG.bot_token, intents)
+    let mut client = Client::builder(&SECRETS.bot_token, intents)
         .application_id(application_id)
         .event_handler(Handler::new())
         .await?;

@@ -26,16 +26,23 @@ jobs:
         name: bridge-scrims
         path: target/release/bridge-scrims
 
+    - name: Bundle Server Package
+      run: |
+        mkdir .package
+        mv target/release/bridge-scrims .package/
+        mv Config.toml .package/
+        echo "${{ secrets.ENV_FILE }}" > .package/.env
+
     - name: Upload to Server
       uses: easingthemes/ssh-deploy@v4
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         ARGS: "-rlgoDzvc -i"
-        SOURCE: "target/release/bridge-scrims"
+        SOURCE: ".package/"
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
         TARGET: ${{ secrets.REMOTE_TARGET }}
         SCRIPT_BEFORE: sudo systemctl stop scrims_main_bot
         SCRIPT_AFTER: |
           chmod +x ${{ secrets.REMOTE_TARGET }}bridge-scrims
-          sudo systemctl start scrims_main_bot
+          sudo systemctl restart scrims_main_bot

@@ -163,7 +163,7 @@ impl PlayerDataRequest {
         let response = CLIENT
             .get(format!("{}/player", ENTRY_POINT))
             .header("API-Key", format!("{:#}", self.0))
-            .query(&[("uuid", self.1 .0.to_string())])
+            .query(&[("uuid", self.1.0.to_string())])
             .send()
             .await?;
         let text = response.text().await?;
@@ -278,19 +278,5 @@ mod tests {
             player.0.to_string().as_str(),
             "069a79f444e94726a5befca90e38aaf5"
         );
-    }
-
-    #[tokio::test]
-    async fn fetch_notch_info() {
-        let player = Player::fetch_from_username(String::from("Notch"))
-            .await
-            .unwrap();
-        PlayerDataRequest(
-            UUID::from_str("5c37d992-b286-468a-bedc-6a965cc3b78a").unwrap(),
-            player,
-        )
-        .send()
-        .await
-        .unwrap();
     }
 }

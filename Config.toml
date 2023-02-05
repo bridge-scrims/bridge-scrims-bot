@@ -1,13 +1,4 @@
-
-# This is the config file for general stuffs
-bot_token = "my token"
-hypixel_token = "my token"
-
 guild = 759894401957888031
-
-member_role = 759939347226427392
-unverified_role = 1234567890
-member_count = 940907252099997747
 
 head_of_ss = 844730115727818772
 ss_support = 774457162759012412
@@ -15,33 +6,94 @@ staff = 759949547882545154
 support = 834247683484024893
 trial_support = 917185016012890202
 
-banned = 818149603475456030
-freeze_emoji = 1234567890
-frozen = 1234567890
-frozen_chat = 1234567890
-hello_cheaters = 1234567890
-screenshare_requests = 1234567890
-ss_logs = 1234567890
-support_bans = 883846880835039312
-unfreeze_emoji = 1234567890
+reaction_logs = 953029173260206100
+booster_info = 788492103193460826
 
-booster_info = 1234
+q_and_a_role = 958100124792414238
+q_and_a_channel = 958100342699081808
+
+banned = 818149603475456030
+support_bans = 772517301760426006
+screenshare_requests = 962771845587824690
+frozen = 817552620268027934
+frozen_chat = 896464719458754631
+hello_cheaters = 817164173703905290
+ss_logs = 857980332745555978
+freeze_emoji = 858056455172390942
+unfreeze_emoji = 858056545753366528
+
 clips = 759992463032188988
-upvote_downvote = [858486862212235274] # Polls, purge channels, etc...
-reaction_logs = 1234567890
-color_roles = [900028272019116043, 867112725283602463, 867112990159667230,
-867114106166575154, 799885648987291699, 799886790726516757, 799895573264072715,
-801867770190757908, 799885648802349056, 799885647552708609]
+upvote_downvote = [858486862212235274, 962459241371799592]
 
 # Queue channels for rolling
 [queue_categories]
-member = []
-prime = []
-private = []
-premium = []
+member = [759894401957888035, 759950714528727070, 908851492981702737, 908852795296337940]
+prime = [850031246301069372]
+private = [773997680850370560]
+premium = [760199168664535101]
 
-q_and_a_channel = 1234
-q_and_a_role = 1234
+member_count = 834460501958066196
+member_role = 759939347226427392
+color_roles = [900028272019116043, 867112725283602463, 867112990159667230,
+867114106166575154, 799885648987291699, 799886790726516757, 799895573264072715,
+801867770190757908, 799885648802349056, 799885647552708609]
+unverified_role = 850749066076880947
+
+[[pings]]
+name = "prime"
+required_roles = [850027357393256469]
+allowed_channels = [850031246301069372]
+[pings.options]
+"1v1" = 850251317423243264
+"2v2" = 850251396816699402
+"3v3" = 903109920889638973
+"4v4" = 850251518496997398
+bullet = 961351245841449042
+
+[[pings]]
+name = "priv"
+required_roles = [773996378053410816]
+allowed_channels = [773997680850370560]
+[pings.options]
+"1v1" = 773999913972924466
+"2v2" = 774001609462120454
+"3v3" = 903109616173449297
+"4v4" = 774001611436457997
+bullet = 935962749324910662
+
+[[pings]]
+name = "prem"
+required_roles = [760148457682894959]
+[pings.options]
+"1v1" = 767871123206570076
+"2v2" = 767871125232812054
+"3v3" = 903110122765688933
+"4v4" = 767871127694999552
+bullet = 933931754736201788
+
+[[pings]]
+name = "pack_maker_pings"
+required_roles = [911394326058250240]
+allowed_channels = [809518867097190480]
+[pings.options]
+overlay = 912483717342187541
+
+[[pings]]
+name = "support_pings"
+required_roles = [834247683484024893, 917185016012890202]
+allowed_channels = [830485705939091457, 836649435626340402]
+[pings.options]
+tourney = 780505026266267658
+nmtourney = 911405126005190676
+montage = 958074901263187998
+overlay = 912483717342187541 
+
+[[pings]]
+name = "bridge_tips"
+required_roles = [904808380084944976]
+allowed_channels = [845846396326117376, 834143912368537644]
+[pings.options]
+tips = 840298916997103626
 
 # Prefabs
 [prefabs]
@@ -53,27 +105,7 @@ montage = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpd
 overlays = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpdGxlIjoiX19PdmVybGF5c19fIiwiZGVzY3JpcHRpb24iOiIxLk1ha2Ugc3VyZSBpdCBoYXNuJ3QgYmVlbiBwb3N0ZWQgb3IgY29waWVkLCB3ZSB3b24ndCBwb3N0IGl0IGlmIGl0J3MgY29waWVkIG9yIGFscmVhZHkgcG9zdGVkLlxuMi4gU2VuZCBhIHNjcmVlbnNob3Qgb2YgdGhlIG92ZXJsYXkuXG4zLlNlbmQgdGhlIGRvd25sb2FkIGxpbmsuICh3ZSB3aWxsIG1ha2Ugc3VyZSBpdCdzIG5vdCBhIHZpcnVzL3JhdCBzbyBkb24ndCB0cnkgaXQpIiwiY29sb3IiOm51bGx9XX19XX0"
 tourney = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjoiUGxlYXNlIGxpc3QgdGhlIGZvbGxvd2luZyBpbmZvcm1hdGlvbiBiZWxvdyBmb3IgdXMgdG8gYWR2ZXJ0aXNlIHlvdXIgdG91cm5hbWVudC4gXG5cbi0gQmFzaWMgYWR2ZXJ0aXNlbWVudCBvZiB0aGUgdG91cm5hbWVudC4gXG4tIExpbmsgdG8gdGhlIHRvdXJuYW1lbnRcbi0gSGF2ZSBhIHByaXplIChtb25ldGFyeSBvciBub3QpIGFuZCBoYXZlIHByb29mIG9mIHRoZSBwcml6ZSIsImVtYmVkcyI6bnVsbH19XX0"
 unverified = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpdGxlIjoiSG93IHRvIHZlcmlmeSIsImRlc2NyaXB0aW9uIjoiSGV5LCBpdCBzZWVtcyB5b3UncmUgbm90IHlldCB2ZXJpZmllZCEgVG8gdmVyaWZ5IHlvdXIgYWNjb3VudCwgaGVhZCBvdmVyIHRvIDwjODI0MzQyMjI0Mjg3OTU2OTkzPiBhbmQgcHJlc3MgdGhlIGJ1dHRvbiEgTWFrZSBzdXJlIHlvdSByZWFkIGFuZCBhZ3JlZSB0byA8Izc1OTkwMDExNzg0NjQ1ODM4OD4hIiwiY29sb3IiOjU4MTQ3ODN9XX19XX0"
-
-[[pings]]
-allowed_channels = [123] # can be category or channel ids
-name = "prime"
-required_roles = [946614789973622805]
-[pings.options]
-"1v1" = 948172523021926410
-"2v2" = 948172550628839444
-
-[[pings]]
-name = "private"
-required_roles = [946614975533842493]
-[pings.options]
-"1v1" = 948172570262396978
-"2v2" = 948172610762588210
-
-[[pings]]
-name = "pack_maker"
-required_roles = [948178243016593469]
-[pings.options]
-"overlay" = 948172655083794443
+discord_report = "eyJtZXNzYWdlcyI6W3siZGF0YSI6eyJjb250ZW50IjpudWxsLCJlbWJlZHMiOlt7InRpdGxlIjoiQnJpZGdlIFNjcmltcyBQcm90b2NvbCIsImRlc2NyaXB0aW9uIjoiSGV5ISBUaGlzIGlzc3VlIGlzIG91dHNpZGUgdGhlIGp1cmlzZGljdGlvbiBvZiBCcmlkZ2UgU2NyaW1zLiAgUGxlYXNlIHZpc2l0IGh0dHBzOi8vc3VwcG9ydC5kaXNjb3JkLmNvbS9oYy9lbi11cy9yZXF1ZXN0cy9uZXcgYW5kIGZvbGxvdyB0aGUgaW5zdHJ1Y3Rpb25zIGxhaWQgb3V0IGluIHRoZSBmb3JtIHRvIHJlcG9ydCB0aGUgaXNzdWUgdG8gRGlzY29yZC4iLCJjb2xvciI6bnVsbCwidGh1bWJuYWlsIjp7InVybCI6Imh0dHBzOi8vaW1hZ2VzLWV4dC0xLmRpc2NvcmRhcHAubmV0L2V4dGVybmFsL2k5Z1BuM3ZyaVljSzdHc09GY1g1bXdYM3VMeGI1eW5qUDJOeGk2azJmMWMvJTNGc2l6ZSUzRDQwOTYvaHR0cHMvY2RuLmRpc2NvcmRhcHAuY29tL2ljb25zLzc1OTg5NDQwMTk1Nzg4ODAzMS85YTcyNjVhYTM3YmRmYzEzZjZlZTE5MzUxNDAxZWUxYi5wbmcifX1dfX1dfQ"
 
 [councils.Premium]
 head = 851540595155271690

@@ -36,7 +36,7 @@ impl Command for LogTime {
                     .create_option(|option| {
                         option
                             .name("ign")
-                            .description("The Minecraft ingame name of the person that you want to fetch the log time of.")
+                            .description("The Minecraft in-game name of the person that you want to fetch the log time of.")
                             .required(true)
                             .kind(CommandOptionType::String)
                     })
@@ -81,11 +81,11 @@ impl Command for LogTime {
                 .await?;
             return Ok(());
         }
-        match PlayerDataRequest(crate::CONFIG.hypixel_token.clone(), player.unwrap())
+        match PlayerDataRequest(crate::SECRETS.hypixel_token.clone(), player.unwrap())
             .send()
             .await
         {
-            Ok(playerstats) => {
+            Ok(player_stats) => {
                 command
                     .create_interaction_response(&ctx.http, |message| {
                         message.interaction_response_data(|d| {
@@ -93,12 +93,12 @@ impl Command for LogTime {
                                 em.title(format!("Log Time information for {}", name))
                                     .field(
                                         "Last login time",
-                                        playerstats.last_login.unwrap_or_default(),
+                                        player_stats.last_login.unwrap_or_default(),
                                         false,
                                     )
                                     .field(
                                         "Last logout time",
-                                        playerstats.last_logout.unwrap_or_default(),
+                                        player_stats.last_logout.unwrap_or_default(),
                                         false,
                                     )
                             })
@@ -113,7 +113,7 @@ impl Command for LogTime {
                         message.interaction_response_data(|d| {
                             d.embed(|em| {
                                 em.title("API Error!")
-                                    .description("The hypixel api has yeileded an error!")
+                                    .description("The Hypixel api has yielded an error!")
                             })
                             .flags(MessageFlags::EPHEMERAL)
                         })

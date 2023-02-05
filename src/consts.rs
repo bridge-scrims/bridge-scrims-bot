@@ -1,17 +1,16 @@
-use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use std::{
+    collections::HashMap, 
+    path::PathBuf, 
+    str::FromStr, 
+    env, fs
+};
 
 use serde::Deserialize;
-use serenity::model::id::ChannelId;
-use serenity::model::id::EmojiId;
-use serenity::model::id::GuildId;
-use serenity::model::id::RoleId;
+use serenity::model::id::{ChannelId, EmojiId, GuildId, RoleId};
 use serenity::prelude::Context;
 use toml::from_str;
 
 use bridge_scrims::hypixel::UUID;
-
 use crate::db::Database;
 
 #[derive(Deserialize)]
@@ -45,10 +44,6 @@ pub struct Council {
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub bot_token: String,
-    #[serde(deserialize_with = "bridge_scrims::hypixel::deserialize_uuid")]
-    pub hypixel_token: UUID,
-
     pub guild: GuildId,
 
     pub queue_categories: HashMap<String, Vec<ChannelId>>,
@@ -89,12 +84,23 @@ pub struct Config {
     pub booster_info: ChannelId,
 }
 
+pub struct Secrets {
+    pub bot_token: String,
+    pub hypixel_token: UUID
+}
+
 lazy_static::lazy_static! {
     // Database related
     pub static ref DATABASE_PATH: PathBuf = std::env::current_dir().unwrap();
     pub static ref DATABASE: Database = Database::init();
 
-    pub static ref CONFIG_STRING: String = fs::read_to_string("config.toml").expect("Config Not Supplied");
+    pub static ref CONFIG: Config = {
+        let config_string: String = fs::read_to_string("Config.toml").expect("Config Not Supplied!");
+        from_str(&config_string).expect("Config could not be parsed!")
+    };
 
-    pub static ref CONFIG: Config = from_str(&CONFIG_STRING).expect("Config could not be parsed.");
+    pub static ref SECRETS: Secrets = Secrets {
+        bot_token: env::var("BOT_TOKEN").unwrap(),
+        hypixel_token: UUID::from_str(&env::var("HYPIXEL_TOKEN").unwrap()).unwrap()
+    };
 }
