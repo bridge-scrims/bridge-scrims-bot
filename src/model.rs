@@ -15,6 +15,12 @@ pub struct ScrimUnban {
     pub roles: Ids,
 }
 
+impl ScrimUnban {
+    pub fn is_expired(&self) -> bool {
+        self.date <= OffsetDateTime::now_utc()
+    }
+}
+
 pub struct Screenshare {
     /// Channel ID of the ticket
     pub id: u64,

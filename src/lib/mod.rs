@@ -1,4 +1,8 @@
 pub mod cooldown;
 pub mod hypixel;
-pub mod interact_opts;
 pub mod print_embeds;
+pub mod parse_durations;
+pub mod interaction;
+
+pub type Error = dyn std::error::Error + Send + Sync;
+pub type Result<T> = std::result::Result<T, Box<Error>>;

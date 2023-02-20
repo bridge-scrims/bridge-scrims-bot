@@ -7,8 +7,7 @@ use tracing_subscriber::{
 
 use crate::consts::{CONFIG, SECRETS};
 use crate::handler::Handler;
-
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use bridge_scrims::Result;
 
 mod commands;
 mod consts;

@@ -1,19 +1,16 @@
 use std::collections::HashMap;
+use futures::StreamExt;
 
-use serenity::async_trait;
-use serenity::builder::CreateApplicationCommand;
-use serenity::client::Context;
-use serenity::futures::StreamExt;
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
-use serenity::model::application::interaction::InteractionResponseType;
-use serenity::model::application::interaction::MessageFlags;
-use serenity::model::channel::Message;
-use serenity::model::Permissions;
+use serenity::{
+    async_trait,
+    client::Context,
+    builder::CreateApplicationCommand,
 
-use bridge_scrims::interact_opts::InteractOpts;
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
+};
 
-use crate::commands::Command;
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 pub enum PurgeOption {
@@ -42,12 +39,12 @@ impl PurgeOption {
         .to_string()
     }
     fn register_options(&self, cmd: &mut CreateApplicationCommand) {
-        // Add more sub options if neccessary
+        // Add more sub options if necessary
         match self {
             PurgeOption::FromUser => {
                 cmd.create_option(|user| {
                     user.name("user")
-                        .kind(CommandOptionType::User)
+                        .kind(command::CommandOptionType::User)
                         .description("The user who's messages are to be purged (if the from_user option is selected)")
                         .required(false)
                 });
@@ -55,7 +52,7 @@ impl PurgeOption {
             PurgeOption::Contains => {
                 cmd.create_option(|user| {
                     user.name("text")
-                        .kind(CommandOptionType::String)
+                        .kind(command::CommandOptionType::String)
                         .description("The text to search for in purging messages (if the contains option is selected)")
                         .required(false)
                 });
@@ -78,7 +75,7 @@ impl PurgeOption {
             PurgeOption::Embeds => !msg.embeds.is_empty(),
             PurgeOption::Images => {
                 !msg.attachments.is_empty() && msg.attachments[0].height.is_some()
-                // Height is some if its an imag
+                // Height is some if it's an image
             }
             PurgeOption::Attachments => !msg.attachments.is_empty(),
             PurgeOption::Contains => {
@@ -101,7 +98,8 @@ pub struct Purge {
 }
 
 #[async_trait]
-impl Command for Purge {
+impl InteractionHandler for Purge {
+
     fn name(&self) -> String {
         "purge".to_string()
     }
@@ -116,7 +114,7 @@ impl Command for Purge {
                 c.create_option(|opt| {
                     let x = opt
                         .name("filter")
-                        .kind(CommandOptionType::String)
+                        .kind(command::CommandOptionType::String)
                         .description("The specific type of messages to purge.")
                         .required(true);
                     // for s in self.options.keys() {
@@ -127,7 +125,7 @@ impl Command for Purge {
                 c.create_option(|amount| {
                     amount
                         .name("amount")
-                        .kind(CommandOptionType::Integer)
+                        .kind(command::CommandOptionType::Integer)
                         .description(
                             "The amount of messages to go through to purge (total messages)",
                         )
@@ -142,15 +140,12 @@ impl Command for Purge {
         Ok(())
     }
 
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult 
+    {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
 
@@ -197,13 +192,10 @@ impl Command for Purge {
                 r.content("Purge Successful!".to_string())
             })
             .await?;
-        Ok(())
+        Ok(None)
     }
 
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+    fn new() -> Box<Self> {
         let options: Vec<PurgeOption> = vec![
             PurgeOption::All,
             PurgeOption::FromUser,

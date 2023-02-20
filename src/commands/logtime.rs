@@ -1,31 +1,31 @@
 use std::time::Duration;
 
-use serenity::model::application::command::CommandOptionType;
 use serenity::{
     async_trait,
     client::Context,
-    model::application::interaction::{
-        application_command::ApplicationCommandInteraction as ACI, MessageFlags,
-    },
+
+    model::prelude::*,
+    model::application::interaction::MessageFlags,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
 use bridge_scrims::{
     cooldown::Cooldowns,
     hypixel::{Player, PlayerDataRequest},
-    interact_opts::InteractOpts,
+    interaction::*,
 };
-
-use crate::commands::Command;
 
 pub struct LogTime {
     cooldowns: Cooldowns,
 }
 
 #[async_trait]
-impl Command for LogTime {
+impl InteractionHandler for LogTime {
+
     fn name(&self) -> String {
         "logtime".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         crate::CONFIG
             .guild
@@ -38,13 +38,15 @@ impl Command for LogTime {
                             .name("ign")
                             .description("The Minecraft in-game name of the person that you want to fetch the log time of.")
                             .required(true)
-                            .kind(CommandOptionType::String)
+                            .kind(command::CommandOptionType::String)
                     })
             })
             .await?;
         Ok(())
     }
-    async fn run(&self, ctx: &Context, command: &ACI) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         if let Some(t) = self.cooldowns.check_cooldown(command.user.id).await {
             command
                 .create_interaction_response(&ctx.http, |m| {
@@ -56,7 +58,7 @@ impl Command for LogTime {
                     })
                 })
                 .await?;
-            return Ok(());
+            return Ok(None);
         }
         self.cooldowns
             .add_global_cooldown(Duration::from_secs(5))
@@ -79,7 +81,7 @@ impl Command for LogTime {
                     })
                 })
                 .await?;
-            return Ok(());
+            return Ok(None);
         }
         match PlayerDataRequest(crate::SECRETS.hypixel_token.clone(), player.unwrap())
             .send()
@@ -121,8 +123,9 @@ impl Command for LogTime {
                     .await?;
             }
         }
-        Ok(())
+        Ok(None)
     }
+    
     fn new() -> Box<LogTime> {
         Box::new(LogTime {
             cooldowns: Cooldowns::new(),

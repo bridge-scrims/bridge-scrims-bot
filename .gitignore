@@ -1,6 +1,6 @@
 /target
+/logs
 /.idea
 /Cargo.lock
 /.env
 /.cargo
-/logs.txt.*

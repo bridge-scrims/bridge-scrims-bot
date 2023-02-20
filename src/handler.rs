@@ -4,72 +4,50 @@ use std::{collections::HashMap, sync::Arc};
 use lazy_static::lazy_static;
 use rand::seq::SliceRandom;
 use regex::Regex;
+
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
 use serenity::model::application::interaction::{Interaction, MessageFlags};
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
-use serenity::model::id::GuildId;
-use serenity::model::id::{ChannelId, EmojiId};
-use serenity::model::prelude::Member;
-use serenity::model::user::User;
-use serenity::prelude::Mentionable;
+use serenity::model::prelude::*;
 use serenity::utils::Color;
 use tokio::sync::Mutex;
 
-use crate::commands::ban::{Ban, ScrimBan};
-use crate::commands::close::Close;
-use crate::commands::council::Council;
-use crate::commands::freeze::Freeze;
-use crate::commands::list_bans::ListBans;
-use crate::commands::logtime::LogTime;
-use crate::commands::notes::Notes;
-use crate::commands::ping::Ping;
-use crate::commands::prefabs::Prefab;
-use crate::commands::purge::Purge;
-use crate::commands::reaction::{DelReaction, ListReactions, Reaction};
-use crate::commands::reload::Reload;
-use crate::commands::roll::{Roll, Teams};
-use crate::commands::screenshare::Screenshare;
-use crate::commands::screensharers::Screensharers;
-use crate::commands::ticket::Ticket;
-use crate::commands::timeout::Timeout;
-use crate::commands::unban::{ScrimUnban, Unban};
-use crate::commands::unfreeze::Unfreeze;
-use crate::commands::Command as _;
+use bridge_scrims::interaction::handler::InteractionHandler;
+
+use crate::commands;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
 
-type Command = Box<dyn crate::commands::Command>;
-
 lazy_static! {
-    pub static ref COMMANDS: Vec<Command> = vec![
-        Council::new(),
-        Notes::new(),
-        Prefab::new(),
-        Timeout::new(),
-        Ban::new(),
-        Unban::new(),
-        ScrimBan::new(),
-        ScrimUnban::new(),
-        Roll::new(),
-        Teams::new(),
-        Purge::new(),
-        Reaction::new(),
-        DelReaction::new(),
-        ListReactions::new(),
-        Screenshare::new(),
-        Close::new(),
-        Freeze::new(),
-        Unfreeze::new(),
-        Ticket::new(),
-        ListBans::new(),
-        Screensharers::new(),
-        Reload::new(),
-        Ping::new(),
-        LogTime::new(),
+    pub static ref HANDLERS: Vec<Box<dyn InteractionHandler>> = vec![
+        commands::council::Council::new(),
+        commands::notes::Notes::new(),
+        commands::prefabs::Prefab::new(),
+        commands::timeout::Timeout::new(),
+        commands::ban::Ban::new(),
+        commands::unban::Unban::new(),
+        commands::ban::ScrimBan::new(),
+        commands::unban::ScrimUnban::new(),
+        commands::roll::Roll::new(),
+        commands::roll::Teams::new(),
+        commands::purge::Purge::new(),
+        commands::reaction::Reaction::new(),
+        commands::reaction::DelReaction::new(),
+        commands::reaction::ListReactions::new(),
+        commands::screenshare::Screenshare::new(),
+        commands::close::Close::new(),
+        commands::freeze::Freeze::new(),
+        commands::unfreeze::Unfreeze::new(),
+        commands::ticket::Ticket::new(),
+        commands::list_bans::ListBans::new(),
+        commands::screensharers::Screensharers::new(),
+        commands::reload::Reload::new(),
+        commands::ping::Ping::new(),
+        commands::logtime::LogTime::new(),
     ];
 }
 
@@ -89,34 +67,37 @@ impl Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
+
     async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
         let mut init = self.init.lock().await;
         if !*init {
             *init = true;
-            for command in &*COMMANDS {
-                command.init(&ctx).await
+            for handler in &*HANDLERS {
+                handler.init(&ctx).await;
             }
             tokio::spawn(update_reactions(self.reactions.clone()));
         }
         // Errors are already handled
         let _ = register_commands(&ctx).await;
     }
+
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command_interaction) = interaction {
-            if let Some(command) = COMMANDS
+
+        if let Interaction::ApplicationCommand(interaction) = &interaction {
+            if let Some(handler) = HANDLERS
                 .iter()
-                .find(|x| x.is_command(command_interaction.data.name.clone()))
+                .find(|x| x.is_handler(interaction.data.name.clone()))
             {
-                if let Err(err) = command.run(&ctx, &command_interaction).await {
-                    tracing::error!("{} command failed: {}", command.name(), err);
+                if let Err(err) = handler.on_command(&ctx, interaction).await {
+                    tracing::error!("{} command failed: {}", handler.name(), err);
                 }
-                if command.name().contains("reaction") {
+                if handler.name().contains("reaction") {
                     update(self.reactions.clone()).await;
                 }
-                if command.name().contains("reload") {
+                if handler.name().contains("reload") {
                     let res = register_commands(&ctx).await;
-                    let response = command_interaction
+                    let response = interaction
                         .create_followup_message(&ctx.http, |resp| {
                             resp.content(match res {
                                 Ok(_) => "Successfully reloaded!".to_string(),
@@ -131,7 +112,23 @@ impl EventHandler for Handler {
                 }
             }
         }
+
+        if let Interaction::MessageComponent(interaction) = &interaction {
+            let mut args = interaction.data.custom_id.split(":").collect::<Vec<_>>();
+            let name = args.drain(..1).next();
+            if let Some(name) = name {
+                if let Some(handler) = HANDLERS
+                    .iter()
+                    .find(|x| x.is_handler(name.to_string()))
+                {
+                    if let Err(err) = handler.on_component(&ctx, interaction, &args).await {
+                        tracing::error!("{} component failed: {}", handler.name(), err);
+                    }
+                }
+            }
+        }
     }
+    
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.author.bot {
             return;
@@ -346,11 +343,20 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn guild_member_addition(&self, ctx: Context, member: Member) {
+    async fn guild_member_addition(&self, ctx: Context, mut member: Member) {
+
+        // Give banned role to new members if they were scrims banned
+        let is_scrim_banned = crate::consts::DATABASE.fetch_scrim_unbans().iter().any(|x| !x.is_expired() && x.id == member.user.id.0);
+        if is_scrim_banned {
+            let _ = member.add_role(&ctx, CONFIG.banned).await
+                .map_err(|err| tracing::error!("Failed to give banned to new member: {}", err));
+        }
+
         if let Err(err) = CONFIG.member_count.update(ctx, member.guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
+
     async fn guild_member_removal(
         &self,
         ctx: Context,
@@ -453,18 +459,18 @@ async fn register_commands(ctx: &Context) -> Result<(), String> {
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
 
-    for command in &*COMMANDS {
-        let name = command.name();
+    for handler in &*HANDLERS {
+        let name = handler.name();
         tracing::info!("Registering {}", name);
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
-            if cmds.iter().any(|cmd| command.is_command(cmd.name.clone()))
+            if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone()))
                 && name.as_str() != "reload"
             {
                 continue;
             }
         }
-        let result = command.register(ctx).await.map_err(|x| x.to_string());
+        let result = handler.register(ctx).await.map_err(|x| x.to_string());
         if let Err(ref err) = result.as_ref() {
             tracing::error!("Could not register command {}: {}", name, err);
         }

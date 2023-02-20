@@ -1,46 +1,41 @@
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
+use time::OffsetDateTime;
+
 use serenity::{
     async_trait,
     client::Context,
-    model::{
-        application::interaction::{
-            application_command::ApplicationCommandInteraction,
-            message_component::MessageComponentInteraction, MessageFlags,
-        },
-        id::{ChannelId, UserId},
-    },
+    builder::CreateInteractionResponseData,
+
+    model::prelude::*,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction,
+        message_component::MessageComponentInteraction
+    }
 };
-use time::OffsetDateTime;
 
-use bridge_scrims::interact_opts::InteractOpts;
-
-use super::{Button, Command};
-
-#[non_exhaustive]
-#[must_use = "statuses should be handled in the response to the user"]
-enum Status {
-    Success,
-    Ignored,
-}
+use bridge_scrims::interaction::*;
 
 pub struct Freeze;
 
 #[async_trait]
-impl Command for Freeze {
+impl InteractionHandler for Freeze {
+    
     fn name(&self) -> String {
         String::from("freeze")
+    }
+
+    fn allowed_roles(&self) -> Option<Vec<RoleId>> {
+        Some(vec!(crate::CONFIG.ss_support))
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         crate::CONFIG
             .guild
-            .create_application_command(&ctx.http, |cmd| {
+            .create_application_command(&ctx, |cmd| {
                 cmd.name(self.name())
                     .description("Freezes a user")
                     .create_option(|opt| {
                         opt.name("player")
-                            .kind(CommandOptionType::User)
+                            .kind(command::CommandOptionType::User)
                             .required(true)
                             .description("The player to be frozen")
                     })
@@ -50,25 +45,20 @@ impl Command for Freeze {
         Ok(())
     }
 
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+    fn initial_response(&self, _interaction_type: interaction::InteractionType) -> InitialInteractionResponse {
+        InitialInteractionResponse::DeferEphemeralReply
+    }
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        let status = freeze_user(ctx, user, command.user.id, command.channel_id).await?;
-        let tag = user.to_user(&ctx.http).await?.tag();
-        command
-            .create_interaction_response(&ctx.http, |resp| {
-                resp.interaction_response_data(|data| match status {
-                    Status::Success => data.content(format!("Sucessfully frozen {}", tag)),
-                    Status::Ignored => data
-                        .content(format!("Ignored your request to freeze {}.", tag))
-                        .flags(MessageFlags::EPHEMERAL),
-                })
-            })
-            .await?;
-        Ok(())
+        freeze_user(&ctx, user, command.user.id).await
+    }
+
+    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &Vec<&str>) -> InteractionResult
+    {
+        let user = UserId(args.get(0).unwrap().parse()?);
+        freeze_user(&ctx, user, command.user.id).await
     }
 
     fn new() -> Box<Self> {
@@ -76,182 +66,82 @@ impl Command for Freeze {
     }
 }
 
-#[async_trait]
-impl Button for Freeze {
-    async fn click(
-        &self,
-        ctx: &Context,
-        command: &MessageComponentInteraction,
-    ) -> crate::Result<()> {
-        let user = UserId(
-            command
-                .data
-                .custom_id
-                .split(':')
-                .nth(1)
-                .unwrap_or_default()
-                .parse()?,
-        );
-        if !command
-            .user
-            .has_role(&ctx.http, crate::CONFIG.guild, crate::CONFIG.ss_support)
-            .await?
-        {
-            command
-                .create_interaction_response(&ctx.http, |resp| {
-                    resp.interaction_response_data(|data| {
-                        data.content("You are not a screensharer!")
-                            .flags(MessageFlags::EPHEMERAL)
-                    })
-                })
-                .await?;
-            return Ok(());
-        }
-        let status = freeze_user(ctx, user, command.user.id, command.channel_id).await?;
-        let tag = user.to_user(&ctx.http).await?.tag();
-        if let Status::Success = status {
-            command
-                .create_interaction_response(&ctx.http, |resp| {
-                    resp.interaction_response_data(|data| {
-                        data.content(format!("Successfully frozen {}", tag))
-                            .flags(MessageFlags::EPHEMERAL)
-                    })
-                })
-                .await?;
-        }
+async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> InteractionResult<'a>
+{
+    let executor = crate::CONFIG.guild.member(&ctx, executor).await?;
+    let executor_roles = executor.roles(&ctx.cache).unwrap_or_default();
+    let executors_highest = executor_roles.iter().map(|r| r.position).max().unwrap_or_default();
+    
+    let member = crate::CONFIG.guild.member(&ctx, target).await?;
+    let targets_roles = member.roles(&ctx.cache).unwrap_or_default();
+    let targets_role_ids = targets_roles.iter().map(|r| r.id).collect::<Vec<_>>();
+    let targets_highest = targets_roles.iter().map(|r| r.position).max().unwrap_or_default();
 
-        Ok(())
+    if executors_highest <= targets_highest {
+        return Err(
+            ErrorResponse::with_title(
+                "Insufficient Permissions", 
+                format!("You are missing the required permissions to freeze {}!", target.mention())
+            )
+        )?;
     }
-}
 
-async fn freeze_user(
-    ctx: &Context,
-    target: UserId,
-    staff: UserId,
-    channel: ChannelId,
-) -> crate::Result<Status> {
-    let emoji = crate::CONFIG
-        .guild
-        .emoji(&ctx.http, crate::CONFIG.unfreeze_emoji)
-        .await?;
-    let is_frozen = crate::consts::DATABASE
-        .fetch_freezes_for(target.0)
-        .is_some();
+    let is_frozen = crate::consts::DATABASE.fetch_freezes_for(target.0).is_some();
     if is_frozen {
-        already_frozen(ctx, channel, target).await?;
-        return Ok(Status::Ignored);
+        return Err(ErrorResponse::message(format!("{} is already frozen.", target.mention())))?;
     }
 
-    if crate::consts::DATABASE
-        .fetch_scrim_unbans()
-        .iter()
-        .any(|x| x.id == target.0)
-    {
-        channel
-            .send_message(&ctx.http, |msg| {
-                msg.embed(|emb| {
-                    emb.title("Already banned.")
-                        .description(format!("<@!{}> is already banned.", target.0))
-                })
-            })
-            .await?;
-        return Ok(Status::Ignored);
+    let is_banned = crate::consts::DATABASE.fetch_scrim_unbans().iter().any(|x| !x.is_expired() && x.id == target.0);
+    if is_banned {
+        return Err(ErrorResponse::message(format!("{} is already banned.", target.mention())))?;
     }
 
-    let user = target.to_user(&ctx.http).await?;
-    let mut member = crate::CONFIG.guild.member(&ctx.http, user.id).await?;
-
-    let roles = member.roles(&ctx.cache).unwrap_or_default();
-    let highest_role = roles
-        .iter()
-        .fold(0, |acc, x| if x.position > acc { x.position } else { acc });
-    let staffroles = crate::CONFIG
-        .guild
-        .member(&ctx.http, staff)
-        .await?
-        .roles(&ctx.cache)
-        .unwrap_or_default();
-    let has_higher_role = staffroles
-        .into_iter()
-        .any(|srole| srole.position > highest_role);
-    if !has_higher_role {
-        channel
-            .send_message(&ctx.http, |msg| {
-                msg.embed(|emb| {
-                    emb.title("Cannot freeze")
-                        .description(format!(
-                            "<@{}>, you are not allowed to freeze <@!{}> as they have a higher role than you.",
-                            staff.0,
-                            target.0
-                        ))
-                })
-            })
-            .await?;
-        return Ok(Status::Ignored);
-    }
-    let mut removed_roles = Vec::new();
-
-    // TODO: Make this into a function
-    for role in roles.iter().filter(|x| !x.managed) {
-        if member.remove_role(&ctx.http, role).await.is_ok() {
-            removed_roles.push(role.id);
-        }
-    }
-
-    member.add_role(&ctx.http, crate::CONFIG.frozen).await?;
-
-    crate::consts::DATABASE.add_freeze(
-        user.id.0,
+    let mut new_roles = targets_roles.iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
+    new_roles.push(crate::CONFIG.frozen);
+    let removed_roles = targets_role_ids.clone().into_iter().filter(|r| !new_roles.contains(r)).collect::<Vec<_>>();
+    
+    member.edit(&ctx, |m| m.roles(new_roles)).await?;
+    let res = crate::consts::DATABASE.add_freeze(
+        target.0,
         removed_roles.into(),
         OffsetDateTime::now_utc(),
-    )?;
-    crate::CONFIG
+    );
+    if let Err(err) = res {
+        // This is already a fail-safe so errors here are ignored
+        let _ = member.edit(&ctx, |m| m.roles(targets_role_ids.clone())).await
+            .map_err(|_| println!("Failed to give {} back their roles ({:?}) after freeze failed!", target, targets_role_ids));
+        return Err(Box::new(err));
+    }
+
+    // This is ignored since at this point the user has already been frozen, thus it's too late to abort
+    let _ = crate::CONFIG
         .frozen_chat
-        .send_message(&ctx.http, |msg| {
+        .send_message(&ctx, |msg| {
             msg.content(format!(
-                "Hello <@{}>, would you like to admit to cheating for a shortened ban or would
-you like me to search through your computer? If you want me to search you have 5
-minutes to join the <#{}> and download the following applications.
-
-Download Anydesk from here:
-Windows: https://download.anydesk.com/AnyDesk.exe
-Mac: https://download.anydesk.com/anydesk.dmg
-Once you have downloaded AnyDesk I’ll need you to send me your 9 digit code in
-the #frozen-chat channel
-
-
-While screensharing I will download three screenshare tools and require admin
-control. Whilst the screenshare is happening i will need you to not touch your
-mouse or keyboard unless instructed to do anything. Failure to comply with what
-I say will result in a ban.
-
-As a screensharer I will not be going through personal files or attempting to harm your computer. I
-will only be checking for cheats in the following areas: your mouse & keyboard software, run
-screenshare tools, check recycle bin, revise deleted files, check for applications ran on this
-instance of your pc, and revise your processes for cheats.",
-                user.id,
-                crate::CONFIG.hello_cheaters,
-            ))
-        })
-        .await?;
-    channel
-        .send_message(&ctx.http, |msg| {
-            msg.content(format!("{}: {} is now frozen by <@{}>", emoji, user, staff))
-        })
-        .await?;
-
-    Ok(Status::Success)
-}
-
-async fn already_frozen(ctx: &Context, channel: ChannelId, user: UserId) -> crate::Result<()> {
-    channel
-        .send_message(&ctx.http, |msg| {
-            msg.embed(|embed| {
-                embed
-                    .title("Already frozen")
-                    .description(format!("<@!{}> is already frozen", user.0))
-            })
-        })
-        .await?;
-    Ok(())
+                "\
+                    Hello {}, would you like to admit to cheating for a shortened ban or would \
+                    you like us to search through your computer for cheats? You have 5 minutes \
+                    to either admit in this channel or join {} and follow the instructions below.\
+                    \n \n\
+                    **Download AnyDesk from here:** \n\
+                    Windows: https://download.anydesk.com/AnyDesk.exe \n\
+                    Mac: https://download.anydesk.com/anydesk.dmg \n\
+                    Once it's downloaded, run it and **we will need you to send your 9 digit address code** in this channel.\
+                    \n \n\
+                    While screensharing we will download three screenshare tools and require admin \
+                    control. Whilst the screenshare is happening **we will need you to __not__ touch your \
+                    mouse or keyboard unless instructed** to do anything. Failure to comply with what \
+                    we say will result in a ban. \
+                    \n \n\
+                    Our screensharers **will __not__ be going through personal files or attempting to harm your computer**. \
+                    We will only be checking for cheats by inspecting your mouse & keyboard software, recycle bin, deleted files \
+                    and applications ran on this instance of your pc, as well as by running pre-bundled, trusted screenshare tools.\
+                ", target.mention(), crate::CONFIG.hello_cheaters.mention()
+            )).flags(MessageFlags::SUPPRESS_EMBEDS)
+        }).await
+            .map_err(|e| tracing::error!("Failed to send freeze message: {}", e));
+    
+    let mut response = CreateInteractionResponseData::default();
+    response.content(format!("Successfully froze {}.", target.mention()));
+    Ok(Some(response))
 }

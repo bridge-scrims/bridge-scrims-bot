@@ -1,21 +1,18 @@
 use std::error::Error;
 use std::fmt::Display;
 
-use serenity::async_trait;
-use serenity::builder::CreateEmbed;
-use serenity::client::Context;
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
-use serenity::model::application::interaction::InteractionResponseType;
-use serenity::model::application::interaction::MessageFlags;
-use serenity::model::channel::ReactionType;
-use serenity::model::id::UserId;
-use serenity::model::Permissions;
-use serenity::utils::Color;
+use serenity::{
+    async_trait,
+    client::Context,
 
-use bridge_scrims::interact_opts::InteractOpts;
+    builder::CreateEmbed,
+    utils::Color,
 
-use crate::commands::Command;
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
+};
+
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 pub struct Reaction;
@@ -66,10 +63,12 @@ pub enum ErrorKind {
 }
 
 #[async_trait]
-impl Command for DelReaction {
+impl InteractionHandler for DelReaction {
+
     fn name(&self) -> String {
         "delete_reaction".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -78,7 +77,7 @@ impl Command for DelReaction {
                     .description("A Staff Command to delete other users' custom reactions")
                     .default_member_permissions(Permissions::empty())
                     .create_option(|user| {
-                        user.kind(CommandOptionType::User)
+                        user.kind(command::CommandOptionType::User)
                             .name("user")
                             .description("Whose reaction to delete")
                             .required(true)
@@ -87,15 +86,13 @@ impl Command for DelReaction {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let cmd = &command.data.options[0];
@@ -142,22 +139,21 @@ impl Command for DelReaction {
             tracing::error!("Error when sending message: {}", err);
         }
 
-        Ok(())
+        Ok(None)
     }
 
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+    fn new() -> Box<Self> {
         Box::new(DelReaction {})
     }
 }
 
 #[async_trait]
-impl Command for Reaction {
+impl InteractionHandler for Reaction {
+
     fn name(&self) -> String {
         "reaction".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -166,26 +162,26 @@ impl Command for Reaction {
                     .description("Allows server boosters to add their own custom reactions to the bot.")
                     .default_member_permissions(Permissions::empty())
                     .create_option(|add| {
-                        add.kind(CommandOptionType::SubCommand)
+                        add.kind(command::CommandOptionType::SubCommand)
                             .name("add")
                             .description("Add your own custom reaction!")
                             .create_sub_option(|emoji| {
                                 // which emoji is it
-                                emoji.kind(CommandOptionType::String)
+                                emoji.kind(command::CommandOptionType::String)
                                     .name("emoji")
                                     .description("The emoji which the bot will react with (only default emojis allowed)")
                                     .required(true)
                             })
                             .create_sub_option(|trigger| {
                                 // what will trigger the emoji to be reacted
-                                trigger.kind(CommandOptionType::String)
+                                trigger.kind(command::CommandOptionType::String)
                                     .name("trigger")
                                     .description("What will trigger the emoji to be reacted")
                                     .required(true)
                             })
                     })
                     .create_option(|rem| {
-                        rem.kind(CommandOptionType::SubCommand)
+                        rem.kind(command::CommandOptionType::SubCommand)
                             .name("remove")
                             .description("Remove your custom reaction.")
                     })
@@ -193,15 +189,13 @@ impl Command for Reaction {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let cmd = &command.data.options[0];
@@ -384,21 +378,21 @@ impl Command for Reaction {
             _ => {}
         }
 
-        Ok(())
+        Ok(None)
     }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+
+    fn new() -> Box<Self> {
         Box::new(Reaction {})
     }
 }
 
 #[async_trait]
-impl Command for ListReactions {
+impl InteractionHandler for ListReactions {
+
     fn name(&self) -> String {
         "list_reactions".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -412,15 +406,13 @@ impl Command for ListReactions {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let reactions = crate::consts::DATABASE.fetch_custom_reactions();
@@ -435,7 +427,7 @@ impl Command for ListReactions {
                     })
                 })
                 .await?;
-            return Ok(());
+            return Ok(None);
         }
         for (i, chunk) in reactions.chunks(10).enumerate() {
             if i == 0 {
@@ -481,19 +473,16 @@ impl Command for ListReactions {
                             }
                             e
                         })
-                        .flags(MessageFlags::EPHEMERAL)
+                        .flags(interaction::MessageFlags::EPHEMERAL)
                     })
                     .await?;
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+    fn new() -> Box<Self> {
         Box::new(ListReactions {})
     }
 }

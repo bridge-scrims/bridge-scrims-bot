@@ -1,24 +1,23 @@
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
-    model::application::interaction::{
-        application_command::ApplicationCommandInteraction, InteractionResponseType, MessageFlags,
-    },
+
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interact_opts::InteractOpts;
-
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 pub struct Reload;
 
 #[async_trait]
-impl super::Command for Reload {
+impl InteractionHandler for Reload {
+
     fn name(&self) -> String {
         String::from("reload")
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -30,9 +29,9 @@ impl super::Command for Reload {
                         let opt = opt
                             .name("command")
                             .description("Which command to remove. Default: all")
-                            .kind(CommandOptionType::String)
+                            .kind(command::CommandOptionType::String)
                             .required(false);
-                        for command in crate::handler::COMMANDS.iter() {
+                        for command in crate::handler::HANDLERS.iter() {
                             let name = command.name();
                             opt.add_string_choice(&name, &name);
                         }
@@ -43,14 +42,12 @@ impl super::Command for Reload {
 
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx.http, |resp| {
-                resp.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                resp.kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
 
@@ -76,11 +73,12 @@ impl super::Command for Reload {
                     _ => "Removed all commands. Please wait for the bot to add the commands back."
                         .to_string(),
                 })
-                .flags(MessageFlags::EPHEMERAL)
+                .flags(interaction::MessageFlags::EPHEMERAL)
             })
             .await?;
-        Ok(())
+        Ok(None)
     }
+    
     fn new() -> Box<Self> {
         Box::new(Self)
     }

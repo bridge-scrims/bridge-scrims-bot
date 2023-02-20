@@ -147,7 +147,6 @@ impl Database {
     }
 
     pub fn fetch_unbans(&self) -> Vec<Unban> {
-        tracing::info!("Fetching bans");
         let mut result = Vec::new();
         self.fetch_rows("ScheduledUnbans", "", |row| {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
@@ -159,7 +158,6 @@ impl Database {
     }
 
     pub fn fetch_scrim_unbans(&self) -> Vec<ScrimUnban> {
-        tracing::info!("Fetching scrim bans");
         let mut result = Vec::new();
         self.fetch_rows("ScheduledScrimUnbans", "", |row| {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
@@ -247,7 +245,7 @@ impl Database {
 
     pub fn fetch_screenshares_for(&self, id: u64) -> Option<Screenshare> {
         let mut result = None;
-        self.fetch_rows("Screenshares", &format!("where id = {}", id), |row| {
+        self.fetch_rows("Screenshares", &format!("where id = {id} OR creator = {id}"), |row| {
             let creator = row[1].as_integer().unwrap() as u64;
             let in_question = row[2].as_integer().unwrap() as u64;
             result.get_or_insert(Screenshare {
