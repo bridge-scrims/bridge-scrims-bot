@@ -4,3 +4,4 @@
 /.env
 /.cargo
 /logs.txt.*
+.DS_Store
