@@ -229,7 +229,7 @@ impl InteractionHandler for Reaction {
                 }
 
                 let reactions_with_trigger =
-                    crate::consts::DATABASE.fetch_custom_reactions_with_trigger(&trigger);
+                    crate::consts::DATABASE.fetch_custom_reactions_with_trigger(&trigger)?;
 
                 if !reactions_with_trigger.is_empty() {
                     command

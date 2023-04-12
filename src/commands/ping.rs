@@ -117,7 +117,7 @@ impl InteractionHandler for Ping {
         self.cooldowns
             .add_user_cooldown_key(cid.clone(), Duration::from_secs(35), command.user.id)
             .await;
-        let text = command.get_str("text").unwrap_or_else(|| "".to_string());
+        let text = command.get_str("text").unwrap_or_default();
         let re = Regex::new(r"(https?://)?(www\.)?(((discord(app)?)?\.com/invite)|((discord(app)?)?\.gg))/(.+)").unwrap();
         let invite_free_text = re.replace_all(&text, "").to_string();
         command

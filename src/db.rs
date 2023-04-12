@@ -5,7 +5,7 @@ use std::{
 };
 
 use serenity::model::id::RoleId;
-use sqlite::Connection;
+use sqlite::{Connection, Statement, State};
 use time::OffsetDateTime;
 
 pub use crate::model::*;
@@ -129,6 +129,41 @@ impl Database {
         });
     }
 
+    pub fn exec_safe<S>(&self, query: &str, mut stmt_predicate: S) -> SqliteResult<()> 
+    where
+        S: FnMut(&mut Statement) -> SqliteResult<()>
+    {
+        self.get_lock(|db| {
+            let mut stmt = db.prepare(query)?;
+            stmt_predicate(&mut stmt)?;
+            loop {
+                let state = stmt.next()?;
+                match state {
+                    State::Done => break,
+                    _ => continue
+                }
+            }
+            Ok(())
+        })
+    }
+
+    pub fn fetch_rows_safe<S, F, T>(&self, query: &str, mut stmt_predicate: S, mut result_predicate: F) -> SqliteResult<Vec<T>>
+    where
+        S: FnMut(&mut Statement) -> SqliteResult<()>,
+        F: FnMut(&[sqlite::Value]) -> T
+    {
+        self.get_lock(|db| {
+            let mut rows = Vec::new();
+            let mut stmt = db.prepare(query)?;
+            stmt_predicate(&mut stmt)?;
+            let mut cursor = stmt.into_cursor();
+            while let Ok(Some(row)) = cursor.next() {
+                rows.push(result_predicate(row));
+            }
+            Ok(rows)
+        })
+    }
+
     pub fn count_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
     where
         F: FnMut(&[sqlite::Value]),
@@ -202,24 +237,24 @@ impl Database {
         result
     }
 
-    pub fn fetch_custom_reactions_with_trigger(&self, trigger: &str) -> Vec<CustomReaction> {
-        let mut result = Vec::new();
-        self.fetch_rows(
-            "Reaction",
-            &format!("where trigger = '{}'", trigger),
+    pub fn fetch_custom_reactions_with_trigger(&self, trigger: &str) -> SqliteResult<Vec<CustomReaction>> {
+        self.fetch_rows_safe(
+            "SELECT * FROM 'Reaction' WHERE trigger = ?",
+            |stmt| {
+                stmt.bind(1, trigger)
+            },
             |row| {
                 let user = row.get(0).unwrap().as_integer().unwrap() as u64;
                 let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
                 let trigger = row.get(2).unwrap().as_string().unwrap().to_string();
 
-                result.push(CustomReaction {
+                CustomReaction {
                     user,
                     emoji,
                     trigger,
-                });
-            },
-        );
-        result
+                }
+            }
+        )
     }
 
     pub fn fetch_notes_for(&self, userid: u64) -> Vec<Note> {
@@ -284,15 +319,29 @@ impl Database {
 
     pub fn modify_unban_date(
         &self,
-        table: &str,
         id: u64,
         unban_date: OffsetDateTime,
     ) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
-                "UPDATE '{}' SET time = {} WHERE id = {}",
-                table,
+                "UPDATE 'ScheduledUnbans' SET time = {} WHERE id = {}",
                 unban_date.unix_timestamp(),
+                id,
+            ))
+        })
+    }
+
+    pub fn modify_scrim_unban_date(
+        &self,
+        id: u64,
+        unban_date: OffsetDateTime,
+        roles: &Ids
+    ) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "UPDATE 'ScheduledScrimUnbans' SET time = {}, roles = \"{}\" WHERE id = {}",
+                unban_date.unix_timestamp(),
+                roles,
                 id,
             ))
         })
@@ -303,22 +352,15 @@ impl Database {
         id: u64,
         emoji: &str,
         trigger: &str,
-    ) -> Result<(), sqlite::Error> {
-        let result = self
-            .sqlite
-            .lock()
-            .map(|db| {
-                db.execute(format!(
-                    "INSERT INTO 'Reaction' (user,emoji,trigger) values ({}, \"{}\", \"{}\")",
-                    id, emoji, trigger
-                ))
-            })
-            .ok();
-        if let Some(result) = result {
-            result
-        } else {
-            Ok(())
-        }
+    ) -> SqliteResult {
+        self.exec_safe(
+            "INSERT INTO 'Reaction' (user, emoji, trigger) values (?, ?, ?)",
+            |stmt| {
+                stmt.bind(1, id as i64)?;
+                stmt.bind(2, emoji)?;
+                stmt.bind(3, trigger)
+            }
+        )
     }
 
     pub fn add_scrim_unban(
@@ -351,16 +393,16 @@ impl Database {
             }
         });
         let count = count.unwrap_or_default();
-        self.get_lock(|db| {
-            db.execute(format!(
-                "INSERT INTO 'Notes' (userid,id,created_at,note,creator) values ({},{},\"{}\",\"{}\",{})",
-                userid,
-                count + 1,
-                created_at.unix_timestamp(),
-                note,
-                creator
-            )).map(|_| count + 1)
-        })
+        self.exec_safe(
+            "INSERT INTO 'Notes' (userid, id, created_at, note, creator) values (?, ?, ?, ?, ?)",
+            |stmt| {
+                stmt.bind(1, userid as i64)?;
+                stmt.bind(2, count + 1)?;
+                stmt.bind(3, created_at.unix_timestamp())?;
+                stmt.bind(4, note)?;
+                stmt.bind(5, creator as i64)
+            }
+        ).map(|_| count + 1)
     }
 
     pub fn add_screenshare(&self, id: u64, creator: u64, in_question: u64) -> SqliteResult {

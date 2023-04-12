@@ -62,10 +62,10 @@ impl UnbanType {
                     .map(UnbanEntry::Server)
             }
 
-        }.ok_or(ErrorResponse::message(format!("{} is not banned.", user)))?;
+        }.ok_or_else(|| ErrorResponse::message(format!("{} is not banned.", user)))?;
 
         let embed = self
-            .unban(&ctx, Some(command.user.id), entry, reason)
+            .unban(ctx, Some(command.user.id), entry, reason)
             .await?;
 
         let mut resp = CreateInteractionResponseData::default();
@@ -90,7 +90,7 @@ impl UnbanType {
                         "You can't unban someone from scrims who is not in the server because they wouldn't get their roles back!"
                     )
                 ),
-            UnbanEntry::Server(entry) => Ok(entry.user.clone())
+            UnbanEntry::Server(entry) => Ok(entry.user)
         }?;
 
         let mut fields = Vec::new();
@@ -102,7 +102,7 @@ impl UnbanType {
 
         let mut embed_author = CreateEmbedAuthor::default();
         embed_author.name(format!("{} Unbanned {}", to_unban.tag(), self.get_comment()));
-        embed_author.icon_url(to_unban.avatar_url().unwrap_or(to_unban.default_avatar_url()));
+        embed_author.icon_url(to_unban.avatar_url().unwrap_or_else(|| to_unban.default_avatar_url()));
 
         let mut embed = CreateEmbed::default();
         embed
@@ -117,8 +117,8 @@ impl UnbanType {
             .color(0x20BF72)
             .fields(fields)
             .footer(|f| {
-                CONFIG.guild.to_guild_cached(&ctx).unwrap().icon_url().map(|url| f.icon_url(url));
-                f.text(CONFIG.guild.name(&ctx).unwrap())
+                CONFIG.guild.to_guild_cached(ctx).unwrap().icon_url().map(|url| f.icon_url(url));
+                f.text(CONFIG.guild.name(ctx).unwrap())
             });
 
         match self {
@@ -142,13 +142,13 @@ impl UnbanType {
                     roles.push(CONFIG.member_role)
                 }
 
-                let keep_roles = member.roles(&ctx)
+                let keep_roles = member.roles(ctx)
                     .unwrap_or_default().iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
 
                 let new_roles = keep_roles.iter()
                     .chain(
                         roles.iter()
-                            .filter(|r| ctx.cache.guild_roles(CONFIG.guild.0).unwrap().contains_key(&r))
+                            .filter(|r| ctx.cache.guild_roles(CONFIG.guild.0).unwrap().contains_key(r))
                     );
                 
                 member.edit(&ctx, |m| m.roles(new_roles)).await?;
@@ -158,7 +158,7 @@ impl UnbanType {
             }
         }
         
-        send_ban_log(&ctx, embed.clone()).await; // log message
+        send_ban_log(ctx, embed.clone()).await; // log message
         let _ = to_unban.dm(&ctx, |msg| msg.set_embed(dm_embed)).await; // dm message
         Ok(embed) // command output
     }
@@ -210,7 +210,7 @@ impl InteractionHandler for Unban {
     }
 
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        UnbanType::Server.exec(&ctx, command).await
+        UnbanType::Server.exec(ctx, command).await
     }
 
     fn new() -> Box<Self> {
@@ -291,7 +291,7 @@ impl InteractionHandler for ScrimUnban {
     }
 
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        UnbanType::Scrim.exec(&ctx, command).await
+        UnbanType::Scrim.exec(ctx, command).await
     }
 
     fn new() -> Box<Self> {

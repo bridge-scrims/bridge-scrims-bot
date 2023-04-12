@@ -14,12 +14,13 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     steps:
     - uses: actions/checkout@v3
     - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-    - name: Cargo Check
-      run: cargo check --verbose
+    - name: Cargo Clippy
+      run: cargo clippy -- -W warnings
 
     - name: Cargo Test
       run: cargo test --verbose

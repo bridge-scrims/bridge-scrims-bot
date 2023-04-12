@@ -86,14 +86,14 @@ pub trait InteractionHandler: Send + Sync {
             return self.no_permissions_error();
         }
 
-        if let Ok(perms) = member.as_ref().unwrap().permissions(&ctx) {
+        if let Ok(perms) = member.as_ref().unwrap().permissions(ctx) {
             if perms.administrator() {
                 return Ok(());
             }
         }
 
         if let Some(allowed_roles) = self.allowed_roles() {
-            if !member.as_ref().unwrap().roles(&ctx).unwrap_or_default().iter().any(|r| allowed_roles.contains(&r.id)) {
+            if !member.as_ref().unwrap().roles(ctx).unwrap_or_default().iter().any(|r| allowed_roles.contains(&r.id)) {
                 return self.no_permissions_error();
             }
         }
@@ -109,10 +109,10 @@ pub trait InteractionHandler: Send + Sync {
     {
         let initial_response = self.get_initial_response(command.kind);
         if let Some(initial_response) = initial_response.clone() {
-            command.create_response(&ctx, initial_response).await?;
+            command.create_response(ctx, initial_response).await?;
         }
 
-        let res = self._on_command(&ctx, &command).await;
+        let res = self._on_command(ctx, command).await;
         let resp = match res.as_ref() {
             Ok(resp) => resp.clone(),
             Err(err) => {
@@ -125,8 +125,8 @@ pub trait InteractionHandler: Send + Sync {
 
         if let Some(resp) = resp {
             let _ = match initial_response {
-                Some(_) => command.edit_response(&ctx, resp).await,
-                None => command.respond(&ctx, resp).await
+                Some(_) => command.edit_response(ctx, resp).await,
+                None => command.respond(ctx, resp).await
             }.map_err(|err| tracing::error!("Sending InteractionErrorResponse failed: {}", err));
         }
     
@@ -140,8 +140,8 @@ pub trait InteractionHandler: Send + Sync {
     }
 
     async fn _on_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        self.verify_execution(&ctx, &command.user, &command.member, &command.channel_id).await?;
-        let res = AssertUnwindSafe(self.handle_command(&ctx, &command)).catch_unwind().await;
+        self.verify_execution(ctx, &command.user, &command.member, &command.channel_id).await?;
+        let res = AssertUnwindSafe(self.handle_command(ctx, command)).catch_unwind().await;
         match res {
             Err(_) => Err(self.unexpected_error())?, // on panic
             Ok(v) => v
@@ -152,14 +152,14 @@ pub trait InteractionHandler: Send + Sync {
         Ok(None)
     }
 
-    async fn on_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &Vec<&str>) -> crate::Result<()> 
+    async fn on_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &[&str]) -> crate::Result<()> 
     {
         let initial_response = self.get_initial_response(command.kind);
         if let Some(initial_response) = initial_response.clone() {
-            command.create_response(&ctx, initial_response).await?;
+            command.create_response(ctx, initial_response).await?;
         }
 
-        let res = self._on_component(&ctx, &command, &args).await;
+        let res = self._on_component(ctx, command, args).await;
         let resp = match res.as_ref() {
             Ok(resp) => resp.clone(),
             Err(err) => {
@@ -172,8 +172,8 @@ pub trait InteractionHandler: Send + Sync {
 
         if let Some(resp) = resp {
             let _ = match initial_response {
-                Some(_) => command.edit_response(&ctx, resp).await,
-                None => command.respond(&ctx, resp).await
+                Some(_) => command.edit_response(ctx, resp).await,
+                None => command.respond(ctx, resp).await
             }.map_err(|err| tracing::error!("Sending InteractionErrorResponse failed: {}", err));
         }
     
@@ -186,16 +186,16 @@ pub trait InteractionHandler: Send + Sync {
         Ok(())
     }
 
-    async fn _on_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &Vec<&str>) -> InteractionResult {
-        self.verify_execution(&ctx, &command.user, &command.member, &command.channel_id).await?;
-        let res = AssertUnwindSafe(self.handle_component(&ctx, &command, &args)).catch_unwind().await;
+    async fn _on_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &[&str]) -> InteractionResult {
+        self.verify_execution(ctx, &command.user, &command.member, &command.channel_id).await?;
+        let res = AssertUnwindSafe(self.handle_component(ctx, command, args)).catch_unwind().await;
         match res {
             Err(_) => Err(self.unexpected_error())?, // on panic
             Ok(v) => v
         }
     }
 
-    async fn handle_component(&self, _ctx: &Context, _command: &MessageComponentInteraction, _args: &Vec<&str>) -> InteractionResult {
+    async fn handle_component(&self, _ctx: &Context, _command: &MessageComponentInteraction, _args: &[&str]) -> InteractionResult {
         Ok(None)
     }
 

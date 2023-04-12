@@ -44,7 +44,7 @@ impl InteractionHandler for Unfreeze {
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
     {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        let res = unfreeze_user(&ctx, user).await?;
+        let res = unfreeze_user(ctx, user).await?;
         add_screensharer(command.user.id).await;
         Ok(res)
     }
@@ -66,7 +66,7 @@ pub async fn add_screensharer(sser: UserId) {
 
 pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult<'a> {
     let freeze = DATABASE.fetch_freezes_for(user.0)
-        .ok_or(ErrorResponse::message(format!("{} is not frozen.", user.mention())))?;
+        .ok_or_else(|| ErrorResponse::message(format!("{} is not frozen.", user.mention())))?;
 
     let mut roles: Vec<RoleId> = freeze.roles;
     if !roles.contains(&CONFIG.member_role) {
@@ -74,11 +74,11 @@ pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult
     }
 
     let member = CONFIG.guild.member(&ctx, user).await?;
-    let keep_roles = member.roles(&ctx)
+    let keep_roles = member.roles(ctx)
         .unwrap_or_default().iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
 
     let new_roles = keep_roles.iter()
-        .chain(roles.iter().filter(|r| ctx.cache.guild_roles(CONFIG.guild.0).unwrap().contains_key(&r)));
+        .chain(roles.iter().filter(|r| ctx.cache.guild_roles(CONFIG.guild.0).unwrap().contains_key(r)));
 
     member.edit(&ctx, |m| m.roles(new_roles)).await?;
 

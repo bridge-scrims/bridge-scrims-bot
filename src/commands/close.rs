@@ -44,12 +44,12 @@ impl InteractionHandler for Close {
     }
 
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        close_ticket(&ctx, command.user.id, command.channel_id).await?;
+        close_ticket(ctx, command.user.id, command.channel_id).await?;
         Ok(None)
     }
 
-    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, _args: &Vec<&str>) -> InteractionResult {
-        close_ticket(&ctx, command.user.id, command.channel_id).await?;
+    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, _args: &[&str]) -> InteractionResult {
+        close_ticket(ctx, command.user.id, command.channel_id).await?;
         Ok(None)
     }
 
@@ -61,7 +61,7 @@ impl InteractionHandler for Close {
 pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> crate::Result<()> 
 {
     let screenshare = crate::consts::DATABASE.fetch_screenshares_for(channel.0)
-        .ok_or(ErrorResponse::message("This channel isn't a screenshare ticket!"))?;
+        .ok_or_else(|| ErrorResponse::message("This channel isn't a screenshare ticket!"))?;
 
     let mut messages = Vec::new();
     let raw_messages = channel.messages_iter(&ctx).boxed().collect::<Vec<_>>().await;
@@ -71,7 +71,7 @@ pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> 
             "[{}] {}: {}",
             message.timestamp,
             message.author.tag(),
-            message.content_safe(&ctx)
+            message.content_safe(ctx)
         ));
         for embed in message.embeds {
             messages.push(format!("Embed:\n{}", FormatEmbed(embed.into())));

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, collections::HashSet};
 use time::OffsetDateTime;
 
 use serenity::{
@@ -18,7 +18,7 @@ use bridge_scrims::{
     interaction::*
 };
 
-use crate::consts::CONFIG;
+use crate::{consts::CONFIG, db::Ids};
 
 pub enum BanType {
     Server,
@@ -55,7 +55,7 @@ impl BanType {
         
         let user_id = user.id;
         let mut author = CreateEmbedAuthor::default();
-        author.icon_url(user.avatar_url().unwrap_or(user.default_avatar_url()));
+        author.icon_url(user.avatar_url().unwrap_or_else(|| user.default_avatar_url()));
 
         let mut fields = Vec::new();
         match unban_date {
@@ -84,8 +84,8 @@ impl BanType {
             .color(0xFD4659)
             .fields(fields)
             .footer(|f| {
-                CONFIG.guild.to_guild_cached(&ctx).unwrap().icon_url().map(|url| f.icon_url(url));
-                f.text(CONFIG.guild.name(&ctx).unwrap())
+                CONFIG.guild.to_guild_cached(ctx).unwrap().icon_url().map(|url| f.icon_url(url));
+                f.text(CONFIG.guild.name(ctx).unwrap())
             });
 
         match self {
@@ -96,9 +96,8 @@ impl BanType {
                     dm_embed.title(format!("Your {} Ban was Updated", self.get_name())).color(0x0E87CC);
                     if let Some(unban_date) = unban_date {
                         crate::consts::DATABASE.modify_unban_date(
-                            "ScheduledUnbans",
                             *user_id.as_u64(),
-                            unban_date,
+                            unban_date
                         )?;
                     }else {
                         // Remove the scheduled unban to enforce the permanent duration
@@ -116,24 +115,30 @@ impl BanType {
             }
 
             Self::Scrim => {
-                let is_banned = crate::consts::DATABASE.fetch_scrim_unbans().iter().any(|x| x.id == user_id.0);
-                if is_banned {
+                let mut removed_roles = Vec::new();
+                if let Some(ref member) = member {
+                    let roles = member.roles(ctx).unwrap_or_default();
+                    let mut new_roles = roles.iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
+                    new_roles.push(crate::CONFIG.banned);
+                    removed_roles = roles.iter().map(|r| r.id).filter(|r| !new_roles.contains(r)).collect::<Vec<_>>();
+                    member.edit(&ctx, |m| m.roles(new_roles)).await?;
+                }
+
+                let bans = crate::consts::DATABASE.fetch_scrim_unbans();
+                let ban = bans.iter().find(|x| x.id == user_id.0);
+                if let Some(ban) = ban {
                     embed.set_author(author.name(format!("{} {} Ban Updated", user.tag(), self.get_name())).clone()).color(0x0E87CC);
                     dm_embed.title(format!("Your {} Ban was Updated", self.get_name())).color(0x0E87CC);
-                    crate::consts::DATABASE.modify_unban_date(
-                        "ScheduledScrimUnbans",
+                    let all_removed = [ban.roles.0.clone(), Ids::from(removed_roles).0]
+                        .concat()
+                        .into_iter().collect::<HashSet<_>>()
+                        .into_iter().collect::<Vec<_>>();
+                    crate::consts::DATABASE.modify_scrim_unban_date(
                         *user_id.as_u64(),
                         unban_date.unwrap(),
+                        &Ids(all_removed)
                     )?;
                 } else {
-                    let mut removed_roles = Vec::new();
-                    if let Some(ref member) = member {
-                        let roles = member.roles(&ctx).unwrap_or_default();
-                        let mut new_roles = roles.iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
-                        new_roles.push(crate::CONFIG.banned);
-                        removed_roles = roles.iter().map(|r| r.id).filter(|r| !new_roles.contains(r)).collect::<Vec<_>>();
-                    }
-                    
                     crate::consts::DATABASE.add_scrim_unban(
                         *user_id.as_u64(),
                         // NOTE: In the case of a `ScrimBan`, this is always `Some`
@@ -144,7 +149,7 @@ impl BanType {
             }
         }
 
-        send_ban_log(&ctx, embed.clone()).await;
+        send_ban_log(ctx, embed.clone()).await;
 
         if let Some(ref member) = member {
             let _ = member.user.dm(&ctx, |msg| msg.set_embed(dm_embed)).await;
@@ -179,7 +184,7 @@ impl BanType {
         
         let reason = command
             .get_str("reason")
-            .unwrap_or(String::from("No reason specified"));
+            .unwrap_or_else(|| String::from("No reason specified"));
 
         let dmd = command.get_bool("dmd").map(|_| 7).unwrap_or(0);
 
@@ -188,8 +193,8 @@ impl BanType {
 
         let member = CONFIG.guild.member(&ctx, user_id).await.ok();
         if let Some(ref member) = member {
-            let roles = member.roles(&ctx).unwrap_or_default();
-            let cmd_roles = executor.roles(&ctx).unwrap_or_default();
+            let roles = member.roles(ctx).unwrap_or_default();
+            let cmd_roles = executor.roles(ctx).unwrap_or_default();
     
             let top_role = roles.iter().max();
             let cmd_top_role = cmd_roles.iter().max();
@@ -205,7 +210,7 @@ impl BanType {
         }
         
         if crate::consts::DATABASE.fetch_freezes_for(user_id.0).is_some() {
-            super::unfreeze::unfreeze_user(&ctx, user_id).await
+            super::unfreeze::unfreeze_user(ctx, user_id).await
                 .map_err(|err| {
                     tracing::error!("Unfreeze Failed on {}: {}", user_id, err);
                     ErrorResponse::with_title(
@@ -221,7 +226,7 @@ impl BanType {
                 }).await;
         }
 
-        let embed = self.ban(&ctx, user, member, executor.user.id, unban_date, dmd, reason).await
+        let embed = self.ban(ctx, user, member, executor.user.id, unban_date, dmd, reason).await
             .map_err(|err| {
                 tracing::error!("Ban Failed on {}: {}", user_id, err);
                 ErrorResponse::with_title(
@@ -290,7 +295,7 @@ impl InteractionHandler for Ban {
     }
 
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        BanType::Server.exec(&ctx, &command).await
+        BanType::Server.exec(ctx, command).await
     }
 
     fn new() -> Box<Self> {
@@ -346,7 +351,7 @@ impl InteractionHandler for ScrimBan {
     }
     
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
-        BanType::Scrim.exec(&ctx, &command).await
+        BanType::Scrim.exec(ctx, command).await
     }
 
     fn new() -> Box<Self> {

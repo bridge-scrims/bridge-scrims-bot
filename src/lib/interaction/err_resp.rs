@@ -15,13 +15,13 @@ impl ErrorResponse<'_> {
 
     pub fn message<'a, S: ToString>(message: S) -> Box<ErrorResponse<'a>> {
         let mut resp = CreateInteractionResponseData::default();
-        resp.embed(|e| e.description(message.to_string().clone()).color(0xff003c));
+        resp.embed(|e| e.description(message.to_string()).color(0xff003c));
         Box::new(ErrorResponse(resp, message.to_string()))
     }
 
     pub fn with_title<'a, S: ToString, T: ToString>(title: S, description: T) -> Box<ErrorResponse<'a>> {
         let mut resp = CreateInteractionResponseData::default();
-        resp.embed(|e| e.title(title).description(description.to_string().clone()).color(0xff003c));
+        resp.embed(|e| e.title(title).description(description.to_string()).color(0xff003c));
         Box::new(ErrorResponse(resp, description.to_string()))
     }
 
@@ -29,7 +29,7 @@ impl ErrorResponse<'_> {
         let mut resp = CreateInteractionResponseData::default();
         resp.embed(
             |e| 
-                e.title(title).description(description.to_string().clone())
+                e.title(title).description(description.to_string())
                     .footer(|f| f.text(footer)).color(0xff003c)
         );
         Box::new(ErrorResponse(resp, description.to_string()))

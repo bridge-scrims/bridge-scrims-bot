@@ -54,7 +54,7 @@ impl InteractionHandler for Reload {
         let mut commands = CONFIG.guild.get_application_commands(&ctx.http).await?;
 
         if let Some(cmd) = command.get_str("command") {
-            commands = commands.into_iter().filter(|x| x.name == cmd).collect();
+            commands.retain(|x| x.name == cmd);
         }
 
         for c in &commands {

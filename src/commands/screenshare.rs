@@ -73,7 +73,7 @@ impl InteractionHandler for Screenshare {
             )?;
         }
 
-        let channel = create_screenshare_ticket(&ctx, command.user.id, in_question).await
+        let channel = create_screenshare_ticket(ctx, command.user.id, in_question).await
             .map_err(|_| ErrorResponse::message("Your screenshare channel couldn't be created..."))?;
 
         let ign = command.get_str("ign").unwrap();

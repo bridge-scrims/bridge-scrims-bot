@@ -52,13 +52,13 @@ impl InteractionHandler for Freeze {
     async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
     {
         let user = UserId(command.get_str("player").unwrap().parse()?);
-        freeze_user(&ctx, user, command.user.id).await
+        freeze_user(ctx, user, command.user.id).await
     }
 
-    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &Vec<&str>) -> InteractionResult
+    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &[&str]) -> InteractionResult
     {
-        let user = UserId(args.get(0).unwrap().parse()?);
-        freeze_user(&ctx, user, command.user.id).await
+        let user = UserId(args.first().unwrap().parse()?);
+        freeze_user(ctx, user, command.user.id).await
     }
 
     fn new() -> Box<Self> {
