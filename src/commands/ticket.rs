@@ -1,30 +1,23 @@
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
 use serenity::{
     async_trait,
     client::Context,
-    model::{
-        application::interaction::{
-            application_command::ApplicationCommandInteraction, MessageFlags,
-        },
-        channel::{PermissionOverwrite, PermissionOverwriteType},
-        id::UserId,
-    },
+
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interact_opts::InteractOpts;
-
-use crate::consts;
-
-use super::Command;
+use bridge_scrims::interaction::*;
+use crate::consts::DATABASE;
 
 pub struct Ticket;
 
 #[async_trait]
-impl Command for Ticket {
+impl InteractionHandler for Ticket {
+    
     fn name(&self) -> String {
         String::from("ticket")
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         crate::CONFIG
             .guild
@@ -35,14 +28,14 @@ impl Command for Ticket {
                         opt.name("operation")
                             .description("Wether to add or remove someone")
                             .required(true)
-                            .kind(CommandOptionType::String)
+                            .kind(command::CommandOptionType::String)
                             .add_string_choice("Add", "a")
                             .add_string_choice("Remove", "r")
                     })
                     .create_option(|opt| {
                         opt.name("target")
                             .description("The user that is affected by the change")
-                            .kind(CommandOptionType::User)
+                            .kind(command::CommandOptionType::User)
                             .required(true)
                     })
                     .default_member_permissions(Permissions::empty())
@@ -50,11 +43,9 @@ impl Command for Ticket {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         let who = UserId(command.get_str("target").unwrap().parse()?);
         let operation = command.get_str("operation").unwrap();
         let channel = command
@@ -64,20 +55,17 @@ impl Command for Ticket {
             .guild()
             .unwrap();
 
-        if consts::DATABASE
-            .fetch_screenshares_for(channel.id.0)
-            .is_none()
-        {
+        if DATABASE.fetch_screenshares_for(channel.id.0).is_none() {
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {
                         data.content("That channel is not a ticket!")
-                            .flags(MessageFlags::EPHEMERAL)
+                            .flags(interaction::MessageFlags::EPHEMERAL)
                     })
                 })
                 .await?;
 
-            return Ok(());
+            return Ok(None);
         }
 
         match operation.as_str() {
@@ -117,15 +105,16 @@ impl Command for Ticket {
                     .create_interaction_response(&ctx.http, |resp| {
                         resp.interaction_response_data(|data| {
                             data.content("That is not an option.")
-                                .flags(MessageFlags::EPHEMERAL)
+                                .flags(interaction::MessageFlags::EPHEMERAL)
                         })
                     })
                     .await?;
-                return Ok(());
+                return Ok(None);
             }
         }
-        Ok(())
+        Ok(None)
     }
+    
     fn new() -> Box<Self> {
         Box::new(Self)
     }

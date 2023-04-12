@@ -1,33 +1,30 @@
 use std::time::Duration;
 use regex::Regex;
 
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
 use serenity::{
     async_trait,
-    model::{
-        channel::MessageFlags,
-        application::interaction::{
-            application_command::ApplicationCommandInteraction, MessageFlags as InteractionMessageFlags,
-        },
-        id::RoleId,  
-    },
-    prelude::Context,
+    client::Context,
+
+    model::prelude::*,
+    model::application::command::CommandOptionType,
+    model::application::interaction::MessageFlags as InteractionMessageFlags,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::{cooldown::Cooldowns, interact_opts::InteractOpts};
-
-use crate::{commands::Command, consts::CONFIG};
+use bridge_scrims::{cooldown::Cooldowns, interaction::*};
+use crate::consts::CONFIG;
 
 pub struct Ping {
     cooldowns: Cooldowns,
 }
 
 #[async_trait]
-impl Command for Ping {
+impl InteractionHandler for Ping {
+
     fn name(&self) -> String {
         "ping".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         for option in &CONFIG.pings {
             CONFIG
@@ -58,14 +55,13 @@ impl Command for Ping {
         }
         Ok(())
     }
-    fn is_command(&self, name: String) -> bool {
+
+    fn is_handler(&self, name: String) -> bool {
         CONFIG.pings.iter().any(|opt| opt.name == name)
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         let role = RoleId(command.get_str("role").unwrap().parse().unwrap());
         if let Some(opt) = CONFIG
             .pings
@@ -92,7 +88,7 @@ impl Command for Ping {
                             })
                         })
                         .await?;
-                    return Ok(());
+                    return Ok(None);
                 }
             }
         }
@@ -113,7 +109,7 @@ impl Command for Ping {
                     })
                 })
                 .await?;
-            return Ok(());
+            return Ok(None);
         }
         self.cooldowns
             .add_global_cooldown_key(cid.clone(), Duration::from_secs(20))
@@ -121,7 +117,7 @@ impl Command for Ping {
         self.cooldowns
             .add_user_cooldown_key(cid.clone(), Duration::from_secs(35), command.user.id)
             .await;
-        let text = command.get_str("text").unwrap_or_else(|| "".to_string());
+        let text = command.get_str("text").unwrap_or_default();
         let re = Regex::new(r"(https?://)?(www\.)?(((discord(app)?)?\.com/invite)|((discord(app)?)?\.gg))/(.+)").unwrap();
         let invite_free_text = re.replace_all(&text, "").to_string();
         command
@@ -139,12 +135,10 @@ impl Command for Ping {
                 })
             })
             .await?;
-        Ok(())
+        Ok(None)
     }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+
+    fn new() -> Box<Self> {
         Box::new(Ping {
             cooldowns: Cooldowns::new(),
         })

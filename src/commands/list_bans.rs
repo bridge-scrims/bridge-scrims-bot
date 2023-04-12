@@ -1,20 +1,20 @@
 use std::fmt::Write;
 
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
 use serenity::{
-    async_trait, client::Context,
-    model::application::interaction::application_command::ApplicationCommandInteraction,
+    async_trait,
+    client::Context,
+
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interact_opts::InteractOpts;
-
-use super::Command;
+use bridge_scrims::interaction::*;
 
 pub struct ListBans;
 
 #[async_trait]
-impl Command for ListBans {
+impl InteractionHandler for ListBans {
+
     fn name(&self) -> String {
         String::from("list_bans")
     }
@@ -29,7 +29,7 @@ impl Command for ListBans {
                         opt.name("type")
                             .description("Wether you want to list scrimbans or server bans")
                             .required(true)
-                            .kind(CommandOptionType::String)
+                            .kind(command::CommandOptionType::String)
                             .add_string_choice("Scrim", "sc")
                             .add_string_choice("Server", "sv")
                     })
@@ -39,11 +39,8 @@ impl Command for ListBans {
         Ok(())
     }
 
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         let operation = command.get_str("type").unwrap();
         let mut desc = match operation.as_str() {
             "sv" => {
@@ -81,7 +78,7 @@ impl Command for ListBans {
                 result
             }
             _ => {
-                return Ok(());
+                return Ok(None);
             }
         };
         command
@@ -107,7 +104,7 @@ impl Command for ListBans {
                 .create_followup_message(&ctx.http, |resp| resp.embed(|embed| embed.description(d)))
                 .await?;
         }
-        Ok(())
+        Ok(None)
     }
 
     fn new() -> Box<Self> {

@@ -6,8 +6,7 @@ use std::{
 };
 
 use serde::Deserialize;
-use serenity::model::id::{ChannelId, EmojiId, GuildId, RoleId};
-use serenity::prelude::Context;
+use serenity::{client::Context, model::prelude::*};
 use toml::from_str;
 
 use bridge_scrims::hypixel::UUID;
@@ -65,13 +64,16 @@ pub struct Config {
     pub frozen_chat: ChannelId,
     pub hello_cheaters: ChannelId,
     pub ss_logs: ChannelId,
-    pub freeze_emoji: EmojiId,
-    pub unfreeze_emoji: EmojiId,
+    pub freeze_emoji: String,
+    pub unfreeze_emoji: String,
 
     pub upvote_downvote: Vec<ChannelId>,
     pub clips: ChannelId,
     pub reaction_logs: ChannelId,
     pub color_roles: Vec<RoleId>,
+
+    pub appeal_channel: ChannelId,
+    pub appeal_forum: String,
 
     pub prefabs: HashMap<String, String>,
 
@@ -90,7 +92,6 @@ pub struct Secrets {
 }
 
 lazy_static::lazy_static! {
-    // Database related
     pub static ref DATABASE_PATH: PathBuf = std::env::current_dir().unwrap();
     pub static ref DATABASE: Database = Database::init();
 

@@ -2,17 +2,16 @@ use std::collections::HashMap;
 
 use base64::decode;
 use serde_json::value::Value;
-use serenity::model::{application::command::CommandOptionType, Permissions};
+
 use serenity::{
     async_trait,
-    model::application::interaction::{
-        application_command::ApplicationCommandInteraction, InteractionResponseType, MessageFlags,
-    },
-    prelude::Context,
-    utils::Color,
+    client::Context,
+
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use crate::commands::Command;
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 type Message = HashMap<String, Value>;
@@ -24,10 +23,12 @@ pub struct Prefab {
 }
 
 #[async_trait]
-impl Command for Prefab {
+impl InteractionHandler for Prefab {
+
     fn name(&self) -> String {
         "prefab".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -38,7 +39,7 @@ impl Command for Prefab {
                         o.name("name")
                             .description("Select the prefab that you would like to send.")
                             .required(true)
-                            .kind(CommandOptionType::String);
+                            .kind(command::CommandOptionType::String);
                         for name in self.prefabs.keys() {
                             o.add_string_choice(name, name);
                         }
@@ -49,15 +50,13 @@ impl Command for Prefab {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
-                r.interaction_response_data(|d| d.flags(MessageFlags::EPHEMERAL))
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let s = command.data.options[0]
@@ -78,17 +77,15 @@ impl Command for Prefab {
                 r.embed(|e| {
                     e.title("Prefab Sent")
                         .description(format!("The prefab `{}` has been sent.", s))
-                        .color(Color::new(0x1abc9c))
+                        .color(0x1abc9c)
                 })
             })
             .await?;
 
-        Ok(())
+        Ok(None)
     }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+
+    fn new() -> Box<Self> {
         let data = &CONFIG.prefabs;
 
         let mut prefabs: Prefabs = HashMap::new();

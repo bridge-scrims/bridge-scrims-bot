@@ -2,32 +2,27 @@ use chrono::{
     prelude::{DateTime, Utc},
     Duration,
 };
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::{Permissions, Timestamp};
+
 use serenity::{
     async_trait,
-    model::{
-        application::interaction::{
-            application_command::ApplicationCommandInteraction, InteractionResponseType,
-        },
-        id::UserId,
-    },
-    prelude::Context,
-    utils::Color,
+    client::Context,
+
+    model::prelude::*,
+    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interact_opts::InteractOpts;
-
-use crate::commands::Command;
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 pub struct Timeout {}
 
 #[async_trait]
-impl Command for Timeout {
+impl InteractionHandler for Timeout {
+
     fn name(&self) -> String {
         "timeout".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -38,18 +33,18 @@ impl Command for Timeout {
                         o.name("user")
                             .description("The person you would like to time out.")
                             .required(true)
-                            .kind(CommandOptionType::User)
+                            .kind(command::CommandOptionType::User)
                     })
                     .create_option(|o| {
                         o.name("duration")
                             .description("The time you would like to time someone out for.")
                             .required(true)
-                            .kind(CommandOptionType::Integer)
+                            .kind(command::CommandOptionType::Integer)
                     })
                     .create_option(|o| {
                         o.name("type")
                             .description("The type of time you would like to use.")
-                            .kind(CommandOptionType::Integer)
+                            .kind(command::CommandOptionType::Integer)
                             .required(true)
                             .add_int_choice("Seconds", 1)
                             .add_int_choice("Minutes", 60)
@@ -61,14 +56,12 @@ impl Command for Timeout {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
-                r.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                r.kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
 
@@ -103,7 +96,7 @@ impl Command for Timeout {
                     ))
                 })
                 .await?;
-            return Ok(());
+            return Ok(None);
         }
 
         let resp = member
@@ -119,18 +112,16 @@ impl Command for Timeout {
                             user.tag(),
                             end.timestamp()
                         ))
-                        .color(Color::new(0x1abc9c))
+                        .color(0x1abc9c)
                 }),
                 Err(err) => r.content(format!("Could not timeout {}: {}", user.tag(), err)),
             })
             .await?;
 
-        Ok(())
+        Ok(None)
     }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+
+    fn new() -> Box<Self> {
         Box::new(Timeout {})
     }
 }

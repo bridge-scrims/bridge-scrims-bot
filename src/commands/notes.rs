@@ -1,30 +1,27 @@
-use serenity::model::application::command::CommandOptionType;
-use serenity::model::Permissions;
-use serenity::{
-    async_trait,
-    model::{
-        application::interaction::{
-            application_command::ApplicationCommandInteraction, InteractionResponseType,
-        },
-        id::UserId,
-    },
-    prelude::Context,
-    utils::Color,
-};
 use time::OffsetDateTime;
 
-use bridge_scrims::interact_opts::InteractOpts;
+use serenity::{
+    async_trait,
+    client::Context,
+    utils::Color,
 
-use crate::commands::Command;
+    model::prelude::*,
+    model::application::command::CommandOptionType,
+    model::application::interaction::application_command::ApplicationCommandInteraction
+};
+
+use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
 
 pub struct Notes;
 
 #[async_trait]
-impl Command for Notes {
+impl InteractionHandler for Notes {
+
     fn name(&self) -> String {
         "notes".to_string()
     }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild
@@ -83,15 +80,13 @@ impl Command for Notes {
             .await?;
         Ok(())
     }
-    async fn run(
-        &self,
-        ctx: &Context,
-        command: &ApplicationCommandInteraction,
-    ) -> crate::Result<()> {
+
+    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
+    {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
-                    .kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
         let cmd = &command.data.options[0];
@@ -116,7 +111,7 @@ impl Command for Notes {
                             })
                         })
                         .await?;
-                    return Ok(());
+                    return Ok(None);
                 }
                 for (i, chunk) in notes.chunks(10).enumerate() {
                     if i == 0 {
@@ -243,12 +238,10 @@ impl Command for Notes {
             }
         }
 
-        Ok(())
+        Ok(None)
     }
-    fn new() -> Box<Self>
-    where
-        Self: Sized,
-    {
+
+    fn new() -> Box<Self> {
         Box::new(Notes {})
     }
 }
