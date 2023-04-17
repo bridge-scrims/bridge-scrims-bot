@@ -1,20 +1,17 @@
 use futures::future::join_all;
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::{CONFIG, DATABASE};
+use bridge_scrims::interaction::*;
 
 pub struct Screensharers;
 
 #[async_trait]
 impl InteractionHandler for Screensharers {
-
     fn name(&self) -> String {
         String::from("screensharers")
     }
@@ -31,8 +28,11 @@ impl InteractionHandler for Screensharers {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let screensharers = join_all(DATABASE.get_screensharers().into_iter().map(
             |x| async move {
                 let user = UserId(x.id).to_user(&ctx.http).await;

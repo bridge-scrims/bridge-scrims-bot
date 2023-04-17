@@ -1,11 +1,9 @@
 use std::fmt::Write;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
 use bridge_scrims::interaction::*;
@@ -14,7 +12,6 @@ pub struct ListBans;
 
 #[async_trait]
 impl InteractionHandler for ListBans {
-
     fn name(&self) -> String {
         String::from("list_bans")
     }
@@ -39,8 +36,11 @@ impl InteractionHandler for ListBans {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let operation = command.get_str("type").unwrap();
         let mut desc = match operation.as_str() {
             "sv" => {

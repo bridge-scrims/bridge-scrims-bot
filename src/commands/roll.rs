@@ -1,21 +1,18 @@
 use rand::seq::SliceRandom;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Roll;
 
 #[async_trait]
 impl InteractionHandler for Roll {
-
     fn name(&self) -> String {
         "roll".to_string()
     }
@@ -31,8 +28,11 @@ impl InteractionHandler for Roll {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let channel = command.channel_id.to_channel(&ctx).await.ok();
         if channel.is_none()
             || channel.clone().unwrap().category().is_none()
@@ -130,7 +130,6 @@ pub struct Teams;
 
 #[async_trait]
 impl InteractionHandler for Teams {
-
     fn name(&self) -> String {
         "teams".to_string()
     }
@@ -146,8 +145,11 @@ impl InteractionHandler for Teams {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let channel = command.channel_id.to_channel(&ctx).await?.guild();
         if channel.is_none()
             || channel.as_ref().unwrap().parent_id.is_none()

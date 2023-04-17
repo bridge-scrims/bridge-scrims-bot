@@ -1,12 +1,9 @@
 use std::time::Duration;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
-    model::prelude::*,
-    model::application::interaction::MessageFlags,
-    model::application::interaction::application_command::ApplicationCommandInteraction
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
+    model::application::interaction::MessageFlags, model::prelude::*,
 };
 
 use bridge_scrims::{
@@ -21,7 +18,6 @@ pub struct LogTime {
 
 #[async_trait]
 impl InteractionHandler for LogTime {
-
     fn name(&self) -> String {
         "logtime".to_string()
     }
@@ -45,8 +41,11 @@ impl InteractionHandler for LogTime {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         if let Some(t) = self.cooldowns.check_cooldown(command.user.id).await {
             command
                 .create_interaction_response(&ctx.http, |m| {
@@ -125,7 +124,7 @@ impl InteractionHandler for LogTime {
         }
         Ok(None)
     }
-    
+
     fn new() -> Box<LogTime> {
         Box::new(LogTime {
             cooldowns: Cooldowns::new(),

@@ -1,5 +1,5 @@
-use std::{collections::HashMap, collections::HashSet, sync::Arc};
 use std::time::Duration;
+use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
 use lazy_static::lazy_static;
 use rand::seq::SliceRandom;
@@ -67,7 +67,6 @@ impl Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-
     async fn ready(&self, ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
         let mut init = self.init.lock().await;
@@ -83,7 +82,6 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-
         if let Interaction::ApplicationCommand(interaction) = &interaction {
             if let Some(handler) = HANDLERS
                 .iter()
@@ -117,10 +115,7 @@ impl EventHandler for Handler {
             let mut args = interaction.data.custom_id.split(':').collect::<Vec<_>>();
             let name = args.drain(..1).next();
             if let Some(name) = name {
-                if let Some(handler) = HANDLERS
-                    .iter()
-                    .find(|x| x.is_handler(name.to_string()))
-                {
+                if let Some(handler) = HANDLERS.iter().find(|x| x.is_handler(name.to_string())) {
                     if let Err(err) = handler.on_component(&ctx, interaction, &args).await {
                         tracing::error!("{} component failed: {}", handler.name(), err);
                     }
@@ -128,7 +123,7 @@ impl EventHandler for Handler {
             }
         }
     }
-    
+
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.author.bot {
             return;
@@ -344,29 +339,42 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_addition(&self, ctx: Context, member: Member) {
-
         // Give banned role to new members if they were scrims banned
         let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-        let scrim_banned = bans.iter().find(|x| !x.is_expired() && x.id == member.user.id.0);
+        let scrim_banned = bans
+            .iter()
+            .find(|x| !x.is_expired() && x.id == member.user.id.0);
         if let Some(scrim_banned) = scrim_banned {
             let roles = member.roles(&ctx).unwrap_or_default();
-            let mut new_roles = roles.iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
+            let mut new_roles = roles
+                .iter()
+                .filter(|r| r.managed)
+                .map(|r| r.id)
+                .collect::<Vec<_>>();
             new_roles.push(crate::CONFIG.banned);
-            let removed_roles = roles.iter().map(|r| r.id).filter(|r| !new_roles.contains(r)).collect::<Vec<_>>();
+            let removed_roles = roles
+                .iter()
+                .map(|r| r.id)
+                .filter(|r| !new_roles.contains(r))
+                .collect::<Vec<_>>();
             if let Err(err) = member.edit(&ctx, |m| m.roles(new_roles)).await {
                 tracing::error!("{}", err);
-                return
+                return;
             }
 
             let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
                 .concat()
-                .into_iter().collect::<HashSet<_>>()
-                .into_iter().collect::<Vec<_>>();
-            let _ = crate::consts::DATABASE.modify_scrim_unban_date(
-                *member.user.id.as_u64(),
-                scrim_banned.date,
-                &Ids(all_removed)
-            ).map_err(|err| tracing::error!("{}", err));
+                .into_iter()
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>();
+            let _ = crate::consts::DATABASE
+                .modify_scrim_unban_date(
+                    *member.user.id.as_u64(),
+                    scrim_banned.date,
+                    &Ids(all_removed),
+                )
+                .map_err(|err| tracing::error!("{}", err));
         }
 
         if let Err(err) = CONFIG.member_count.update(ctx, member.guild_id).await {

@@ -4,21 +4,18 @@ use chrono::{
 };
 
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Timeout {}
 
 #[async_trait]
 impl InteractionHandler for Timeout {
-
     fn name(&self) -> String {
         "timeout".to_string()
     }
@@ -57,8 +54,11 @@ impl InteractionHandler for Timeout {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)

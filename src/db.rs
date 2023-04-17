@@ -5,7 +5,7 @@ use std::{
 };
 
 use serenity::model::id::RoleId;
-use sqlite::{Connection, Statement, State};
+use sqlite::{Connection, State, Statement};
 use time::OffsetDateTime;
 
 pub use crate::model::*;
@@ -129,9 +129,9 @@ impl Database {
         });
     }
 
-    pub fn exec_safe<S>(&self, query: &str, mut stmt_predicate: S) -> SqliteResult<()> 
+    pub fn exec_safe<S>(&self, query: &str, mut stmt_predicate: S) -> SqliteResult<()>
     where
-        S: FnMut(&mut Statement) -> SqliteResult<()>
+        S: FnMut(&mut Statement) -> SqliteResult<()>,
     {
         self.get_lock(|db| {
             let mut stmt = db.prepare(query)?;
@@ -140,17 +140,22 @@ impl Database {
                 let state = stmt.next()?;
                 match state {
                     State::Done => break,
-                    _ => continue
+                    _ => continue,
                 }
             }
             Ok(())
         })
     }
 
-    pub fn fetch_rows_safe<S, F, T>(&self, query: &str, mut stmt_predicate: S, mut result_predicate: F) -> SqliteResult<Vec<T>>
+    pub fn fetch_rows_safe<S, F, T>(
+        &self,
+        query: &str,
+        mut stmt_predicate: S,
+        mut result_predicate: F,
+    ) -> SqliteResult<Vec<T>>
     where
         S: FnMut(&mut Statement) -> SqliteResult<()>,
-        F: FnMut(&[sqlite::Value]) -> T
+        F: FnMut(&[sqlite::Value]) -> T,
     {
         self.get_lock(|db| {
             let mut rows = Vec::new();
@@ -237,12 +242,13 @@ impl Database {
         result
     }
 
-    pub fn fetch_custom_reactions_with_trigger(&self, trigger: &str) -> SqliteResult<Vec<CustomReaction>> {
+    pub fn fetch_custom_reactions_with_trigger(
+        &self,
+        trigger: &str,
+    ) -> SqliteResult<Vec<CustomReaction>> {
         self.fetch_rows_safe(
             "SELECT * FROM 'Reaction' WHERE trigger = ?",
-            |stmt| {
-                stmt.bind(1, trigger)
-            },
+            |stmt| stmt.bind(1, trigger),
             |row| {
                 let user = row.get(0).unwrap().as_integer().unwrap() as u64;
                 let emoji = row.get(1).unwrap().as_string().unwrap().to_string();
@@ -253,7 +259,7 @@ impl Database {
                     emoji,
                     trigger,
                 }
-            }
+            },
         )
     }
 
@@ -280,15 +286,19 @@ impl Database {
 
     pub fn fetch_screenshares_for(&self, id: u64) -> Option<Screenshare> {
         let mut result = None;
-        self.fetch_rows("Screenshares", &format!("where id = {id} OR creator = {id}"), |row| {
-            let creator = row[1].as_integer().unwrap() as u64;
-            let in_question = row[2].as_integer().unwrap() as u64;
-            result.get_or_insert(Screenshare {
-                id,
-                creator,
-                in_question,
-            });
-        });
+        self.fetch_rows(
+            "Screenshares",
+            &format!("where id = {id} OR creator = {id}"),
+            |row| {
+                let creator = row[1].as_integer().unwrap() as u64;
+                let in_question = row[2].as_integer().unwrap() as u64;
+                result.get_or_insert(Screenshare {
+                    id,
+                    creator,
+                    in_question,
+                });
+            },
+        );
         result
     }
 
@@ -317,11 +327,7 @@ impl Database {
         })
     }
 
-    pub fn modify_unban_date(
-        &self,
-        id: u64,
-        unban_date: OffsetDateTime,
-    ) -> SqliteResult {
+    pub fn modify_unban_date(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
                 "UPDATE 'ScheduledUnbans' SET time = {} WHERE id = {}",
@@ -335,7 +341,7 @@ impl Database {
         &self,
         id: u64,
         unban_date: OffsetDateTime,
-        roles: &Ids
+        roles: &Ids,
     ) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
@@ -347,19 +353,14 @@ impl Database {
         })
     }
 
-    pub fn add_custom_reaction(
-        &self,
-        id: u64,
-        emoji: &str,
-        trigger: &str,
-    ) -> SqliteResult {
+    pub fn add_custom_reaction(&self, id: u64, emoji: &str, trigger: &str) -> SqliteResult {
         self.exec_safe(
             "INSERT INTO 'Reaction' (user, emoji, trigger) values (?, ?, ?)",
             |stmt| {
                 stmt.bind(1, id as i64)?;
                 stmt.bind(2, emoji)?;
                 stmt.bind(3, trigger)
-            }
+            },
         )
     }
 
@@ -401,8 +402,9 @@ impl Database {
                 stmt.bind(3, created_at.unix_timestamp())?;
                 stmt.bind(4, note)?;
                 stmt.bind(5, creator as i64)
-            }
-        ).map(|_| count + 1)
+            },
+        )
+        .map(|_| count + 1)
     }
 
     pub fn add_screenshare(&self, id: u64, creator: u64, in_question: u64) -> SqliteResult {

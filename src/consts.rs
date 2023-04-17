@@ -1,16 +1,11 @@
-use std::{
-    collections::HashMap, 
-    path::PathBuf, 
-    str::FromStr, 
-    env, fs
-};
+use std::{collections::HashMap, env, fs, path::PathBuf, str::FromStr};
 
 use serde::Deserialize;
 use serenity::{client::Context, model::prelude::*};
 use toml::from_str;
 
-use bridge_scrims::hypixel::UUID;
 use crate::db::Database;
+use bridge_scrims::hypixel::UUID;
 
 #[derive(Deserialize)]
 pub struct MemberCount(ChannelId);
@@ -88,7 +83,7 @@ pub struct Config {
 
 pub struct Secrets {
     pub bot_token: String,
-    pub hypixel_token: UUID
+    pub hypixel_token: UUID,
 }
 
 lazy_static::lazy_static! {

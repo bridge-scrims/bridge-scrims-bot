@@ -1,17 +1,16 @@
-use tokio::time::sleep;
 use std::time::Duration;
+use tokio::time::sleep;
 
 use serenity::{
     async_trait,
+    builder::{CreateInteractionResponseData, CreateMessage},
     client::Context,
-    builder::{CreateMessage, CreateInteractionResponseData},
-
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
 use bridge_scrims::{
-    hypixel::{Player, PlayerDataRequest, PlayerData, UUID},
+    hypixel::{Player, PlayerData, PlayerDataRequest, UUID},
     interaction::*,
 };
 
@@ -26,7 +25,6 @@ pub struct Screenshare;
 
 #[async_trait]
 impl InteractionHandler for Screenshare {
-
     fn name(&self) -> String {
         String::from("screenshare")
     }
@@ -56,48 +54,64 @@ impl InteractionHandler for Screenshare {
         Ok(())
     }
 
-    fn initial_response(&self, _interaction_type: interaction::InteractionType) -> InitialInteractionResponse {
+    fn initial_response(
+        &self,
+        _interaction_type: interaction::InteractionType,
+    ) -> InitialInteractionResponse {
         InitialInteractionResponse::DeferEphemeralReply
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let in_question = UserId(command.get_str("user").unwrap().parse()?);
         let screenshare = crate::consts::DATABASE.fetch_screenshares_for(command.user.id.0);
         if let Some(screenshare) = screenshare {
-            return Err(
-                ErrorResponse::with_title(
-                    "One at a time please", 
-                    format!("You already have a screenshare request open at <#{}>.", screenshare.id)
-                )
-            )?;
+            return Err(ErrorResponse::with_title(
+                "One at a time please",
+                format!(
+                    "You already have a screenshare request open at <#{}>.",
+                    screenshare.id
+                ),
+            ))?;
         }
 
-        let channel = create_screenshare_ticket(ctx, command.user.id, in_question).await
-            .map_err(|_| ErrorResponse::message("Your screenshare channel couldn't be created..."))?;
+        let channel = create_screenshare_ticket(ctx, command.user.id, in_question)
+            .await
+            .map_err(|_| {
+                ErrorResponse::message("Your screenshare channel couldn't be created...")
+            })?;
 
         let ign = command.get_str("ign").unwrap();
         let player = Player::fetch_from_username(ign.clone()).await?;
         let uuid = player.0.clone();
 
         let player_stats = PlayerDataRequest(crate::SECRETS.hypixel_token.clone(), player)
-            .send().await.unwrap_or_default();
+            .send()
+            .await
+            .unwrap_or_default();
 
         let message = channel
             .send_message(&ctx, |m| {
                 *m = screenshare_message(command.user.id, in_question, ign, uuid, player_stats);
                 m
-            }).await;
+            })
+            .await;
 
         if let Err(err) = message {
-            let _ = channel.delete(&ctx).await
-                .map_err(|err| tracing::error!("Failed to delete screenshare channel after message failed: {}", err));
+            let _ = channel.delete(&ctx).await.map_err(|err| {
+                tracing::error!(
+                    "Failed to delete screenshare channel after message failed: {}",
+                    err
+                )
+            });
             return Err(Box::new(err));
         }
-        
-        let res = crate::consts::DATABASE.add_screenshare(
-            channel.id.0, command.user.id.0, in_question.0
-        );
+
+        let res =
+            crate::consts::DATABASE.add_screenshare(channel.id.0, command.user.id.0, in_question.0);
         if let Err(err) = res {
             let _ = channel
                 .send_message(
@@ -107,7 +121,12 @@ impl InteractionHandler for Screenshare {
             tracing::error!("Failed to add screenshare to database: {}", err)
         }
 
-        tokio::spawn(ticket_timeout(ctx.clone(), in_question, command.user.id, channel.id));
+        tokio::spawn(ticket_timeout(
+            ctx.clone(),
+            in_question,
+            command.user.id,
+            channel.id,
+        ));
 
         let mut resp = CreateInteractionResponseData::default();
         resp.content(format!("Ticket created at {}.", channel.mention()));
@@ -121,7 +140,9 @@ impl InteractionHandler for Screenshare {
 
 async fn ticket_timeout(ctx: Context, in_question: UserId, closer: UserId, channel: ChannelId) {
     sleep(Duration::from_secs(15 * 60)).await;
-    let not_frozen = crate::consts::DATABASE.fetch_freezes_for(in_question.0).is_none();
+    let not_frozen = crate::consts::DATABASE
+        .fetch_freezes_for(in_question.0)
+        .is_none();
     if not_frozen {
         let result = close::close_ticket(&ctx, closer, channel).await;
         if let Err(err) = result {
@@ -130,15 +151,20 @@ async fn ticket_timeout(ctx: Context, in_question: UserId, closer: UserId, chann
     }
 }
 
-async fn create_screenshare_ticket(ctx: &Context, creator: UserId, in_question: UserId) -> crate::Result<GuildChannel> {
+async fn create_screenshare_ticket(
+    ctx: &Context,
+    creator: UserId,
+    in_question: UserId,
+) -> crate::Result<GuildChannel> {
     let channels = crate::CONFIG.guild.channels(&ctx.http).await?;
     let category = channels
         .iter()
         .find(|ch| {
-            ch.1.kind == ChannelType::Category
-                && ch.0 == &crate::CONFIG.screenshare_requests
+            ch.1.kind == ChannelType::Category && ch.0 == &crate::CONFIG.screenshare_requests
         })
-        .ok_or(serenity::Error::Other("Screenshare category does not exist!"))?;
+        .ok_or(serenity::Error::Other(
+            "Screenshare category does not exist!",
+        ))?;
 
     let mut count: Option<i64> = None;
     crate::consts::DATABASE.count_rows("Screenshares", "", |val| {
@@ -147,10 +173,10 @@ async fn create_screenshare_ticket(ctx: &Context, creator: UserId, in_question: 
         }
     });
 
-    let guild_channel = crate::CONFIG.guild
+    let guild_channel = crate::CONFIG
+        .guild
         .create_channel(&ctx.http, |ch| {
-            ch
-                .name(format!("screenshare-{}", count.unwrap_or_default() + 1))
+            ch.name(format!("screenshare-{}", count.unwrap_or_default() + 1))
                 .category(category.0)
                 .kind(ChannelType::Text)
                 .permissions(
@@ -160,72 +186,81 @@ async fn create_screenshare_ticket(ctx: &Context, creator: UserId, in_question: 
                         .zip([
                             PermissionOverwriteType::Member(creator),
                             PermissionOverwriteType::Member(in_question),
-                            PermissionOverwriteType::Role(crate::CONFIG.ss_support)
+                            PermissionOverwriteType::Role(crate::CONFIG.ss_support),
                         ])
-                        .map(|((allow, deny), kind)| PermissionOverwrite {
-                            allow, deny, kind
-                        })
+                        .map(|((allow, deny), kind)| PermissionOverwrite { allow, deny, kind })
                         .chain(std::iter::once(PermissionOverwrite {
                             allow: Permissions::empty(),
                             deny: *ALLOW_PERMS,
-                            kind: PermissionOverwriteType::Role(crate::CONFIG.guild.0.into())
-                        }))
+                            kind: PermissionOverwriteType::Role(crate::CONFIG.guild.0.into()),
+                        })),
                 )
-        }).await?;
+        })
+        .await?;
     Ok(guild_channel)
 }
 
-fn screenshare_message<'a>(creator: UserId, in_question: UserId, ign: String, uuid: UUID, player_stats: PlayerData) -> CreateMessage<'a> {
+fn screenshare_message<'a>(
+    creator: UserId,
+    in_question: UserId,
+    ign: String,
+    uuid: UUID,
+    player_stats: PlayerData,
+) -> CreateMessage<'a> {
     let mut msg = CreateMessage::default();
-    msg
-        .content(format!(
-            "\
+    msg.content(format!(
+        "\
                 {} \n\
                 {} Please explain why you suspect {} of cheating and send us the screenshots of \
                 you telling them not to log as well as any other info you can provide.\
             ",
-            crate::consts::CONFIG.ss_support.mention(),
-            creator.mention(), in_question.mention()
-        ))
-        .embed(|embed| {
-            embed
-                .title("Screenshare Request")
-                .color(0xf03291)
-                .description(format!(
-                    "\
+        crate::consts::CONFIG.ss_support.mention(),
+        creator.mention(),
+        in_question.mention()
+    ))
+    .embed(|embed| {
+        embed
+            .title("Screenshare Request")
+            .color(0xf03291)
+            .description(format!(
+                "\
                         If {} is not frozen by us within the next 15 minutes, \
                         this will automatically get deleted and they are safe to logout.
-                    ", in_question.mention()
-                ))
-                .field("Minecraft Account", format!("```{} ({})```", ign, uuid), false)
-                .field(
-                    "Last login time",
-                    player_stats.last_login.unwrap_or_default(),
-                    true,
-                )
-                .field(
-                    "Last logout time",
-                    player_stats.last_logout.unwrap_or_default(),
-                    true,
-                )
-        })
-        .components(|components| {
-            components.create_action_row(|row| {
-                row
-                    .create_button(|button| {
-                        button
-                            .label("Freeze")
-                            .custom_id(format!("freeze:{}", in_question))
-                            .style(component::ButtonStyle::Primary)
-                            .emoji(ReactionType::try_from(crate::CONFIG.freeze_emoji.clone()).unwrap())
-                    })
-                    .create_button(|button| {
-                        button
-                            .label("Close")
-                            .custom_id("close")
-                            .style(component::ButtonStyle::Danger)
-                    })
+                    ",
+                in_question.mention()
+            ))
+            .field(
+                "Minecraft Account",
+                format!("```{} ({})```", ign, uuid),
+                false,
+            )
+            .field(
+                "Last login time",
+                player_stats.last_login.unwrap_or_default(),
+                true,
+            )
+            .field(
+                "Last logout time",
+                player_stats.last_logout.unwrap_or_default(),
+                true,
+            )
+    })
+    .components(|components| {
+        components.create_action_row(|row| {
+            row.create_button(|button| {
+                button
+                    .label("Freeze")
+                    .custom_id(format!("freeze:{}", in_question))
+                    .style(component::ButtonStyle::Primary)
+                    .emoji(ReactionType::try_from(crate::CONFIG.freeze_emoji.clone()).unwrap())
             })
-        });
+            .create_button(|button| {
+                button
+                    .label("Close")
+                    .custom_id("close")
+                    .style(component::ButtonStyle::Danger)
+            })
+        })
+    });
     msg
 }

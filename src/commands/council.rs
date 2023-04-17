@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::{sync::Mutex, time::Duration};
 use futures::StreamExt;
+use tokio::{sync::Mutex, time::Duration};
 
 use serenity::{
-    async_trait,
-    client::Context,
-    http::Http,
-
+    async_trait, client::Context, http::Http,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Council {
     councils: Arc<Inner>,
@@ -22,11 +19,10 @@ pub struct Council {
 
 #[async_trait]
 impl InteractionHandler for Council {
-
     fn name(&self) -> String {
         "council".to_string()
     }
-    
+
     async fn init(&self, ctx: &Context) {
         tokio::spawn(Inner::update_loop(self.councils.clone(), ctx.http.clone()));
     }
@@ -52,8 +48,11 @@ impl InteractionHandler for Council {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))
@@ -99,7 +98,6 @@ impl InteractionHandler for Council {
 pub struct Inner(pub Mutex<HashMap<String, String>>);
 
 impl Inner {
-
     pub fn new() -> Inner {
         Inner(Mutex::new(HashMap::new()))
     }
@@ -153,5 +151,4 @@ impl Inner {
         let councils = self.0.lock().await;
         (*councils).get(name).cloned()
     }
-    
 }

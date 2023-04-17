@@ -2,14 +2,13 @@ use time::OffsetDateTime;
 
 use serenity::{
     async_trait,
-    client::Context,
     builder::CreateInteractionResponseData,
-
-    model::prelude::*,
+    client::Context,
     model::application::interaction::{
         application_command::ApplicationCommandInteraction,
-        message_component::MessageComponentInteraction
-    }
+        message_component::MessageComponentInteraction,
+    },
+    model::prelude::*,
 };
 
 use bridge_scrims::interaction::*;
@@ -18,13 +17,12 @@ pub struct Freeze;
 
 #[async_trait]
 impl InteractionHandler for Freeze {
-    
     fn name(&self) -> String {
         String::from("freeze")
     }
 
     fn allowed_roles(&self) -> Option<Vec<RoleId>> {
-        Some(vec!(crate::CONFIG.ss_support))
+        Some(vec![crate::CONFIG.ss_support])
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
@@ -45,18 +43,28 @@ impl InteractionHandler for Freeze {
         Ok(())
     }
 
-    fn initial_response(&self, _interaction_type: interaction::InteractionType) -> InitialInteractionResponse {
+    fn initial_response(
+        &self,
+        _interaction_type: interaction::InteractionType,
+    ) -> InitialInteractionResponse {
         InitialInteractionResponse::DeferEphemeralReply
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let user = UserId(command.get_str("player").unwrap().parse()?);
         freeze_user(ctx, user, command.user.id).await
     }
 
-    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, args: &[&str]) -> InteractionResult
-    {
+    async fn handle_component(
+        &self,
+        ctx: &Context,
+        command: &MessageComponentInteraction,
+        args: &[&str],
+    ) -> InteractionResult {
         let user = UserId(args.first().unwrap().parse()?);
         freeze_user(ctx, user, command.user.id).await
     }
@@ -66,40 +74,67 @@ impl InteractionHandler for Freeze {
     }
 }
 
-async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> InteractionResult<'a>
-{
+async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> InteractionResult<'a> {
     let executor = crate::CONFIG.guild.member(&ctx, executor).await?;
     let executor_roles = executor.roles(&ctx.cache).unwrap_or_default();
-    let executors_highest = executor_roles.iter().map(|r| r.position).max().unwrap_or_default();
-    
+    let executors_highest = executor_roles
+        .iter()
+        .map(|r| r.position)
+        .max()
+        .unwrap_or_default();
+
     let member = crate::CONFIG.guild.member(&ctx, target).await?;
     let targets_roles = member.roles(&ctx.cache).unwrap_or_default();
     let targets_role_ids = targets_roles.iter().map(|r| r.id).collect::<Vec<_>>();
-    let targets_highest = targets_roles.iter().map(|r| r.position).max().unwrap_or_default();
+    let targets_highest = targets_roles
+        .iter()
+        .map(|r| r.position)
+        .max()
+        .unwrap_or_default();
 
     if executors_highest <= targets_highest {
-        return Err(
-            ErrorResponse::with_title(
-                "Insufficient Permissions", 
-                format!("You are missing the required permissions to freeze {}!", target.mention())
-            )
-        )?;
+        return Err(ErrorResponse::with_title(
+            "Insufficient Permissions",
+            format!(
+                "You are missing the required permissions to freeze {}!",
+                target.mention()
+            ),
+        ))?;
     }
 
-    let is_frozen = crate::consts::DATABASE.fetch_freezes_for(target.0).is_some();
+    let is_frozen = crate::consts::DATABASE
+        .fetch_freezes_for(target.0)
+        .is_some();
     if is_frozen {
-        return Err(ErrorResponse::message(format!("{} is already frozen.", target.mention())))?;
+        return Err(ErrorResponse::message(format!(
+            "{} is already frozen.",
+            target.mention()
+        )))?;
     }
 
-    let is_banned = crate::consts::DATABASE.fetch_scrim_unbans().iter().any(|x| !x.is_expired() && x.id == target.0);
+    let is_banned = crate::consts::DATABASE
+        .fetch_scrim_unbans()
+        .iter()
+        .any(|x| !x.is_expired() && x.id == target.0);
     if is_banned {
-        return Err(ErrorResponse::message(format!("{} is already banned.", target.mention())))?;
+        return Err(ErrorResponse::message(format!(
+            "{} is already banned.",
+            target.mention()
+        )))?;
     }
 
-    let mut new_roles = targets_roles.iter().filter(|r| r.managed).map(|r| r.id).collect::<Vec<_>>();
+    let mut new_roles = targets_roles
+        .iter()
+        .filter(|r| r.managed)
+        .map(|r| r.id)
+        .collect::<Vec<_>>();
     new_roles.push(crate::CONFIG.frozen);
-    let removed_roles = targets_role_ids.clone().into_iter().filter(|r| !new_roles.contains(r)).collect::<Vec<_>>();
-    
+    let removed_roles = targets_role_ids
+        .clone()
+        .into_iter()
+        .filter(|r| !new_roles.contains(r))
+        .collect::<Vec<_>>();
+
     member.edit(&ctx, |m| m.roles(new_roles)).await?;
     let res = crate::consts::DATABASE.add_freeze(
         target.0,
@@ -108,8 +143,15 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
     );
     if let Err(err) = res {
         // This is already a fail-safe so errors here are ignored
-        let _ = member.edit(&ctx, |m| m.roles(targets_role_ids.clone())).await
-            .map_err(|_| println!("Failed to give {} back their roles ({:?}) after freeze failed!", target, targets_role_ids));
+        let _ = member
+            .edit(&ctx, |m| m.roles(targets_role_ids.clone()))
+            .await
+            .map_err(|_| {
+                println!(
+                    "Failed to give {} back their roles ({:?}) after freeze failed!",
+                    target, targets_role_ids
+                )
+            });
         return Err(Box::new(err));
     }
 
@@ -140,7 +182,7 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
             )).flags(MessageFlags::SUPPRESS_EMBEDS)
         }).await
             .map_err(|e| tracing::error!("Failed to send freeze message: {}", e));
-    
+
     let mut response = CreateInteractionResponseData::default();
     response.content(format!("Successfully froze {}.", target.mention()));
     Ok(Some(response))

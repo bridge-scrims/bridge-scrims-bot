@@ -1,19 +1,16 @@
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::DATABASE;
+use bridge_scrims::interaction::*;
 
 pub struct Ticket;
 
 #[async_trait]
 impl InteractionHandler for Ticket {
-    
     fn name(&self) -> String {
         String::from("ticket")
     }
@@ -44,8 +41,11 @@ impl InteractionHandler for Ticket {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let who = UserId(command.get_str("target").unwrap().parse()?);
         let operation = command.get_str("operation").unwrap();
         let channel = command
@@ -114,7 +114,7 @@ impl InteractionHandler for Ticket {
         }
         Ok(None)
     }
-    
+
     fn new() -> Box<Self> {
         Box::new(Self)
     }

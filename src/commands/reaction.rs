@@ -2,18 +2,13 @@ use std::error::Error;
 use std::fmt::Display;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
-    builder::CreateEmbed,
-    utils::Color,
-
-    model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
+    async_trait, builder::CreateEmbed, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
+    model::prelude::*, utils::Color,
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Reaction;
 
@@ -64,7 +59,6 @@ pub enum ErrorKind {
 
 #[async_trait]
 impl InteractionHandler for DelReaction {
-
     fn name(&self) -> String {
         "delete_reaction".to_string()
     }
@@ -87,8 +81,11 @@ impl InteractionHandler for DelReaction {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
@@ -149,7 +146,6 @@ impl InteractionHandler for DelReaction {
 
 #[async_trait]
 impl InteractionHandler for Reaction {
-
     fn name(&self) -> String {
         "reaction".to_string()
     }
@@ -190,8 +186,11 @@ impl InteractionHandler for Reaction {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)
@@ -388,7 +387,6 @@ impl InteractionHandler for Reaction {
 
 #[async_trait]
 impl InteractionHandler for ListReactions {
-
     fn name(&self) -> String {
         "list_reactions".to_string()
     }
@@ -407,8 +405,11 @@ impl InteractionHandler for ListReactions {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))

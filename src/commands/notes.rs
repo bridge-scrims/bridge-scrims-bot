@@ -1,23 +1,18 @@
 use time::OffsetDateTime;
 
 use serenity::{
-    async_trait,
-    client::Context,
-    utils::Color,
-
-    model::prelude::*,
-    model::application::command::CommandOptionType,
-    model::application::interaction::application_command::ApplicationCommandInteraction
+    async_trait, client::Context, model::application::command::CommandOptionType,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
+    model::prelude::*, utils::Color,
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Notes;
 
 #[async_trait]
 impl InteractionHandler for Notes {
-
     fn name(&self) -> String {
         "notes".to_string()
     }
@@ -81,8 +76,11 @@ impl InteractionHandler for Notes {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d)

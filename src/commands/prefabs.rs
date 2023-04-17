@@ -4,15 +4,13 @@ use base64::decode;
 use serde_json::value::Value;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 type Message = HashMap<String, Value>;
 type Messages = HashMap<String, Vec<Message>>;
@@ -24,7 +22,6 @@ pub struct Prefab {
 
 #[async_trait]
 impl InteractionHandler for Prefab {
-
     fn name(&self) -> String {
         "prefab".to_string()
     }
@@ -51,8 +48,11 @@ impl InteractionHandler for Prefab {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))

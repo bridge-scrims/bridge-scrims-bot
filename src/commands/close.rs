@@ -2,30 +2,25 @@ use futures::StreamExt;
 use serenity::{
     async_trait,
     client::Context,
-
-    model::prelude::*,
     model::application::interaction::{
         application_command::ApplicationCommandInteraction,
-        message_component::MessageComponentInteraction
-    }
+        message_component::MessageComponentInteraction,
+    },
+    model::prelude::*,
 };
 
-use bridge_scrims::{
-    print_embeds::FormatEmbed,
-    interaction::*
-};
+use bridge_scrims::{interaction::*, print_embeds::FormatEmbed};
 
 pub struct Close;
 
 #[async_trait]
 impl InteractionHandler for Close {
-
     fn name(&self) -> String {
         String::from("close")
     }
 
     fn allowed_roles(&self) -> Option<Vec<RoleId>> {
-        Some(vec!(crate::CONFIG.ss_support))
+        Some(vec![crate::CONFIG.ss_support])
     }
 
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
@@ -35,20 +30,33 @@ impl InteractionHandler for Close {
                 command
                     .name(self.name())
                     .description("Closes a screenshare")
-            }).await?;
+            })
+            .await?;
         Ok(())
     }
 
-    fn initial_response(&self, _interaction_type: interaction::InteractionType) -> InitialInteractionResponse {
+    fn initial_response(
+        &self,
+        _interaction_type: interaction::InteractionType,
+    ) -> InitialInteractionResponse {
         InitialInteractionResponse::DeferEphemeralReply
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         close_ticket(ctx, command.user.id, command.channel_id).await?;
         Ok(None)
     }
 
-    async fn handle_component(&self, ctx: &Context, command: &MessageComponentInteraction, _args: &[&str]) -> InteractionResult {
+    async fn handle_component(
+        &self,
+        ctx: &Context,
+        command: &MessageComponentInteraction,
+        _args: &[&str],
+    ) -> InteractionResult {
         close_ticket(ctx, command.user.id, command.channel_id).await?;
         Ok(None)
     }
@@ -58,13 +66,17 @@ impl InteractionHandler for Close {
     }
 }
 
-pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> crate::Result<()> 
-{
-    let screenshare = crate::consts::DATABASE.fetch_screenshares_for(channel.0)
+pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> crate::Result<()> {
+    let screenshare = crate::consts::DATABASE
+        .fetch_screenshares_for(channel.0)
         .ok_or_else(|| ErrorResponse::message("This channel isn't a screenshare ticket!"))?;
 
     let mut messages = Vec::new();
-    let raw_messages = channel.messages_iter(&ctx).boxed().collect::<Vec<_>>().await;
+    let raw_messages = channel
+        .messages_iter(&ctx)
+        .boxed()
+        .collect::<Vec<_>>()
+        .await;
 
     for message in raw_messages.into_iter().flatten() {
         messages.push(format!(
@@ -97,8 +109,9 @@ pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> 
                     screenshare.creator, screenshare.in_question, closer
                 ))
             })
-        }).await?;
-    
+        })
+        .await?;
+
     crate::consts::DATABASE.remove_entry("Screenshares", channel.0)?;
     channel.delete(&ctx).await?;
     Ok(())

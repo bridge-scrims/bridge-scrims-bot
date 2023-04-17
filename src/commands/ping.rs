@@ -1,18 +1,14 @@
-use std::time::Duration;
 use regex::Regex;
+use std::time::Duration;
 
 use serenity::{
-    async_trait,
-    client::Context,
-
-    model::prelude::*,
-    model::application::command::CommandOptionType,
-    model::application::interaction::MessageFlags as InteractionMessageFlags,
-    model::application::interaction::application_command::ApplicationCommandInteraction
+    async_trait, client::Context, model::application::command::CommandOptionType,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
+    model::application::interaction::MessageFlags as InteractionMessageFlags, model::prelude::*,
 };
 
-use bridge_scrims::{cooldown::Cooldowns, interaction::*};
 use crate::consts::CONFIG;
+use bridge_scrims::{cooldown::Cooldowns, interaction::*};
 
 pub struct Ping {
     cooldowns: Cooldowns,
@@ -20,7 +16,6 @@ pub struct Ping {
 
 #[async_trait]
 impl InteractionHandler for Ping {
-
     fn name(&self) -> String {
         "ping".to_string()
     }
@@ -60,8 +55,11 @@ impl InteractionHandler for Ping {
         CONFIG.pings.iter().any(|opt| opt.name == name)
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         let role = RoleId(command.get_str("role").unwrap().parse().unwrap());
         if let Some(opt) = CONFIG
             .pings
@@ -118,20 +116,29 @@ impl InteractionHandler for Ping {
             .add_user_cooldown_key(cid.clone(), Duration::from_secs(35), command.user.id)
             .await;
         let text = command.get_str("text").unwrap_or_default();
-        let re = Regex::new(r"(https?://)?(www\.)?(((discord(app)?)?\.com/invite)|((discord(app)?)?\.gg))/(.+)").unwrap();
+        let re = Regex::new(
+            r"(https?://)?(www\.)?(((discord(app)?)?\.com/invite)|((discord(app)?)?\.gg))/(.+)",
+        )
+        .unwrap();
         let invite_free_text = re.replace_all(&text, "").to_string();
         command
             .channel_id
             .send_message(&ctx.http, |r| {
-                r.content(format!("<@{}>: <@&{}> {}", command.user.id, role.0, invite_free_text.trim()))
-                    .allowed_mentions(|m| m.roles(vec![role]))
-                    .flags(MessageFlags::SUPPRESS_EMBEDS)
+                r.content(format!(
+                    "<@{}>: <@&{}> {}",
+                    command.user.id,
+                    role.0,
+                    invite_free_text.trim()
+                ))
+                .allowed_mentions(|m| m.roles(vec![role]))
+                .flags(MessageFlags::SUPPRESS_EMBEDS)
             })
             .await?;
         command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| {
-                    d.content("Ping sent!").flags(InteractionMessageFlags::EPHEMERAL)
+                    d.content("Ping sent!")
+                        .flags(InteractionMessageFlags::EPHEMERAL)
                 })
             })
             .await?;

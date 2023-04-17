@@ -163,7 +163,7 @@ impl PlayerDataRequest {
         let response = CLIENT
             .get(format!("{}/player", ENTRY_POINT))
             .header("API-Key", format!("{:#}", self.0))
-            .query(&[("uuid", self.1.0.to_string())])
+            .query(&[("uuid", self.1 .0.to_string())])
             .send()
             .await?;
         let text = response.text().await?;

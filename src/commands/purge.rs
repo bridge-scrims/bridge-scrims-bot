@@ -1,17 +1,14 @@
-use std::collections::HashMap;
 use futures::StreamExt;
+use std::collections::HashMap;
 
 use serenity::{
-    async_trait,
-    client::Context,
-    builder::CreateApplicationCommand,
-
+    async_trait, builder::CreateApplicationCommand, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub enum PurgeOption {
     All,
@@ -99,7 +96,6 @@ pub struct Purge {
 
 #[async_trait]
 impl InteractionHandler for Purge {
-
     fn name(&self) -> String {
         "purge".to_string()
     }
@@ -140,8 +136,11 @@ impl InteractionHandler for Purge {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult 
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx, |r| {
                 r.interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))

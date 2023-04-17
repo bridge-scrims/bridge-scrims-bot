@@ -1,19 +1,16 @@
 use serenity::{
-    async_trait,
-    client::Context,
-
+    async_trait, client::Context,
+    model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
-    model::application::interaction::application_command::ApplicationCommandInteraction
 };
 
-use bridge_scrims::interaction::*;
 use crate::consts::CONFIG;
+use bridge_scrims::interaction::*;
 
 pub struct Reload;
 
 #[async_trait]
 impl InteractionHandler for Reload {
-
     fn name(&self) -> String {
         String::from("reload")
     }
@@ -43,8 +40,11 @@ impl InteractionHandler for Reload {
         Ok(())
     }
 
-    async fn handle_command(&self, ctx: &Context, command: &ApplicationCommandInteraction) -> InteractionResult
-    {
+    async fn handle_command(
+        &self,
+        ctx: &Context,
+        command: &ApplicationCommandInteraction,
+    ) -> InteractionResult {
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
@@ -78,7 +78,7 @@ impl InteractionHandler for Reload {
             .await?;
         Ok(None)
     }
-    
+
     fn new() -> Box<Self> {
         Box::new(Self)
     }
