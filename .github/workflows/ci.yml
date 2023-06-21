@@ -19,7 +19,9 @@ jobs:
     - uses: actions-rust-lang/setup-rust-toolchain@v1
 
     - name: Cargo Build
-      run: cargo build --verbose --release
+      run: |
+        rustup target add aarch64-unknown-linux-gnu
+        cargo build --verbose --release --target=aarch64-unknown-linux-gnu
 
     - uses: actions/upload-artifact@v3
       with:
