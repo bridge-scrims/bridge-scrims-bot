@@ -41,8 +41,8 @@ jobs:
         SOURCE: ".package/"
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
-        TARGET: ${{ secrets.REMOTE_TARGET }}
-        SCRIPT_BEFORE: sudo systemctl stop scrims_main_bot
+        TARGET: ${{ vars.REMOTE_TARGET }}
+        SCRIPT_BEFORE: sudo systemctl stop ${{ vars.SERVICE_NAME }}
         SCRIPT_AFTER: |
-          chmod +x ${{ secrets.REMOTE_TARGET }}bridge-scrims
-          sudo systemctl restart scrims_main_bot
+          chmod +x ${{ vars.REMOTE_TARGET }}bridge-scrims
+          sudo systemctl restart ${{ vars.SERVICE_NAME }}
