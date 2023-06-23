@@ -26,17 +26,20 @@ jobs:
       with:
         use-cross: true
         command: build
-        args: --target aarch64-unknown-linux-gnu --verbose --release --out-dir target/release/bridge-scrims
+        args: --target aarch64-unknown-linux-gnu --verbose --release
         
     - uses: actions/upload-artifact@v3
       with:
         name: bridge-scrims
-        path: target/release/bridge-scrims
+        path: target/aarch64-unknown-linux-gnu/release/bridge-scrims
 
     - name: Bundle Server Package
       run: |
         mkdir .package
-        mv target/release/bridge-scrims .package/
+        ls target
+        ls target/aarch64-unknown-linux-gnu
+        ls target/aarch64-unknown-linux-gnu/release
+        mv target/aarch64-unknown-linux-gnu/release/bridge-scrims .package/
         mv Config.toml .package/
         echo "${{ secrets.ENV_FILE }}" > .package/.env
 
