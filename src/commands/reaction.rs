@@ -7,7 +7,7 @@ use serenity::{
     model::prelude::*, utils::Color,
 };
 
-use crate::consts::CONFIG;
+use crate::{consts::CONFIG, handler::update_reactions_map};
 use bridge_scrims::interaction::*;
 
 pub struct Reaction;
@@ -92,6 +92,7 @@ impl InteractionHandler for DelReaction {
                     .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
+
         let cmd = &command.data.options[0];
         let user = UserId(cmd.value.as_ref().unwrap().as_str().unwrap().parse()?)
             .to_user(&ctx.http)
@@ -113,6 +114,8 @@ impl InteractionHandler for DelReaction {
                 db_error: Some(db_error),
             }));
         }
+        update_reactions_map().await;
+
         command
             .edit_original_interaction_response(&ctx, |r| {
                 r.embed(|e| {
@@ -122,6 +125,7 @@ impl InteractionHandler for DelReaction {
                 })
             })
             .await?;
+
         let mut embed = CreateEmbed::default();
         embed.title(format!("{}'s reaction has been removed", user.tag()));
         embed.description(format!(
@@ -311,6 +315,7 @@ impl InteractionHandler for Reaction {
                         db_error: Some(db_error),
                     }));
                 }
+                update_reactions_map().await;
 
                 command
                     .edit_original_interaction_response(&ctx, |r| {
@@ -351,6 +356,8 @@ impl InteractionHandler for Reaction {
                         db_error: Some(db_error),
                     }));
                 }
+                update_reactions_map().await;
+
                 command
                     .edit_original_interaction_response(&ctx, |r| {
                         r.embed(|e| {

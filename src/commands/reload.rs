@@ -1,10 +1,10 @@
 use serenity::{
-    async_trait, client::Context,
+    async_trait, builder::CreateInteractionResponseData, client::Context,
     model::application::interaction::application_command::ApplicationCommandInteraction,
     model::prelude::*,
 };
 
-use crate::consts::CONFIG;
+use crate::{consts::CONFIG, handler::register_commands};
 use bridge_scrims::interaction::*;
 
 pub struct Reload;
@@ -48,6 +48,7 @@ impl InteractionHandler for Reload {
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
+                    .interaction_response_data(|d| d.flags(interaction::MessageFlags::EPHEMERAL))
             })
             .await?;
 
@@ -65,17 +66,30 @@ impl InteractionHandler for Reload {
                 .await?;
         }
 
+        let mut response = CreateInteractionResponseData::default();
+        response.content(match commands.len() {
+            0 => "Removed no commands.".to_string(),
+            1 => format!("Removed command {}", commands[0].name),
+            _ => "Removed all commands. Please wait for the bot to add the commands back."
+                .to_string(),
+        });
+        command.edit_response(&ctx.http, response).await?;
+
+        let res = register_commands(ctx).await;
         command
             .create_followup_message(&ctx.http, |resp| {
-                resp.content(match commands.len() {
-                    0 => "Removed no commands.".to_string(),
-                    1 => format!("Removed command {}", commands[0].name),
-                    _ => "Removed all commands. Please wait for the bot to add the commands back."
-                        .to_string(),
+                resp.content(match &res {
+                    Ok(_) => "Successfully reloaded!".to_string(),
+                    Err(err) => format!("Reloading failed: {}", err),
                 })
                 .flags(interaction::MessageFlags::EPHEMERAL)
             })
             .await?;
+
+        if let Err(err) = res {
+            tracing::error!("Reloading failed: {}", err);
+        }
+
         Ok(None)
     }
 

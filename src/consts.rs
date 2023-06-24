@@ -11,7 +11,7 @@ use bridge_scrims::hypixel::UUID;
 pub struct MemberCount(ChannelId);
 
 impl MemberCount {
-    pub async fn update(&self, ctx: Context, guild_id: GuildId) -> crate::Result<()> {
+    pub async fn update(&self, ctx: &Context, guild_id: GuildId) -> crate::Result<()> {
         let guild = guild_id.to_guild_cached(&ctx.cache).unwrap();
         self.0
             .edit(&ctx.http, |c| {

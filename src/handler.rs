@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::time::Duration;
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
@@ -8,7 +9,7 @@ use regex::Regex;
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
 use serenity::client::{Context, EventHandler};
-use serenity::model::application::interaction::{Interaction, MessageFlags};
+use serenity::model::application::interaction::Interaction;
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::*;
@@ -49,18 +50,18 @@ lazy_static! {
         commands::ping::Ping::new(),
         commands::logtime::LogTime::new(),
     ];
+    pub static ref REACTIONS: Arc<Mutex<HashMap<String, CustomReaction>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 }
 
 pub struct Handler {
     init: Mutex<bool>,
-    reactions: Arc<Mutex<HashMap<String, CustomReaction>>>,
 }
 
 impl Handler {
     pub fn new() -> Handler {
         Handler {
             init: Mutex::new(false),
-            reactions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -75,7 +76,7 @@ impl EventHandler for Handler {
             for handler in &*HANDLERS {
                 handler.init(&ctx).await;
             }
-            tokio::spawn(update_reactions(self.reactions.clone()));
+            tokio::spawn(update_reactions_loop());
         }
         // Errors are already handled
         let _ = register_commands(&ctx).await;
@@ -89,24 +90,6 @@ impl EventHandler for Handler {
             {
                 if let Err(err) = handler.on_command(&ctx, interaction).await {
                     tracing::error!("{} command failed: {}", handler.name(), err);
-                }
-                if handler.name().contains("reaction") {
-                    update(self.reactions.clone()).await;
-                }
-                if handler.name().contains("reload") {
-                    let res = register_commands(&ctx).await;
-                    let response = interaction
-                        .create_followup_message(&ctx.http, |resp| {
-                            resp.content(match res {
-                                Ok(_) => "Successfully reloaded!".to_string(),
-                                Err(e) => format!("Reloading failed: {}", e),
-                            })
-                            .flags(MessageFlags::EPHEMERAL)
-                        })
-                        .await;
-                    if let Err(e) = response {
-                        tracing::error!("Reloading failed: {}", e);
-                    }
                 }
             }
         }
@@ -304,7 +287,7 @@ impl EventHandler for Handler {
             }
             _ => {}
         }
-        let reactions = self.reactions.lock().await;
+        let reactions = REACTIONS.lock().await;
         if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
             if let Err(err) = msg
                 .react(
@@ -340,44 +323,7 @@ impl EventHandler for Handler {
 
     async fn guild_member_addition(&self, ctx: Context, member: Member) {
         // Give banned role to new members if they were scrims banned
-        let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-        let scrim_banned = bans
-            .iter()
-            .find(|x| !x.is_expired() && x.id == member.user.id.0);
-        if let Some(scrim_banned) = scrim_banned {
-            let roles = member.roles(&ctx).unwrap_or_default();
-            let mut new_roles = roles
-                .iter()
-                .filter(|r| r.managed)
-                .map(|r| r.id)
-                .collect::<Vec<_>>();
-            new_roles.push(crate::CONFIG.banned);
-            let removed_roles = roles
-                .iter()
-                .map(|r| r.id)
-                .filter(|r| !new_roles.contains(r))
-                .collect::<Vec<_>>();
-            if let Err(err) = member.edit(&ctx, |m| m.roles(new_roles)).await {
-                tracing::error!("{}", err);
-                return;
-            }
-
-            let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
-                .concat()
-                .into_iter()
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect::<Vec<_>>();
-            let _ = crate::consts::DATABASE
-                .modify_scrim_unban_date(
-                    *member.user.id.as_u64(),
-                    scrim_banned.date,
-                    &Ids(all_removed),
-                )
-                .map_err(|err| tracing::error!("{}", err));
-        }
-
-        if let Err(err) = CONFIG.member_count.update(ctx, member.guild_id).await {
+        if let Err(err) = CONFIG.member_count.update(&ctx, member.guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
@@ -389,89 +335,119 @@ impl EventHandler for Handler {
         _user: User,
         _optional_member: Option<Member>,
     ) {
-        if let Err(err) = CONFIG.member_count.update(ctx, guild_id).await {
+        if let Err(err) = CONFIG.member_count.update(&ctx, guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
     }
 
-    async fn guild_member_update(&self, ctx: Context, _old_data: Option<Member>, mut user: Member) {
-        let mut x = false;
+    async fn guild_member_update(&self, ctx: Context, _old_member: Option<Member>, member: Member) {
+        let _ = check_booster(&ctx, &member)
+            .await
+            .map_err(|err| tracing::error!("Error while checking for booster: {}", err));
 
-        for role in user.roles(&ctx.cache).unwrap() {
-            if role.tags.premium_subscriber || role.id == CONFIG.staff {
-                x = true;
-            }
-        }
-        let custom_reactions = database.fetch_custom_reactions_for(user.user.id.0);
-        if !x && !custom_reactions.is_empty() {
-            // if the user's server boost runs out
-            let mut embed = CreateEmbed::default();
-            embed.title(format!("{}'s reaction has been removed", user.user.tag()));
-            embed.description("No longer has booster or staff role.");
-
-            if let Err(err) = database.remove_custom_reaction(user.user.id.0) {
-                tracing::error!("Error when updating database: {}", err);
-            }
-            if let Err(err) = CONFIG
-                .reaction_logs
-                .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
-                .await
-            {
-                tracing::error!("Error when sending message: {}", err);
-            }
-            // be sure to update the other thing
-            update(self.reactions.clone()).await;
-        }
-
-        if !x {
-            for role in user.roles(&ctx.cache).unwrap() {
-                for a in &CONFIG.color_roles {
-                    if &role.id == a {
-                        if let Err(err) = user.remove_role(&ctx.http, a).await {
-                            tracing::error!("{}", err);
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut has_banned = false;
-        let mut has_member = false;
-        let mut has_unverified = false;
-        for role in user.roles(&ctx.cache).unwrap() {
-            if role.id == CONFIG.member_role {
-                has_member = true;
-            }
-            if role.id == CONFIG.unverified_role {
-                has_unverified = true;
-            }
-            if role.id == CONFIG.banned {
-                has_banned = true;
-            }
-        }
-        if !user.roles(&ctx.cache).unwrap().is_empty()
-            && !has_banned
-            && !has_unverified
-            && !has_member
-            && user.permissions.map_or(false, |p| !p.administrator())
-        {
-            if let Err(err) = user.add_role(&ctx.http, CONFIG.member_role).await {
-                tracing::error!("{}", err);
-            }
-        }
+        let _ = check_scrim_banned(&ctx, &member)
+            .await
+            .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
     }
 }
 
-async fn update_reactions(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
+async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
+    let booster = member.permissions(ctx).map_or(false, |p| p.administrator())
+        || member
+            .roles(ctx)
+            .unwrap_or_default()
+            .iter()
+            .any(|r| r.tags.premium_subscriber);
+
+    if booster {
+        return Ok(());
+    }
+
+    let custom_reactions = database.fetch_custom_reactions_for(member.user.id.0);
+    if !custom_reactions.is_empty() {
+        // if the user's server boost runs out
+        let mut embed = CreateEmbed::default();
+        embed.title(format!("{}'s reaction has been removed", member.user.tag()));
+        embed.description("No longer has booster and is not an administrator.");
+
+        database.remove_custom_reaction(member.user.id.0)?;
+        CONFIG
+            .reaction_logs
+            .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
+            .await?;
+
+        update_reactions_map().await;
+    }
+
+    if let Some(roles) = member.roles(ctx) {
+        if roles.iter().any(|r| CONFIG.color_roles.contains(&r.id)) {
+            let roles_without_colors = roles
+                .iter()
+                .filter(|r| !CONFIG.color_roles.contains(&r.id))
+                .map(|r| r.id)
+                .collect::<Vec<_>>();
+            member
+                .edit(&ctx, |m| m.roles(roles_without_colors))
+                .await
+                .map(|_| ())?
+        }
+    }
+
+    Ok(())
+}
+
+async fn check_scrim_banned(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
+    let bans = crate::consts::DATABASE.fetch_scrim_unbans();
+    let scrim_banned = bans
+        .iter()
+        .find(|x| !x.is_expired() && x.id == member.user.id.0);
+    if let Some(scrim_banned) = scrim_banned {
+        let roles = member.roles(ctx).unwrap_or_default();
+
+        let mut new_roles = roles
+            .iter()
+            .filter(|r| r.managed)
+            .map(|r| r.id)
+            .collect::<Vec<_>>();
+        new_roles.push(crate::CONFIG.banned);
+
+        let removed_roles = roles
+            .iter()
+            .map(|r| r.id)
+            .filter(|r| !new_roles.contains(r))
+            .collect::<Vec<_>>();
+
+        member
+            .edit(&ctx, |m| m.roles(new_roles))
+            .await
+            .map(|_| ())?;
+
+        let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
+            .concat()
+            .into_iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        crate::consts::DATABASE.modify_scrim_unban_date(
+            *member.user.id.as_u64(),
+            scrim_banned.date,
+            &Ids(all_removed),
+        )?;
+    }
+
+    Ok(())
+}
+
+async fn update_reactions_loop() {
     loop {
-        tracing::info!("Updating reactions...");
-        update(m.clone()).await;
+        update_reactions_map().await;
         tokio::time::sleep(Duration::from_secs(60 * 60 * 2)).await;
     }
 }
 
-async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
-    let mut lock = m.lock().await;
+pub async fn update_reactions_map() {
+    let mut lock = REACTIONS.lock().await;
     let mut x = HashMap::new();
     for reaction in database.fetch_custom_reactions() {
         x.insert(reaction.trigger.to_ascii_lowercase(), reaction);
@@ -479,7 +455,7 @@ async fn update(m: Arc<Mutex<HashMap<String, CustomReaction>>>) {
     *lock = x;
 }
 
-async fn register_commands(ctx: &Context) -> Result<(), String> {
+pub async fn register_commands(ctx: &Context) -> Result<(), String> {
     #[allow(unused_mut)]
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
