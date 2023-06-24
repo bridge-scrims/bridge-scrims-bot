@@ -52,4 +52,6 @@ jobs:
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
         TARGET: ${{ vars.REMOTE_TARGET }}
-        SCRIPT_AFTER: sudo docker compose up -d
+        SCRIPT_AFTER: |
+          cd ${{ vars.REMOTE_TARGET }}
+          sudo docker compose up -d --build
