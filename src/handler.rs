@@ -351,12 +351,8 @@ impl EventHandler for Handler {
 }
 
 async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
-    let booster = member.permissions(ctx).map_or(false, |p| p.administrator())
-        || member
-            .roles(ctx)
-            .unwrap_or_default()
-            .iter()
-            .any(|r| r.tags.premium_subscriber);
+    let booster = member.premium_since.is_some()
+        || member.permissions(ctx).map_or(false, |p| p.administrator());
 
     if booster {
         return Ok(());
@@ -385,10 +381,8 @@ async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Err
                 .filter(|r| !CONFIG.color_roles.contains(&r.id))
                 .map(|r| r.id)
                 .collect::<Vec<_>>();
-            member
-                .edit(&ctx, |m| m.roles(roles_without_colors))
-                .await
-                .map(|_| ())?
+
+            member.edit(&ctx, |m| m.roles(roles_without_colors)).await?;
         }
     }
 
@@ -403,36 +397,43 @@ async fn check_scrim_banned(ctx: &Context, member: &Member) -> Result<(), Box<dy
     if let Some(scrim_banned) = scrim_banned {
         let roles = member.roles(ctx).unwrap_or_default();
 
-        let mut new_roles = roles
+        if !roles
             .iter()
-            .filter(|r| r.managed)
-            .map(|r| r.id)
-            .collect::<Vec<_>>();
-        new_roles.push(crate::CONFIG.banned);
+            .all(|r| r.managed || r.id == crate::CONFIG.banned)
+        {
+            let mut new_roles = roles
+                .iter()
+                .filter(|r| r.managed)
+                .map(|r| r.id)
+                .collect::<Vec<_>>();
+            new_roles.push(crate::CONFIG.banned);
 
-        let removed_roles = roles
-            .iter()
-            .map(|r| r.id)
-            .filter(|r| !new_roles.contains(r))
-            .collect::<Vec<_>>();
+            let removed_roles = roles
+                .iter()
+                .map(|r| r.id)
+                .filter(|r| !new_roles.contains(r))
+                .collect::<Vec<_>>();
 
-        member
-            .edit(&ctx, |m| m.roles(new_roles))
-            .await
-            .map(|_| ())?;
+            member.edit(&ctx, |m| m.roles(new_roles)).await?;
 
-        let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
-            .concat()
-            .into_iter()
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect::<Vec<_>>();
+            if !removed_roles
+                .iter()
+                .all(|r| scrim_banned.roles.0.contains(&r.0))
+            {
+                let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
+                    .concat()
+                    .into_iter()
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>();
 
-        crate::consts::DATABASE.modify_scrim_unban_date(
-            *member.user.id.as_u64(),
-            scrim_banned.date,
-            &Ids(all_removed),
-        )?;
+                crate::consts::DATABASE.modify_scrim_unban_date(
+                    *member.user.id.as_u64(),
+                    scrim_banned.date,
+                    &Ids(all_removed),
+                )?;
+            }
+        }
     }
 
     Ok(())
