@@ -1,5 +1,4 @@
 pub mod cooldown;
-pub mod hypixel;
 pub mod interaction;
 pub mod parse_durations;
 pub mod print_embeds;

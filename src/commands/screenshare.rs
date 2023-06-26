@@ -9,10 +9,7 @@ use serenity::{
     model::prelude::*,
 };
 
-use bridge_scrims::{
-    hypixel::{Player, PlayerData, PlayerDataRequest, UUID},
-    interaction::*,
-};
+use bridge_scrims::interaction::*;
 
 use super::close;
 
@@ -85,17 +82,10 @@ impl InteractionHandler for Screenshare {
             })?;
 
         let ign = command.get_str("ign").unwrap();
-        let player = Player::fetch_from_username(ign.clone()).await?;
-        let uuid = player.0.clone();
-
-        let player_stats = PlayerDataRequest(crate::SECRETS.hypixel_token.clone(), player)
-            .send()
-            .await
-            .unwrap_or_default();
 
         let message = channel
             .send_message(&ctx, |m| {
-                *m = screenshare_message(command.user.id, in_question, ign, uuid, player_stats);
+                *m = screenshare_message(command.user.id, in_question, ign);
                 m
             })
             .await;
@@ -200,13 +190,7 @@ async fn create_screenshare_ticket(
     Ok(guild_channel)
 }
 
-fn screenshare_message<'a>(
-    creator: UserId,
-    in_question: UserId,
-    ign: String,
-    uuid: UUID,
-    player_stats: PlayerData,
-) -> CreateMessage<'a> {
+fn screenshare_message<'a>(creator: UserId, in_question: UserId, ign: String) -> CreateMessage<'a> {
     let mut msg = CreateMessage::default();
     msg.content(format!(
         "\
@@ -229,21 +213,7 @@ fn screenshare_message<'a>(
                     ",
                 in_question.mention()
             ))
-            .field(
-                "Minecraft Account",
-                format!("```{} ({})```", ign, uuid),
-                false,
-            )
-            .field(
-                "Last login time",
-                player_stats.last_login.unwrap_or_default(),
-                true,
-            )
-            .field(
-                "Last logout time",
-                player_stats.last_logout.unwrap_or_default(),
-                true,
-            )
+            .field("Minecraft Account", format!("```{}```", ign), false)
     })
     .components(|components| {
         components.create_action_row(|row| {
