@@ -36,9 +36,6 @@ jobs:
     - name: Bundle Server Package
       run: |
         mkdir .package
-        ls target
-        ls target/aarch64-unknown-linux-gnu
-        ls target/aarch64-unknown-linux-gnu/release
         mv target/aarch64-unknown-linux-gnu/release/bridge-scrims .package/
         mv Config.toml .package/
         echo "${{ secrets.ENV_FILE }}" > .package/.env
