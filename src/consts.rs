@@ -54,6 +54,7 @@ pub struct Config {
     pub trial_support: RoleId,
     pub support_bans: ChannelId,
     pub screenshare_requests: ChannelId,
+    pub muted_role: RoleId,
     pub frozen: RoleId,
     pub frozen_chat: ChannelId,
     pub hello_cheaters: ChannelId,

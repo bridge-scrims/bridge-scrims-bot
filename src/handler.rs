@@ -348,6 +348,54 @@ impl EventHandler for Handler {
             .await
             .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
     }
+
+    async fn channel_create(&self, ctx: Context, channel: &GuildChannel) {
+        check_channel_permissions(&ctx, channel.id, &channel.permission_overwrites).await;
+    }
+
+    async fn category_create(&self, ctx: Context, category: &ChannelCategory) {
+        check_channel_permissions(&ctx, category.id, &category.permission_overwrites).await;
+    }
+}
+
+lazy_static! {
+    pub static ref MUTED_OVERWRITE_TYPE: PermissionOverwriteType =
+        PermissionOverwriteType::Role(CONFIG.muted_role);
+    pub static ref MUTED_DENY_PERMISSIONS: Permissions = Permissions::SEND_MESSAGES
+        | Permissions::SEND_MESSAGES_IN_THREADS
+        | Permissions::CREATE_PUBLIC_THREADS
+        | Permissions::CREATE_PRIVATE_THREADS
+        | Permissions::ADD_REACTIONS
+        | Permissions::SPEAK;
+}
+
+async fn check_channel_permissions(
+    ctx: &Context,
+    channel: ChannelId,
+    permissions: &[PermissionOverwrite],
+) {
+    let existing = permissions.iter().find(|p| p.kind == *MUTED_OVERWRITE_TYPE);
+    if !existing.map_or(false, |o| o.deny.contains(*MUTED_DENY_PERMISSIONS)) {
+        let mut allow = existing.map_or(Permissions::empty(), |o| o.allow);
+        let mut deny = existing.map_or(Permissions::empty(), |o| o.deny);
+
+        allow.remove(*MUTED_DENY_PERMISSIONS);
+        deny.insert(*MUTED_DENY_PERMISSIONS);
+
+        let _ = channel
+            .create_permission(
+                ctx,
+                &PermissionOverwrite {
+                    allow,
+                    deny,
+                    kind: *MUTED_OVERWRITE_TYPE,
+                },
+            )
+            .await
+            .map_err(|err| {
+                tracing::error!("Error while fixing channel's muted permissions: {}", err)
+            });
+    }
 }
 
 async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
