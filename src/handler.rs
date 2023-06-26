@@ -48,7 +48,6 @@ lazy_static! {
         commands::screensharers::Screensharers::new(),
         commands::reload::Reload::new(),
         commands::ping::Ping::new(),
-        commands::logtime::LogTime::new(),
     ];
     pub static ref REACTIONS: Arc<Mutex<HashMap<String, CustomReaction>>> =
         Arc::new(Mutex::new(HashMap::new()));
