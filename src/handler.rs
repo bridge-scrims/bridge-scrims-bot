@@ -350,11 +350,15 @@ impl EventHandler for Handler {
     }
 
     async fn channel_create(&self, ctx: Context, channel: &GuildChannel) {
-        check_channel_permissions(&ctx, channel.id, &channel.permission_overwrites).await;
+        if channel.guild_id == CONFIG.guild {
+            check_channel_permissions(&ctx, channel.id, &channel.permission_overwrites).await;
+        }
     }
 
     async fn category_create(&self, ctx: Context, category: &ChannelCategory) {
-        check_channel_permissions(&ctx, category.id, &category.permission_overwrites).await;
+        if category.guild_id == CONFIG.guild {
+            check_channel_permissions(&ctx, category.id, &category.permission_overwrites).await;
+        }
     }
 }
 
