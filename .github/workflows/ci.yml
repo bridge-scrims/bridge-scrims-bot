@@ -51,4 +51,4 @@ jobs:
         TARGET: ${{ vars.REMOTE_TARGET }}
         SCRIPT_AFTER: |
           cd ${{ vars.REMOTE_TARGET }}
-          sudo docker compose up -d --build
+          sudo docker compose restart
