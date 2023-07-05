@@ -21,15 +21,7 @@ impl InteractionHandler for ListBans {
             .guild
             .create_application_command(&ctx.http, |cmd| {
                 cmd.name(self.name())
-                    .description("List all of the (scrim)bans")
-                    .create_option(|opt| {
-                        opt.name("type")
-                            .description("Wether you want to list scrimbans or server bans")
-                            .required(true)
-                            .kind(command::CommandOptionType::String)
-                            .add_string_choice("Scrim", "sc")
-                            .add_string_choice("Server", "sv")
-                    })
+                    .description("List all of the scrim bans")
                     .default_member_permissions(Permissions::empty())
             })
             .await?;
@@ -41,61 +33,24 @@ impl InteractionHandler for ListBans {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> InteractionResult {
-        let operation = command.get_str("type").unwrap();
-        let mut desc = match operation.as_str() {
-            "sv" => {
-                let bans = crate::consts::DATABASE.fetch_unbans();
-                let mut result = vec![String::new()];
-                for ban in bans {
-                    if result[result.len() - 1].len() > 1950 {
-                        result.push(String::new())
-                    }
-                    let t = result.len() - 1;
-                    writeln!(
-                        result[t],
-                        "- <@!{}>: banned until <t:{}:R>",
-                        ban.id,
-                        ban.date.unix_timestamp()
-                    )?;
-                }
-                result
+        let bans = crate::consts::DATABASE.fetch_scrim_unbans();
+        let mut desc = vec![String::new()];
+        for ban in bans.into_iter().filter(|b| !b.is_expired()) {
+            if desc[desc.len() - 1].len() > 1950 {
+                desc.push(String::new())
             }
-            "sc" => {
-                let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-                let mut result = vec![String::new()];
-                for ban in bans {
-                    if result[result.len() - 1].len() > 1950 {
-                        result.push(String::new())
-                    }
-                    let t = result.len() - 1;
-                    writeln!(
-                        result[t],
-                        "- <@!{}>: banned until <t:{}:R>",
-                        ban.id,
-                        ban.date.unix_timestamp()
-                    )?;
-                }
-                result
-            }
-            _ => {
-                return Ok(None);
-            }
-        };
+            let t = desc.len() - 1;
+            writeln!(
+                desc[t],
+                "- <@!{}>: banned until <t:{}:R>",
+                ban.id,
+                ban.date.unwrap().unix_timestamp()
+            )?;
+        }
         command
             .create_interaction_response(&ctx.http, |resp| {
                 resp.interaction_response_data(|data| {
-                    data.embed(|embed| {
-                        embed
-                            .title(format!(
-                                "{} Bans",
-                                if operation.as_str() == "sv" {
-                                    "Server"
-                                } else {
-                                    "Scrim"
-                                }
-                            ))
-                            .description(desc.pop().unwrap())
-                    })
+                    data.embed(|embed| embed.title("Scrim Bans").description(desc.pop().unwrap()))
                 })
             })
             .await?;

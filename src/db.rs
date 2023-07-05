@@ -30,14 +30,6 @@ impl Database {
 
         // Tables
         conn.execute(
-            "create table if not exists ScheduledUnbans (
-                id integer primary key,
-                time integer
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
             "create table if not exists ScheduledScrimUnbans (
                 id integer primary key,
                 time integer,
@@ -129,6 +121,10 @@ impl Database {
         });
     }
 
+    pub fn exec(&self, statement: String) -> SqliteResult {
+        self.get_lock(|db| db.execute(statement))
+    }
+
     pub fn exec_safe<S>(&self, query: &str, mut stmt_predicate: S) -> SqliteResult<()>
     where
         S: FnMut(&mut Statement) -> SqliteResult<()>,
@@ -186,23 +182,12 @@ impl Database {
         });
     }
 
-    pub fn fetch_unbans(&self) -> Vec<Unban> {
-        let mut result = Vec::new();
-        self.fetch_rows("ScheduledUnbans", "", |row| {
-            let id = row.get(0).unwrap().as_integer().unwrap() as u64;
-            let time = row.get(1).unwrap().as_integer().unwrap();
-            let date = OffsetDateTime::from_unix_timestamp(time).unwrap();
-            result.push(Unban { id, date });
-        });
-        result
-    }
-
     pub fn fetch_scrim_unbans(&self) -> Vec<ScrimUnban> {
         let mut result = Vec::new();
         self.fetch_rows("ScheduledScrimUnbans", "", |row| {
             let id = row.get(0).unwrap().as_integer().unwrap() as u64;
-            let time = row.get(1).unwrap().as_integer().unwrap();
-            let date = OffsetDateTime::from_unix_timestamp(time).unwrap();
+            let time = row.get(1).unwrap().as_integer();
+            let date = time.map(|v| OffsetDateTime::from_unix_timestamp(v).unwrap());
             let roles = Ids::try_from(row.get(2).unwrap().as_string().unwrap().to_owned()).unwrap();
 
             result.push(ScrimUnban { id, date, roles });
@@ -317,42 +302,6 @@ impl Database {
         result
     }
 
-    pub fn add_unban(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
-        self.get_lock(|db| {
-            db.execute(format!(
-                "INSERT INTO 'ScheduledUnbans' (id,time) values ({},{})",
-                id,
-                unban_date.unix_timestamp()
-            ))
-        })
-    }
-
-    pub fn modify_unban_date(&self, id: u64, unban_date: OffsetDateTime) -> SqliteResult {
-        self.get_lock(|db| {
-            db.execute(format!(
-                "UPDATE 'ScheduledUnbans' SET time = {} WHERE id = {}",
-                unban_date.unix_timestamp(),
-                id,
-            ))
-        })
-    }
-
-    pub fn modify_scrim_unban_date(
-        &self,
-        id: u64,
-        unban_date: OffsetDateTime,
-        roles: &Ids,
-    ) -> SqliteResult {
-        self.get_lock(|db| {
-            db.execute(format!(
-                "UPDATE 'ScheduledScrimUnbans' SET time = {}, roles = \"{}\" WHERE id = {}",
-                unban_date.unix_timestamp(),
-                roles,
-                id,
-            ))
-        })
-    }
-
     pub fn add_custom_reaction(&self, id: u64, emoji: &str, trigger: &str) -> SqliteResult {
         self.exec_safe(
             "INSERT INTO 'Reaction' (user, emoji, trigger) values (?, ?, ?)",
@@ -367,15 +316,37 @@ impl Database {
     pub fn add_scrim_unban(
         &self,
         id: u64,
-        unban_date: OffsetDateTime,
+        unban_date: Option<OffsetDateTime>,
         roles: &Ids,
     ) -> SqliteResult {
         self.get_lock(|db| {
             db.execute(format!(
-                "INSERT INTO 'ScheduledScrimUnbans' (id,time,roles) values ({},{},\"{}\")",
+                "INSERT INTO 'ScheduledScrimUnbans' (id, time, roles) values ({}, {}, \"{}\")",
                 id,
-                unban_date.unix_timestamp(),
+                unban_date.map_or(String::from("NULL"), |date| format!(
+                    "\"{}\"",
+                    date.unix_timestamp()
+                )),
                 roles,
+            ))
+        })
+    }
+
+    pub fn modify_scrim_unban(
+        &self,
+        id: u64,
+        unban_date: Option<OffsetDateTime>,
+        roles: &Ids,
+    ) -> SqliteResult {
+        self.get_lock(|db| {
+            db.execute(format!(
+                "UPDATE 'ScheduledScrimUnbans' SET time = {}, roles = \"{}\" WHERE id = {}",
+                unban_date.map_or(String::from("NULL"), |date| format!(
+                    "\"{}\"",
+                    date.unix_timestamp()
+                )),
+                roles,
+                id,
             ))
         })
     }

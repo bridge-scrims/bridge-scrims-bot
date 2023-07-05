@@ -19,6 +19,7 @@ use tokio::sync::Mutex;
 use bridge_scrims::interaction::handler::InteractionHandler;
 
 use crate::commands;
+use crate::commands::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::{CustomReaction, Ids};
@@ -29,8 +30,6 @@ lazy_static! {
         commands::notes::Notes::new(),
         commands::prefabs::Prefab::new(),
         commands::timeout::Timeout::new(),
-        commands::ban::Ban::new(),
-        commands::unban::Unban::new(),
         commands::ban::ScrimBan::new(),
         commands::unban::ScrimUnban::new(),
         commands::roll::Roll::new(),
@@ -441,49 +440,48 @@ async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Err
     Ok(())
 }
 
-async fn check_scrim_banned(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
-    let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-    let scrim_banned = bans
-        .iter()
-        .find(|x| !x.is_expired() && x.id == member.user.id.0);
-    if let Some(scrim_banned) = scrim_banned {
-        let roles = member.roles(ctx).unwrap_or_default();
-
-        if !roles
-            .iter()
-            .all(|r| r.managed || r.id == crate::CONFIG.banned)
-        {
-            let mut new_roles = roles
+async fn check_scrim_banned(ctx: &Context, member: &Member) -> crate::Result<()> {
+    let unbans = crate::consts::DATABASE.fetch_scrim_unbans();
+    let unban = unbans.iter().find(|x| x.id == member.user.id.0);
+    if let Some(unban) = unban {
+        if unban.is_expired() {
+            scrim_unban(ctx, None, unban, String::from("Ban Expired")).await?;
+        } else {
+            let roles = member.roles(ctx).unwrap_or_default();
+            if !roles
                 .iter()
-                .filter(|r| r.managed)
-                .map(|r| r.id)
-                .collect::<Vec<_>>();
-            new_roles.push(crate::CONFIG.banned);
-
-            let removed_roles = roles
-                .iter()
-                .map(|r| r.id)
-                .filter(|r| !new_roles.contains(r))
-                .collect::<Vec<_>>();
-
-            member.edit(&ctx, |m| m.roles(new_roles)).await?;
-
-            if !removed_roles
-                .iter()
-                .all(|r| scrim_banned.roles.0.contains(&r.0))
+                .all(|r| r.managed || r.id == crate::CONFIG.banned)
+                || !roles.iter().any(|r| r.id == crate::CONFIG.banned)
             {
-                let all_removed = [scrim_banned.roles.0.clone(), Ids::from(removed_roles).0]
-                    .concat()
-                    .into_iter()
-                    .collect::<HashSet<_>>()
-                    .into_iter()
+                let mut new_roles = roles
+                    .iter()
+                    .filter(|r| r.managed)
+                    .map(|r| r.id)
+                    .collect::<Vec<_>>();
+                new_roles.push(crate::CONFIG.banned);
+
+                let removed_roles = roles
+                    .iter()
+                    .map(|r| r.id)
+                    .filter(|r| !new_roles.contains(r))
                     .collect::<Vec<_>>();
 
-                crate::consts::DATABASE.modify_scrim_unban_date(
-                    *member.user.id.as_u64(),
-                    scrim_banned.date,
-                    &Ids(all_removed),
-                )?;
+                member.edit(&ctx, |m| m.roles(new_roles)).await?;
+
+                if !removed_roles.iter().all(|r| unban.roles.0.contains(&r.0)) {
+                    let all_removed = [unban.roles.0.clone(), Ids::from(removed_roles).0]
+                        .concat()
+                        .into_iter()
+                        .collect::<HashSet<_>>()
+                        .into_iter()
+                        .collect::<Vec<_>>();
+
+                    crate::consts::DATABASE.modify_scrim_unban(
+                        *member.user.id.as_u64(),
+                        unban.date,
+                        &Ids(all_removed),
+                    )?;
+                }
             }
         }
     }

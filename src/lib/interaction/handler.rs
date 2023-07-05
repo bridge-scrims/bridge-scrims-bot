@@ -80,7 +80,7 @@ pub trait InteractionHandler: Send + Sync {
                 Unfortunately your command could not be handled due to something unexpected going wrong. \
                 Sorry for the inconvenience. Maybe try again in a minute.\
             ",
-            "if this issue persists, please report this to the developers."
+            "If this issue persists, please report this to the developers."
         )
     }
 

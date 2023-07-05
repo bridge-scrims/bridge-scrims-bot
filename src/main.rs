@@ -19,14 +19,16 @@ mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let file_appender = tracing_appender::rolling::daily("logs", "logs.txt");
+    let file_appender = tracing_appender::rolling::daily("logs", "rolling.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
     let filter = LevelFilter::INFO;
     let subscriber = Registry::default()
         .with(Layer::default().pretty().with_filter(filter))
         .with(
             Layer::default()
+                .pretty()
                 .with_ansi(false)
+                .compact()
                 .with_writer(non_blocking)
                 .with_filter(filter),
         );

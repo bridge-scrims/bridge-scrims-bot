@@ -4,20 +4,20 @@ use std::num::ParseIntError;
 use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use time::OffsetDateTime;
 
-pub struct Unban {
-    pub id: u64,
-    pub date: OffsetDateTime,
-}
-
 pub struct ScrimUnban {
     pub id: u64,
-    pub date: OffsetDateTime,
+    pub date: Option<OffsetDateTime>,
     pub roles: Ids,
 }
 
 impl ScrimUnban {
     pub fn is_expired(&self) -> bool {
-        self.date <= OffsetDateTime::now_utc()
+        self.date
+            .map_or(true, |date| date <= OffsetDateTime::now_utc())
+    }
+
+    pub fn was_logged(&self) -> bool {
+        self.date.is_none()
     }
 }
 
