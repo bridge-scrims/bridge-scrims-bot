@@ -1,6 +1,7 @@
 /target
 /logs
 /.idea
+/.vscode
 /Cargo.lock
 /.env
 /.cargo

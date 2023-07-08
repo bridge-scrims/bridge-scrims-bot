@@ -69,13 +69,15 @@ impl InteractionHandler for Reload {
         let mut response = CreateInteractionResponseData::default();
         response.content(match commands.len() {
             0 => "Removed no commands.".to_string(),
-            1 => format!("Removed command {}", commands[0].name),
-            _ => "Removed all commands. Please wait for the bot to add the commands back."
-                .to_string(),
+            1 => format!(
+                "Removed command `/{}`\nAdding command back now...",
+                commands[0].name
+            ),
+            _ => "Removed all commands.\nAdding commands back now...".to_string(),
         });
         command.edit_response(&ctx.http, response).await?;
 
-        let res = register_commands(ctx).await;
+        let res = register_commands(ctx.clone()).await;
         command
             .create_followup_message(&ctx.http, |resp| {
                 resp.content(match &res {
