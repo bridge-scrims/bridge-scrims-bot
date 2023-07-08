@@ -23,6 +23,7 @@ use crate::commands::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::{CustomReaction, Ids};
+use crate::features::infinite_queues::InfiniteQueues;
 
 lazy_static! {
     pub static ref HANDLERS: Vec<Box<dyn InteractionHandler>> = vec![
@@ -66,18 +67,27 @@ impl Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, ctx: Context, data: Ready) {
+    async fn ready(&self, _ctx: Context, data: Ready) {
         tracing::info!("Connected to discord as {}", data.user.tag());
+    }
+
+    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         let mut init = self.init.lock().await;
         if !*init {
             *init = true;
+
+            tokio::spawn(register_commands(ctx.clone()));
+            tokio::spawn(update_reactions_loop());
+            InfiniteQueues::init(&ctx);
+
             for handler in &*HANDLERS {
                 handler.init(&ctx).await;
             }
-            tokio::spawn(update_reactions_loop());
         }
-        // Errors are already handled
-        let _ = register_commands(&ctx).await;
+    }
+
+    async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
+        InfiniteQueues::on_voice_update(&ctx, old.as_ref(), &new).await;
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -505,7 +515,7 @@ pub async fn update_reactions_map() {
     *lock = x;
 }
 
-pub async fn register_commands(ctx: &Context) -> Result<(), String> {
+pub async fn register_commands(ctx: Context) -> Result<(), String> {
     #[allow(unused_mut)]
     let mut res = Ok(());
     let guild_commands = CONFIG.guild.get_application_commands(&ctx.http).await;
@@ -521,7 +531,7 @@ pub async fn register_commands(ctx: &Context) -> Result<(), String> {
                 continue;
             }
         }
-        let result = handler.register(ctx).await.map_err(|x| x.to_string());
+        let result = handler.register(&ctx).await.map_err(|x| x.to_string());
         if let Err(ref err) = result.as_ref() {
             tracing::error!("Could not register command {}: {}", name, err);
         }

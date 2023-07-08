@@ -12,6 +12,7 @@ use bridge_scrims::Result;
 mod commands;
 mod consts;
 mod db;
+mod features;
 mod handler;
 #[macro_use]
 mod macros;
@@ -44,7 +45,8 @@ async fn main() -> Result<()> {
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MEMBERS
         | GatewayIntents::GUILDS
-        | GatewayIntents::GUILD_VOICE_STATES;
+        | GatewayIntents::GUILD_VOICE_STATES
+        | GatewayIntents::GUILD_PRESENCES;
 
     let mut client = Client::builder(&SECRETS.bot_token, intents)
         .application_id(application_id)
