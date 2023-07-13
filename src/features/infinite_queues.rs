@@ -108,7 +108,7 @@ impl ChannelGroup {
                     if let Some(category_id) = patient0.parent_id {
                         new.category(category_id);
                     }
-                    if let Some(user_limit) = patient0.rate_limit_per_user {
+                    if let Some(user_limit) = patient0.user_limit {
                         new.user_limit(user_limit.try_into().unwrap());
                     }
                     new.kind(ChannelType::Voice)
