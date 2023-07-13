@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use regex::Regex;
 use serenity::{
     model::{prelude::*, voice::VoiceState},
@@ -8,16 +9,24 @@ use std::time::Duration;
 use crate::consts::CONFIG;
 use crate::Result;
 
+macro_rules! create_groups {
+    ($($patient0:expr),*) => {
+        vec![
+            $(
+                Mutex::new(ChannelGroup($patient0)),
+            )*
+        ]
+    };
+}
+
 lazy_static::lazy_static! {
-    pub static ref CHANNEL_GROUPS: Vec<ChannelGroup> = vec!(
-        ChannelGroup(759949915681456209), ChannelGroup(903110641458491473), ChannelGroup(759950225111646208),
-        ChannelGroup(850033618265047040), ChannelGroup(850034475579998268), ChannelGroup(905093037519175681),
-        ChannelGroup(850034620983803914), ChannelGroup(954252151436242944), ChannelGroup(774001218275377162),
-        ChannelGroup(774000992772947978), ChannelGroup(903749931033034784), ChannelGroup(774001398907404348),
-        ChannelGroup(1063105974925279352), ChannelGroup(840697273175244881), ChannelGroup(760201083234156626),
-        ChannelGroup(903749778154876948), ChannelGroup(760202194745819207), ChannelGroup(940024195553853540),
-        ChannelGroup(759950829309919252), ChannelGroup(759950758652805190), ChannelGroup(903110991603191808),
-        ChannelGroup(759951447001137184)
+    pub static ref CHANNEL_GROUPS: Vec<Mutex<ChannelGroup>> = create_groups!(
+        759949915681456209, 903110641458491473, 759950225111646208, 850033618265047040,
+        850034475579998268, 905093037519175681, 850034620983803914, 954252151436242944,
+        774001218275377162, 774000992772947978, 903749931033034784, 774001398907404348,
+        1063105974925279352, 840697273175244881, 760201083234156626, 903749778154876948,
+        760202194745819207, 940024195553853540, 759950829309919252, 759950758652805190,
+        903110991603191808, 759951447001137184
     );
     pub static ref NAME_REGEX: Regex = Regex::new(r"(.* #?)(\d+)").unwrap();
     pub static ref MIN_CHANNELS: usize = 2;
@@ -49,13 +58,16 @@ impl ChannelGroup {
             let patient0 = ctx.cache.guild_channel(self.0);
             if let Some(patient0) = patient0 {
                 let (base_name, _) = divide_channel_name(patient0.name());
-                return channels
+                let mut channels = channels
                     .into_iter()
                     .map(|v| v.1)
                     .filter(|v| v.kind == ChannelType::Voice)
                     .filter(|v| v.parent_id == patient0.parent_id)
                     .filter(|v| v.name().starts_with(base_name))
                     .collect::<Vec<_>>();
+
+                channels.sort_by_key(|c| divide_channel_name(c.name()).1);
+                return channels;
             }
         }
         Vec::new()
@@ -63,10 +75,15 @@ impl ChannelGroup {
 
     async fn remove_excess_channels(&self, ctx: &Context) -> Result<()> {
         let channels = self.get_channels(ctx);
-        for channel in channels {
-            let (_, num) = divide_channel_name(channel.name());
-            let count = count_vc_members(ctx, &channel);
-            if count == 0 && num > *MIN_CHANNELS {
+        let not_used = channels
+            .iter()
+            .filter(|vc| count_vc_members(ctx, vc) == 0)
+            .collect::<Vec<_>>();
+
+        let remove_count = not_used.len();
+        if remove_count > *MIN_CHANNELS {
+            let remove = remove_count - *MIN_CHANNELS;
+            for channel in not_used.iter().rev().take(remove) {
                 let _ = channel.delete(ctx).await?;
             }
         }
@@ -127,15 +144,17 @@ impl InfiniteQueues {
     pub async fn on_voice_update(ctx: &Context, old: Option<&VoiceState>, new: &VoiceState) {
         // user moved to a new vc
         if new.channel_id.is_some() && old.map_or(true, |old| old.channel_id != new.channel_id) {
-            for group in CHANNEL_GROUPS.iter() {
-                if group.needs_more(ctx) {
-                    let res1 = group.make_clone(ctx).await;
-                    let res2 = group.make_clone(ctx).await;
+            join_all(CHANNEL_GROUPS.iter().map(|group| async {
+                let locked_group = group.lock().await;
+                if locked_group.needs_more(ctx) {
+                    let res1 = locked_group.make_clone(ctx).await;
+                    let res2 = locked_group.make_clone(ctx).await;
                     if let Err(err) = res1.and(res2) {
-                        tracing::error!(err)
+                        tracing::error!("Error cloning channel: {}", err)
                     }
                 }
-            }
+            }))
+            .await;
         }
     }
 
@@ -146,12 +165,14 @@ impl InfiniteQueues {
 
 async fn excess_channel_cleanup_loop(ctx: Context) {
     loop {
-        for group in CHANNEL_GROUPS.iter() {
-            let res = group.remove_excess_channels(&ctx).await;
+        join_all(CHANNEL_GROUPS.iter().map(|group| async {
+            let locked_group = group.lock().await;
+            let res = locked_group.remove_excess_channels(&ctx).await;
             if let Err(err) = res {
-                tracing::error!(err)
+                tracing::error!("Error deleting channel: {}", err)
             }
-        }
+        }))
+        .await;
         tokio::time::sleep(Duration::from_secs(15 * 60)).await;
     }
 }
