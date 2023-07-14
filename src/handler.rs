@@ -23,7 +23,7 @@ use crate::commands::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::{CustomReaction, Ids};
-use crate::features::infinite_queues::InfiniteQueues;
+use crate::features::expanding_channels::ExpandingChannels;
 
 lazy_static! {
     pub static ref HANDLERS: Vec<Box<dyn InteractionHandler>> = vec![
@@ -78,7 +78,7 @@ impl EventHandler for Handler {
 
             tokio::spawn(register_commands(ctx.clone()));
             tokio::spawn(update_reactions_loop());
-            InfiniteQueues::init(&ctx);
+            ExpandingChannels::init(&ctx);
 
             for handler in &*HANDLERS {
                 handler.init(&ctx).await;
@@ -87,7 +87,7 @@ impl EventHandler for Handler {
     }
 
     async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
-        InfiniteQueues::on_voice_update(&ctx, old.as_ref(), &new).await;
+        ExpandingChannels::on_voice_update(&ctx, old.as_ref(), &new).await;
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {

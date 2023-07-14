@@ -1,1 +1,1 @@
-pub mod infinite_queues;
+pub mod expanding_channels;

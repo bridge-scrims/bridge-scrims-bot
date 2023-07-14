@@ -79,6 +79,10 @@ pub struct Config {
     pub q_and_a_role: RoleId,
 
     pub booster_info: ChannelId,
+
+    pub expanding_channels: Vec<ChannelId>,
+    pub expanding_min: usize,
+    pub expanding_max: usize,
 }
 
 pub struct Secrets {
