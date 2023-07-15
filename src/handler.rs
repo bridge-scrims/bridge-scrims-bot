@@ -254,7 +254,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
-        if CONFIG.upvote_downvote.contains(&msg.channel_id) {
+        if CONFIG.upvote_downvote_channels.contains(&msg.channel_id) {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
             }
@@ -262,6 +262,12 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+        if CONFIG.like_react_channels.contains(&msg.channel_id) {
+            if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
+                tracing::error!("{}", err);
+            }
+        }
+
         match msg.kind {
             MessageType::MemberJoin => {
                 if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👋".into())).await {

@@ -62,7 +62,9 @@ pub struct Config {
     pub freeze_emoji: String,
     pub unfreeze_emoji: String,
 
-    pub upvote_downvote: Vec<ChannelId>,
+    pub upvote_downvote_channels: Vec<ChannelId>,
+    pub like_react_channels: Vec<ChannelId>,
+
     pub clips: ChannelId,
     pub reaction_logs: ChannelId,
     pub color_roles: Vec<RoleId>,
