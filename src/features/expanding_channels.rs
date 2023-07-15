@@ -59,18 +59,44 @@ impl ChannelFamily {
 
     async fn remove_excess_channels(&self, ctx: &Context) -> Result<()> {
         let channels = self.get_channels(ctx);
+
+        let highest_num_used = channels
+            .iter()
+            .filter(|vc| count_vc_members(ctx, vc) > 0)
+            .map(|vc| divide_channel_name(vc.name()).1)
+            .max()
+            .unwrap_or(0);
+
+        let in_use = channels
+            .iter()
+            .filter(|vc| count_vc_members(ctx, vc) > 0)
+            .count();
+
         let not_used = channels
             .iter()
             .filter(|vc| count_vc_members(ctx, vc) == 0)
             .collect::<Vec<_>>();
 
-        let remove_count = not_used.len();
-        if remove_count > *MIN_CHANNELS {
-            let remove = remove_count - *MIN_CHANNELS;
-            for channel in not_used.iter().rev().take(remove) {
+        let removable = not_used
+            .iter()
+            .filter(|vc| {
+                let num = divide_channel_name(vc.name()).1;
+                num > *MIN_CHANNELS && num > highest_num_used
+            })
+            .collect::<Vec<_>>();
+
+        let buffer: usize = match in_use {
+            in_use if in_use >= *MIN_CHANNELS => 2,
+            _ => 0,
+        };
+
+        if not_used.len() > buffer {
+            let remove_count = not_used.len() - buffer;
+            for channel in removable.iter().rev().take(remove_count) {
                 let _ = channel.delete(ctx).await?;
             }
         }
+
         Ok(())
     }
 
