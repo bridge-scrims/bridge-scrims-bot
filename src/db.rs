@@ -5,181 +5,20 @@ use std::{
 };
 
 use serenity::model::id::RoleId;
-use sqlite::{Connection, State, Statement};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use time::OffsetDateTime;
 
 pub use crate::model::*;
 
-type SqliteResult<T = ()> = Result<T, sqlite::Error>;
-
-pub struct Database {
-    pub sqlite: Mutex<Connection>,
-}
+pub struct Database(pub PgPool);
 
 impl Database {
-    pub fn init() -> Self {
-        // Create sqlite file
-        let mut path = crate::consts::DATABASE_PATH.clone();
-        let _ = std::fs::create_dir_all(&path);
-        path.push("bridge-scrims.sqlite");
-        if !path.as_path().exists() {
-            std::fs::File::create(&path).expect("Cannot create database file");
-        }
-
-        let conn = Connection::open(&path).unwrap();
-
-        // Tables
-        conn.execute(
-            "create table if not exists ScheduledScrimUnbans (
-                id integer primary key,
-                time integer,
-                roles text
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
-            "create table if not exists Notes (
-                userid integer,
-                id integer,
-                created_at integer,
-                note text,
-                creator integer
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
-            "create table if not exists Reaction (
-                user integer primary key,
-                emoji text,
-                trigger text
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
-            "create table if not exists Screenshares (
-                id integer primary key,
-                creator integer,
-                in_question integer
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
-            "create table if not exists Freezes (
-                id integer,
-                roles text,
-                time integer
-            )",
-        )
-        .expect("Could not initialize database");
-
-        conn.execute(
-            "create table if not exists ScreensharerStats (
-                id integer primary key,
-                freezes integer
-            )",
-        )
-        .expect("Could not initialize database");
-
-        Self {
-            sqlite: Mutex::new(conn),
-        }
-    }
-
-    pub fn get_lock<T, F>(&self, predicate: F) -> SqliteResult<T>
-    where
-        F: FnOnce(MutexGuard<Connection>) -> SqliteResult<T>,
-    {
-        self.sqlite.lock().map_or_else(
-            |_| {
-                Err(sqlite::Error {
-                    code: Some(6),
-                    message: Some("Could not lock database".to_string()),
-                })
-            },
-            predicate,
-        )
-    }
-
-    pub fn fetch_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
-    where
-        F: FnMut(&[sqlite::Value]),
-    {
-        let _lock = self.get_lock(|db| {
-            let stmt = db.prepare(format!("SELECT * FROM '{}' {}", table, condition));
-            if let Ok(stmt) = stmt {
-                let mut cursor = stmt.into_cursor();
-
-                while let Ok(Some(row)) = cursor.next() {
-                    predicate(row);
-                }
-            }
-            Ok(())
-        });
-    }
-
-    pub fn exec(&self, statement: String) -> SqliteResult {
-        self.get_lock(|db| db.execute(statement))
-    }
-
-    pub fn exec_safe<S>(&self, query: &str, mut stmt_predicate: S) -> SqliteResult<()>
-    where
-        S: FnMut(&mut Statement) -> SqliteResult<()>,
-    {
-        self.get_lock(|db| {
-            let mut stmt = db.prepare(query)?;
-            stmt_predicate(&mut stmt)?;
-            loop {
-                let state = stmt.next()?;
-                match state {
-                    State::Done => break,
-                    _ => continue,
-                }
-            }
-            Ok(())
-        })
-    }
-
-    pub fn fetch_rows_safe<S, F, T>(
-        &self,
-        query: &str,
-        mut stmt_predicate: S,
-        mut result_predicate: F,
-    ) -> SqliteResult<Vec<T>>
-    where
-        S: FnMut(&mut Statement) -> SqliteResult<()>,
-        F: FnMut(&[sqlite::Value]) -> T,
-    {
-        self.get_lock(|db| {
-            let mut rows = Vec::new();
-            let mut stmt = db.prepare(query)?;
-            stmt_predicate(&mut stmt)?;
-            let mut cursor = stmt.into_cursor();
-            while let Ok(Some(row)) = cursor.next() {
-                rows.push(result_predicate(row));
-            }
-            Ok(rows)
-        })
-    }
-
-    pub fn count_rows<F>(&self, table: &str, condition: &str, mut predicate: F)
-    where
-        F: FnMut(&[sqlite::Value]),
-    {
-        let _lock = self.get_lock(|db| {
-            let stmt = db.prepare(format!("select count(*) from '{}' {}", table, condition));
-            if let Ok(stmt) = stmt {
-                let mut cursor = stmt.into_cursor();
-
-                if let Ok(Some(row)) = cursor.next() {
-                    predicate(row);
-                }
-            }
-            Ok(())
-        });
+    pub async fn init() -> crate::Result<Database> {
+        Ok(Self(
+            PgPoolOptions::new()
+                .connect(&std::env::var("DATABASE_URL")?)
+                .await?,
+        ))
     }
 
     pub fn fetch_scrim_unbans(&self) -> Vec<ScrimUnban> {

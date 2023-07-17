@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, path::PathBuf};
+use std::{cell::OnceCell, collections::HashMap, env, fs, path::PathBuf};
 
 use serde::Deserialize;
 use serenity::{client::Context, model::prelude::*};
@@ -92,9 +92,6 @@ pub struct Secrets {
 }
 
 lazy_static::lazy_static! {
-    pub static ref DATABASE_PATH: PathBuf = std::env::current_dir().unwrap();
-    pub static ref DATABASE: Database = Database::init();
-
     pub static ref CONFIG: Config = {
         let config_string: String = fs::read_to_string("Config.toml").expect("Config Not Supplied!");
         from_str(&config_string).expect("Config could not be parsed!")
@@ -104,3 +101,5 @@ lazy_static::lazy_static! {
         bot_token: env::var("BOT_TOKEN").unwrap(),
     };
 }
+
+pub const DATABASE: OnceCell<Database> = OnceCell::new();
