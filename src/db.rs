@@ -1,8 +1,4 @@
-use std::{
-    cmp::Reverse,
-    str::FromStr,
-    sync::{Mutex, MutexGuard},
-};
+use std::{cmp::Reverse, str::FromStr};
 
 use serenity::model::id::RoleId;
 use sqlx::{postgres::PgPoolOptions, PgPool};
@@ -14,11 +10,11 @@ pub struct Database(pub PgPool);
 
 impl Database {
     pub async fn init() -> crate::Result<Database> {
-        Ok(Self(
-            PgPoolOptions::new()
-                .connect(&std::env::var("DATABASE_URL")?)
-                .await?,
-        ))
+        let pool = PgPoolOptions::new()
+            .connect(&std::env::var("DATABASE_URL")?)
+            .await?;
+        sqlx::migrate!().run(&pool).await?;
+        Ok(Self(pool))
     }
 
     pub fn fetch_scrim_unbans(&self) -> Vec<ScrimUnban> {
