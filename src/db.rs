@@ -25,7 +25,7 @@ impl Database {
             let date = time.map(|v| OffsetDateTime::from_unix_timestamp(v).unwrap());
             let roles = Ids::try_from(row.get(2).unwrap().as_string().unwrap().to_owned()).unwrap();
 
-            result.push(ScrimUnban { id, date, roles });
+            result.push(ScrimUnban { id, expires_at: date, roles });
         });
         result
     }
@@ -113,8 +113,8 @@ impl Database {
                 let creator = row[1].as_integer().unwrap() as u64;
                 let in_question = row[2].as_integer().unwrap() as u64;
                 result.get_or_insert(Screenshare {
-                    id,
-                    creator,
+                    channel_id: id,
+                    creator_id: creator,
                     in_question,
                 });
             },

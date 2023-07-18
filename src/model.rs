@@ -5,44 +5,42 @@ use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use time::OffsetDateTime;
 
 pub struct ScrimUnban {
-    pub id: u64,
-    pub date: Option<OffsetDateTime>,
+    pub user_id: u64,
+    pub expires_at: Option<OffsetDateTime>,
     pub roles: Ids,
 }
 
 impl ScrimUnban {
     pub fn is_expired(&self) -> bool {
-        self.date
+        self.expires_at
             .map_or(true, |date| date <= OffsetDateTime::now_utc())
     }
 
     pub fn was_logged(&self) -> bool {
-        self.date.is_none()
+        self.expires_at.is_none()
     }
 }
 
 pub struct Screenshare {
     /// Channel ID of the ticket
-    pub id: u64,
+    pub channel_id: u64,
     /// User ID of the person who made the ticket
-    pub creator: u64,
+    pub creator_id: u64,
     /// User ID of the person being screenshared
     pub in_question: u64,
 }
 
 pub struct Freeze {
     /// User ID of the person being frozen
-    pub id: u64,
+    pub user_id: u64,
     /// Their roles
     pub roles: Vec<RoleId>,
-    /// Time when they were frozen
-    pub time: OffsetDateTime,
 }
 
 #[derive(Debug)]
 pub struct Note {
     /// the id of the person that the note belongs to
-    pub userid: u64,
+    pub user_id: u64,
     /// the note id
     pub id: u64,
     /// the date that the note was created at
@@ -87,12 +85,12 @@ impl TryFrom<String> for Ids {
 crate::id_impl!(Ids, UserId, GuildId, ChannelId, RoleId);
 
 pub struct CustomReaction {
-    pub user: u64,
+    pub user_id: u64,
     pub trigger: String,
     pub emoji: String,
 }
 
 pub struct Screensharer {
-    pub id: u64,
+    pub user_id: u64,
     pub freezes: u64,
 }

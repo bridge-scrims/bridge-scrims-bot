@@ -54,7 +54,7 @@ features = ["full"]
 version = "1.13.0"
 
 [dependencies.sqlx]
-features = ["runtime-tokio", "postgres", "tls-rustls"]
+features = ["runtime-tokio", "postgres", "tls-rustls", "time"]
 version = "0.7"
 
 [profile.release]
