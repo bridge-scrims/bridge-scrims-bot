@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '**.rs'
+      - '**.toml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,7 +41,9 @@ jobs:
         mkdir .package
         mv target/aarch64-unknown-linux-gnu/release/bridge-scrims .package/
         mv Config.toml .package/
-        echo "${{ secrets.ENV_FILE }}" > .package/.env
+        touch .package/.env
+        echo BOT_TOKEN=${{ secrets.BOT_TOKEN }} >> .package/.env
+        echo RUST_BACKTRACE=1 >> .package/.env
 
     - name: Upload to Server
       uses: easingthemes/ssh-deploy@v4
