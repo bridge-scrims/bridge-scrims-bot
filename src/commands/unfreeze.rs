@@ -80,7 +80,13 @@ pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult
         roles.push(CONFIG.member_role)
     }
 
-    let member = CONFIG.guild.member(&ctx, user).await?;
+    let member = CONFIG.guild.member(&ctx, user).await.map_err(|_| {
+        ErrorResponse::message(format!(
+            "{} can't be unfrozen since they left the server.",
+            user.mention()
+        ))
+    })?;
+
     let keep_roles = member
         .roles(ctx)
         .unwrap_or_default()
