@@ -175,7 +175,7 @@ pub async fn scrim_unban(
         let res = member.edit(ctx, |m| m.roles(new_roles)).await;
         if res.is_err() {
             let _ = DATABASE
-                .add_scrim_unban(unban.id, unban.date, &unban.roles)
+                .add_scrim_unban(unban.id, unban.expires_at, &unban.roles)
                 .map_err(|err| {
                     tracing::error!(
                         "Failed to re-add scrim unban after giving back roles back failed: {}",

@@ -1,13 +1,9 @@
-use std::fmt::Display;
-use std::num::ParseIntError;
-
-use serenity::model::id::{ChannelId, GuildId, RoleId, UserId};
 use time::OffsetDateTime;
 
 pub struct ScrimUnban {
     pub user_id: u64,
     pub expires_at: Option<OffsetDateTime>,
-    pub roles: Ids,
+    pub roles: Vec<u64>,
 }
 
 impl ScrimUnban {
@@ -34,7 +30,7 @@ pub struct Freeze {
     /// User ID of the person being frozen
     pub user_id: u64,
     /// Their roles
-    pub roles: Vec<RoleId>,
+    pub roles: Vec<u64>,
 }
 
 #[derive(Debug)]
@@ -51,39 +47,6 @@ pub struct Note {
     pub creator: u64,
 }
 
-pub struct Ids(pub Vec<u64>);
-
-impl Display for Ids {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Avoid allocating a string for each role id
-        for i in 0..self.0.len() {
-            let sep = if i == self.0.len() - 1 { "" } else { "," };
-
-            write!(f, "{}{}", self.0[i], sep)?;
-        }
-        Ok(())
-    }
-}
-
-impl TryFrom<String> for Ids {
-    type Error = ParseIntError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.is_empty() {
-            return Ok(Self(Vec::new()));
-        }
-        let mut ids = Vec::new();
-        for id in value.split(',') {
-            let id = id.parse::<u64>()?;
-            ids.push(id);
-        }
-
-        Ok(Self(ids))
-    }
-}
-
-crate::id_impl!(Ids, UserId, GuildId, ChannelId, RoleId);
-
 pub struct CustomReaction {
     pub user_id: u64,
     pub trigger: String,
@@ -92,5 +55,5 @@ pub struct CustomReaction {
 
 pub struct Screensharer {
     pub user_id: u64,
-    pub freezes: u64,
+    pub freezes: i32,
 }

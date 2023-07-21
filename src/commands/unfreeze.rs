@@ -60,7 +60,7 @@ impl InteractionHandler for Unfreeze {
 pub async fn add_screensharer(sser: UserId) {
     let _ = match DATABASE.get_screensharer(sser.0) {
         None => DATABASE.set_screensharer(crate::db::Screensharer {
-            id: sser.0,
+            user_id: sser.0,
             freezes: 1,
         }),
         Some(mut sser) => {

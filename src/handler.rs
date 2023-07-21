@@ -317,12 +317,12 @@ impl EventHandler for Handler {
                         .to_ascii_lowercase()
                         .contains("invalid form body")
                 {
-                    if let Err(err) = database.remove_custom_reaction(reaction.user) {
+                    if let Err(err) = database.remove_custom_reaction(reaction.user_id) {
                         tracing::error!("Error in removal of reaction: {}", err);
                     }
                     if let Err(err) = msg.reply(&ctx, format!(
                         "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
-                        &reaction.user),
+                        &reaction.user_id),
                     )
                         .await
                     {
