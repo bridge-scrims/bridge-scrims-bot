@@ -282,7 +282,7 @@ fn get_rank_team_call(
     let from_team = channels.iter().find(|vc| {
         let members = vc_members(ctx, vc);
         vc.user_limit
-            .map_or(true, |limit| members.len() >= limit as usize)
+            .map_or(true, |limit| members.len() < limit as usize)
             && team.iter().any(|t| members.contains(t))
     });
 
