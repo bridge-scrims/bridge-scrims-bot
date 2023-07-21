@@ -39,7 +39,7 @@ pub struct Council {
 pub struct Config {
     pub guild: GuildId,
 
-    pub queue_categories: Vec<ChannelId>,
+    pub rank_queue_categories: Vec<Vec<ChannelId>>,
 
     pub member_role: RoleId,
     pub unverified_role: RoleId,

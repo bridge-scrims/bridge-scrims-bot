@@ -37,10 +37,10 @@ fn count_vc_members(ctx: &Context, vc: &GuildChannel) -> usize {
 pub struct ChannelFamily(pub ChannelId);
 impl ChannelFamily {
     fn get_channels(&self, ctx: &Context) -> Vec<GuildChannel> {
-        let channels = ctx.cache.guild_channels(CONFIG.guild);
-        if let Some(channels) = channels {
-            let patient0 = ctx.cache.guild_channel(self.0);
-            if let Some(patient0) = patient0 {
+        let patient0 = ctx.cache.guild_channel(self.0);
+        if let Some(patient0) = patient0 {
+            let channels = ctx.cache.guild_channels(patient0.guild_id);
+            if let Some(channels) = channels {
                 let (base_name, _) = divide_channel_name(patient0.name());
                 let mut channels = channels
                     .into_iter()

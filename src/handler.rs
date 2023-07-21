@@ -3,8 +3,6 @@ use std::time::Duration;
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
 use lazy_static::lazy_static;
-use rand::seq::SliceRandom;
-use regex::Regex;
 
 use serenity::async_trait;
 use serenity::builder::CreateEmbed;
@@ -13,7 +11,6 @@ use serenity::model::application::interaction::Interaction;
 use serenity::model::channel::{Message, MessageType, ReactionType};
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::*;
-use serenity::utils::Color;
 use tokio::sync::Mutex;
 
 use bridge_scrims::interaction::handler::InteractionHandler;
@@ -33,8 +30,7 @@ lazy_static! {
         commands::timeout::Timeout::new(),
         commands::ban::ScrimBan::new(),
         commands::unban::ScrimUnban::new(),
-        commands::roll::Roll::new(),
-        commands::roll::Teams::new(),
+        commands::teams::TeamsCommand::new(),
         commands::purge::Purge::new(),
         commands::reaction::Reaction::new(),
         commands::reaction::DelReaction::new(),
@@ -116,9 +112,10 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.author.bot {
+        if msg.author.bot || msg.guild_id.is_none() {
             return;
         }
+
         if msg
             .content
             .to_ascii_lowercase()
@@ -139,6 +136,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+
         if msg.content.to_ascii_lowercase() == "ratio"
             || msg.content.to_ascii_lowercase().replace(' ', "") == "counterratio"
         {
@@ -148,15 +146,6 @@ impl EventHandler for Handler {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👎".into())).await {
                 tracing::error!("{}", err);
             }
-        }
-        let member = msg.author.clone();
-
-        let guild;
-        if let Some(g) = msg.guild(&ctx) {
-            guild = g;
-        } else {
-            tracing::warn!("Message from a user in a dm {:?}", msg);
-            return;
         }
 
         if msg.channel_id == CONFIG.q_and_a_channel {
@@ -172,68 +161,6 @@ impl EventHandler for Handler {
                 }
                 Err(err) => tracing::error!("{}", err),
             }
-        }
-
-        let roll_commands: Regex = Regex::new("^!(queue|roll|captains|teams|caps|team|captain|r|swag|townhalllevel10btw|anchans|scythepro|wael|api|gez|iamanchansbitch|wasim|unicorn|noodle|Limqo|!|h|eurth|QnVubnkgR2lybA|random)").unwrap();
-
-        let channel = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild();
-        if roll_commands.is_match(&msg.content)
-            && channel.as_ref().is_some()
-            && channel.as_ref().unwrap().parent_id.is_some()
-            && CONFIG
-                .queue_categories
-                .contains(&channel.unwrap().parent_id.unwrap())
-        {
-            let voice_state = guild.voice_states.get(&member.id);
-
-            if voice_state.is_none() || voice_state.unwrap().channel_id.is_none() {
-                let _ = msg
-                    .reply(&ctx, "Please join a queue before using this command.")
-                    .await;
-                return;
-            }
-
-            let channel_id = voice_state.unwrap().channel_id.unwrap();
-            let channel = channel_id
-                .to_channel_cached(&ctx.cache)
-                .unwrap()
-                .guild()
-                .unwrap();
-            if !CONFIG
-                .queue_categories
-                .contains(&channel.parent_id.unwrap_or(ChannelId(0)))
-            {
-                let _ = msg
-                    .reply(&ctx, "Please join a queue before using this command.")
-                    .await;
-                return;
-            }
-
-            let mut members = channel.members(&ctx.cache).await.unwrap();
-
-            let user_limit: usize = channel.user_limit.unwrap_or(4).try_into().unwrap();
-
-            if members.len() < user_limit {
-                let _ = msg.reply(&ctx.http, "This queue is not full yet.").await;
-                return;
-            }
-
-            members.shuffle(&mut rand::thread_rng());
-
-            let _ = msg
-                .channel_id
-                .send_message(&ctx, |r| {
-                    r.add_embed(|e| {
-                        e.title("Team Captains:")
-                            .field("First Captain", members[0].mention(), true)
-                            .field("Second Captain", members[1].mention(), true)
-                            .color(Color::new(0x1abc9c))
-                            .footer(|f| f.text("Hint: use the /roll command to roll!"))
-                    })
-                    .reference_message(&msg)
-                    .allowed_mentions(serenity::builder::CreateAllowedMentions::empty_parse)
-                })
-                .await;
         }
 
         if msg.channel_id.as_u64() == CONFIG.clips.as_u64() {
@@ -254,6 +181,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+
         if CONFIG.upvote_downvote_channels.contains(&msg.channel_id) {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("✅".into())).await {
                 tracing::error!("{}", err);
@@ -262,6 +190,7 @@ impl EventHandler for Handler {
                 tracing::error!("{}", err);
             }
         }
+
         if CONFIG.like_react_channels.contains(&msg.channel_id) {
             if let Err(err) = msg.react(&ctx, ReactionType::Unicode("👍".into())).await {
                 tracing::error!("{}", err);
@@ -301,6 +230,7 @@ impl EventHandler for Handler {
             }
             _ => {}
         }
+
         let reactions = REACTIONS.lock().await;
         if let Some(reaction) = reactions.get(&msg.content.to_ascii_lowercase()) {
             if let Err(err) = msg
@@ -321,9 +251,18 @@ impl EventHandler for Handler {
                         tracing::error!("Error in removal of reaction: {}", err);
                     }
                     if let Err(err) = msg.reply(&ctx, format!(
+<<<<<<< HEAD
                         "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
                         &reaction.user_id),
                     )
+=======
+                        "\
+                            Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. \
+                            It's been removed from our system, make sure that anything which you add is a default emoji.\
+                        ",
+                        &reaction.user
+                    ))
+>>>>>>> master
                         .await
                     {
                         tracing::error!("{}", err);
