@@ -33,7 +33,7 @@ impl InteractionHandler for ListBans {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> InteractionResult {
-        let bans = crate::consts::DATABASE.fetch_scrim_unbans();
+        let bans = crate::consts::DATABASE.fetch_scrim_unbans().await?;
         let mut desc = vec![String::new()];
         for ban in bans.into_iter().filter(|b| !b.is_expired()) {
             if desc[desc.len() - 1].len() > 1950 {
@@ -43,8 +43,8 @@ impl InteractionHandler for ListBans {
             writeln!(
                 desc[t],
                 "- <@!{}>: banned until <t:{}:R>",
-                ban.id,
-                ban.date.unwrap().unix_timestamp()
+                ban.user_id,
+                ban.expires_at.unwrap().unix_timestamp()
             )?;
         }
         command

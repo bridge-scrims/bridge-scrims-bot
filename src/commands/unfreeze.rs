@@ -48,7 +48,7 @@ impl InteractionHandler for Unfreeze {
     ) -> InteractionResult {
         let user = UserId(command.get_str("player").unwrap().parse()?);
         let res = unfreeze_user(ctx, user).await?;
-        add_screensharer(command.user.id).await;
+        add_screensharer(command.user.id).await?;
         Ok(res)
     }
 
@@ -57,25 +57,31 @@ impl InteractionHandler for Unfreeze {
     }
 }
 
-pub async fn add_screensharer(sser: UserId) {
-    let _ = match DATABASE.get_screensharer(sser.0) {
-        None => DATABASE.set_screensharer(crate::db::Screensharer {
-            user_id: sser.0,
-            freezes: 1,
-        }),
+pub async fn add_screensharer(sser: UserId) -> crate::Result<()> {
+    let _ = match DATABASE.get_screensharer(sser.0).await? {
+        None => {
+            DATABASE
+                .set_screensharer(crate::db::Screensharer {
+                    user_id: sser.0,
+                    freezes: 1,
+                })
+                .await?
+        }
         Some(mut sser) => {
             sser.freezes += 1;
-            DATABASE.set_screensharer(sser)
+            DATABASE.set_screensharer(sser).await?
         }
     };
+    Ok(())
 }
 
 pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult<'a> {
     let freeze = DATABASE
         .fetch_freezes_for(user.0)
+        .await?
         .ok_or_else(|| ErrorResponse::message(format!("{} is not frozen.", user.mention())))?;
 
-    let mut roles: Vec<RoleId> = freeze.roles;
+    let mut roles: Vec<RoleId> = freeze.roles.into_iter().map(|r| RoleId(r)).collect();
     if !roles.contains(&CONFIG.member_role) {
         roles.push(CONFIG.member_role)
     }
@@ -105,7 +111,9 @@ pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult
     member.edit(&ctx, |m| m.roles(new_roles)).await?;
 
     // Member already has their roles back so it doesn't really matter if this fails
-    let _ = DATABASE.remove_entry("Freezes", user.0);
+    sqlx::query!("DELETE FROM freezes WHERE user_id = $1", user.0 as i64)
+        .execute(&DATABASE.get())
+        .await?;
 
     let mut response = CreateInteractionResponseData::default();
     response.content(format!(

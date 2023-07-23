@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::time::Duration;
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
 
@@ -19,7 +18,7 @@ use crate::commands;
 use crate::commands::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
-use crate::db::{CustomReaction, Ids};
+use crate::db::CustomReaction;
 use crate::features::expanding_channels::ExpandingChannels;
 
 lazy_static! {
@@ -247,22 +246,13 @@ impl EventHandler for Handler {
                         .to_ascii_lowercase()
                         .contains("invalid form body")
                 {
-                    if let Err(err) = database.remove_custom_reaction(reaction.user_id) {
+                    if let Err(err) = database.remove_custom_reaction(reaction.user_id).await {
                         tracing::error!("Error in removal of reaction: {}", err);
                     }
                     if let Err(err) = msg.reply(&ctx, format!(
-<<<<<<< HEAD
                         "Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. It's been removed from the database, make sure that anything which you add is a default emoji.",
                         &reaction.user_id),
                     )
-=======
-                        "\
-                            Hey <@{}>, it looks like the custom reaction which you added has an invalid emoji. \
-                            It's been removed from our system, make sure that anything which you add is a default emoji.\
-                        ",
-                        &reaction.user
-                    ))
->>>>>>> master
                         .await
                     {
                         tracing::error!("{}", err);
@@ -356,7 +346,7 @@ async fn check_channel_permissions(
     }
 }
 
-async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Error>> {
+async fn check_booster(ctx: &Context, member: &Member) -> crate::Result<()> {
     let booster = member.premium_since.is_some()
         || member.permissions(ctx).map_or(false, |p| p.administrator());
 
@@ -364,14 +354,16 @@ async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Err
         return Ok(());
     }
 
-    let custom_reactions = database.fetch_custom_reactions_for(member.user.id.0);
+    let custom_reactions = database
+        .fetch_custom_reactions_for(member.user.id.0)
+        .await?;
     if !custom_reactions.is_empty() {
         // if the user's server boost runs out
         let mut embed = CreateEmbed::default();
         embed.title(format!("{}'s reaction has been removed", member.user.tag()));
         embed.description("No longer has booster and is not an administrator.");
 
-        database.remove_custom_reaction(member.user.id.0)?;
+        database.remove_custom_reaction(member.user.id.0).await?;
         CONFIG
             .reaction_logs
             .send_message(&ctx, |msg| msg.set_embed(embed.clone()))
@@ -396,8 +388,8 @@ async fn check_booster(ctx: &Context, member: &Member) -> Result<(), Box<dyn Err
 }
 
 async fn check_scrim_banned(ctx: &Context, member: &Member) -> crate::Result<()> {
-    let unbans = crate::consts::DATABASE.fetch_scrim_unbans();
-    let unban = unbans.iter().find(|x| x.id == member.user.id.0);
+    let unbans = crate::consts::DATABASE.fetch_scrim_unbans().await?;
+    let unban = unbans.iter().find(|x| x.user_id == member.user.id.0);
     if let Some(unban) = unban {
         if unban.is_expired() {
             scrim_unban(ctx, None, unban, String::from("Ban Expired")).await?;
@@ -419,23 +411,26 @@ async fn check_scrim_banned(ctx: &Context, member: &Member) -> crate::Result<()>
                     .iter()
                     .map(|r| r.id)
                     .filter(|r| !new_roles.contains(r))
+                    .map(|r| r.0)
                     .collect::<Vec<_>>();
 
                 member.edit(&ctx, |m| m.roles(new_roles)).await?;
 
-                if !removed_roles.iter().all(|r| unban.roles.0.contains(&r.0)) {
-                    let all_removed = [unban.roles.0.clone(), Ids::from(removed_roles).0]
+                if !removed_roles.iter().all(|r| unban.roles.contains(r)) {
+                    let all_removed = [unban.roles.clone(), removed_roles]
                         .concat()
                         .into_iter()
                         .collect::<HashSet<_>>()
                         .into_iter()
                         .collect::<Vec<_>>();
 
-                    crate::consts::DATABASE.modify_scrim_unban(
-                        *member.user.id.as_u64(),
-                        unban.date,
-                        &Ids(all_removed),
-                    )?;
+                    crate::consts::DATABASE
+                        .modify_scrim_unban(
+                            *member.user.id.as_u64(),
+                            unban.expires_at,
+                            &all_removed,
+                        )
+                        .await?;
                 }
             }
         }
@@ -454,7 +449,11 @@ async fn update_reactions_loop() {
 pub async fn update_reactions_map() {
     let mut lock = REACTIONS.lock().await;
     let mut x = HashMap::new();
-    for reaction in database.fetch_custom_reactions() {
+    for reaction in database
+        .fetch_custom_reactions()
+        .await
+        .expect("Failed to fetch reactions from the database")
+    {
         x.insert(reaction.trigger.to_ascii_lowercase(), reaction);
     }
     *lock = x;

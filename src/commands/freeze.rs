@@ -1,5 +1,3 @@
-use time::OffsetDateTime;
-
 use serenity::{
     async_trait,
     builder::CreateInteractionResponseData,
@@ -104,6 +102,7 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
 
     let is_frozen = crate::consts::DATABASE
         .fetch_freezes_for(target.0)
+        .await?
         .is_some();
     if is_frozen {
         return Err(ErrorResponse::message(format!(
@@ -114,8 +113,9 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
 
     let is_banned = crate::consts::DATABASE
         .fetch_scrim_unbans()
+        .await?
         .iter()
-        .any(|x| !x.is_expired() && x.id == target.0);
+        .any(|x| !x.is_expired() && x.user_id == target.0);
     if is_banned {
         return Err(ErrorResponse::message(format!(
             "{} is already banned.",
@@ -133,14 +133,13 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
         .clone()
         .into_iter()
         .filter(|r| !new_roles.contains(r))
+        .map(|r| r.0)
         .collect::<Vec<_>>();
 
     member.edit(&ctx, |m| m.roles(new_roles)).await?;
-    let res = crate::consts::DATABASE.add_freeze(
-        target.0,
-        removed_roles.into(),
-        OffsetDateTime::now_utc(),
-    );
+    let res = crate::consts::DATABASE
+        .add_freeze(target.0, &removed_roles)
+        .await;
     if let Err(err) = res {
         // This is already a fail-safe so errors here are ignored
         let _ = member
@@ -152,7 +151,7 @@ async fn freeze_user<'a>(ctx: &Context, target: UserId, executor: UserId) -> Int
                     target, targets_role_ids
                 )
             });
-        return Err(Box::new(err));
+        return Err(err);
     }
 
     // This is ignored since at this point the user has already been frozen, thus it's too late to abort

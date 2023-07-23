@@ -55,7 +55,11 @@ impl InteractionHandler for Ticket {
             .guild()
             .unwrap();
 
-        if DATABASE.fetch_screenshares_for(channel.id.0).is_none() {
+        if DATABASE
+            .fetch_screenshares_for(channel.id.0)
+            .await?
+            .is_none()
+        {
             command
                 .create_interaction_response(&ctx.http, |resp| {
                     resp.interaction_response_data(|data| {

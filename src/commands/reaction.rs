@@ -19,12 +19,11 @@ pub struct ListReactions;
 #[derive(Debug)]
 pub struct ReactionError {
     kind: ErrorKind,
-    db_error: Option<sqlite::Error>,
 }
 
 impl Display for ReactionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
+        writeln!(
             f,
             "{}",
             match self.kind {
@@ -33,12 +32,7 @@ impl Display for ReactionError {
                 ErrorKind::Database => "database error",
                 ErrorKind::InvalidTrigger => "invalid trigger",
             }
-        )?;
-        if let Some(ref e) = self.db_error {
-            writeln!(f, ": {}", e)
-        } else {
-            writeln!(f)
-        }
+        )
     }
 }
 
@@ -99,7 +93,11 @@ impl InteractionHandler for DelReaction {
             .await?;
         let user_id = user.id;
 
-        if let Err(db_error) = crate::consts::DATABASE.remove_custom_reaction(user_id.0) {
+        if crate::consts::DATABASE
+            .remove_custom_reaction(user_id.0)
+            .await
+            .is_err()
+        {
             command
                 .edit_original_interaction_response(&ctx, |r| {
                     r.embed(|e| {
@@ -110,8 +108,7 @@ impl InteractionHandler for DelReaction {
                 })
                 .await?;
             return Err(Box::new(ReactionError {
-                kind: ErrorKind::InvalidEmoji,
-                db_error: Some(db_error),
+                kind: ErrorKind::Database,
             }));
         }
         update_reactions_map().await;
@@ -227,12 +224,12 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::InvalidTrigger,
-                        db_error: None,
                     }));
                 }
 
-                let reactions_with_trigger =
-                    crate::consts::DATABASE.fetch_custom_reactions_with_trigger(&trigger)?;
+                let reactions_with_trigger = crate::consts::DATABASE
+                    .fetch_custom_reactions_with_trigger(&trigger)
+                    .await?;
 
                 if !reactions_with_trigger.is_empty() {
                     command
@@ -246,7 +243,6 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::InvalidTrigger,
-                        db_error: None,
                     }));
                 }
 
@@ -276,11 +272,11 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::InvalidEmoji,
-                        db_error: None,
                     }));
                 }
-                let user_reactions =
-                    crate::consts::DATABASE.fetch_custom_reactions_for(command.user.id.0);
+                let user_reactions = crate::consts::DATABASE
+                    .fetch_custom_reactions_for(command.user.id.0)
+                    .await?;
 
                 if !user_reactions.is_empty() {
                     command
@@ -294,12 +290,13 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::AlreadyExists,
-                        db_error: None,
                     }));
                 }
                 // put it in the db, if there is an error let the user know that it didn't work
-                if let Err(db_error) =
-                    crate::consts::DATABASE.add_custom_reaction(command.user.id.0, &emoji, &trigger)
+                if crate::consts::DATABASE
+                    .add_custom_reaction(command.user.id.0, &emoji, &trigger)
+                    .await
+                    .is_err()
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
@@ -312,7 +309,6 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::Database,
-                        db_error: Some(db_error),
                     }));
                 }
                 update_reactions_map().await;
@@ -339,8 +335,10 @@ impl InteractionHandler for Reaction {
                 }
             }
             "remove" => {
-                if let Err(db_error) =
-                    crate::consts::DATABASE.remove_custom_reaction(command.user.id.0)
+                if crate::consts::DATABASE
+                    .remove_custom_reaction(command.user.id.0)
+                    .await
+                    .is_err()
                 {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
@@ -353,7 +351,6 @@ impl InteractionHandler for Reaction {
                         .await?;
                     return Err(Box::new(ReactionError {
                         kind: ErrorKind::Database,
-                        db_error: Some(db_error),
                     }));
                 }
                 update_reactions_map().await;
@@ -423,7 +420,7 @@ impl InteractionHandler for ListReactions {
                     .kind(interaction::InteractionResponseType::DeferredChannelMessageWithSource)
             })
             .await?;
-        let reactions = crate::consts::DATABASE.fetch_custom_reactions();
+        let reactions = crate::consts::DATABASE.fetch_custom_reactions().await?;
 
         if reactions.is_empty() {
             command
@@ -454,7 +451,7 @@ impl InteractionHandler for ListReactions {
                                     format!("Reaction `{}`:", reaction.trigger),
                                     format!(
                                         "`{}` reacts with {}, created by <@!{}>",
-                                        reaction.trigger, reaction.emoji, reaction.user
+                                        reaction.trigger, reaction.emoji, reaction.user_id
                                     ),
                                     false,
                                 );
@@ -474,7 +471,7 @@ impl InteractionHandler for ListReactions {
                                     format!("Reaction `{}`:", reaction.trigger),
                                     format!(
                                         "`{}` reacts with {}, created by <@!{}>",
-                                        reaction.trigger, reaction.emoji, reaction.user
+                                        reaction.trigger, reaction.emoji, reaction.user_id
                                     ),
                                     false,
                                 );

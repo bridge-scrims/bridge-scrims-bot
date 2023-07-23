@@ -22,6 +22,11 @@ async fn main() {
         .with_max_level(LevelFilter::INFO)
         .init();
 
+    consts::DATABASE
+        .init()
+        .await
+        .expect("Failed to initialize database");
+
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::GUILD_MEMBERS

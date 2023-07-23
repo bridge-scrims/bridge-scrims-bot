@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, collections::HashMap, env, fs, path::PathBuf};
+use std::{collections::HashMap, env, fs};
 
 use serde::Deserialize;
 use serenity::{client::Context, model::prelude::*};
@@ -102,4 +102,4 @@ lazy_static::lazy_static! {
     };
 }
 
-pub const DATABASE: OnceCell<Database> = OnceCell::new();
+pub const DATABASE: Database = Database::new();

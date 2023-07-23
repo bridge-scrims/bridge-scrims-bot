@@ -33,9 +33,9 @@ impl InteractionHandler for Screensharers {
         ctx: &Context,
         command: &ApplicationCommandInteraction,
     ) -> InteractionResult {
-        let screensharers = join_all(DATABASE.get_screensharers().into_iter().map(
+        let screensharers = join_all(DATABASE.get_screensharers().await?.into_iter().map(
             |x| async move {
-                let user = UserId(x.id).to_user(&ctx.http).await;
+                let user = UserId(x.user_id).to_user(&ctx.http).await;
                 if let Ok(user) = user {
                     Some((user.tag(), format!("{} freezes", x.freezes), false))
                 } else {

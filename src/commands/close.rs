@@ -11,6 +11,8 @@ use serenity::{
 
 use bridge_scrims::{interaction::*, print_embeds::FormatEmbed};
 
+use crate::consts::DATABASE;
+
 pub struct Close;
 
 #[async_trait]
@@ -69,6 +71,7 @@ impl InteractionHandler for Close {
 pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> crate::Result<()> {
     let screenshare = crate::consts::DATABASE
         .fetch_screenshares_for(channel.0)
+        .await?
         .ok_or_else(|| ErrorResponse::message("This channel isn't a screenshare ticket!"))?;
 
     let mut messages = Vec::new();
@@ -106,13 +109,14 @@ pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> 
                         - In Question: <@{}> \n\
                         - Closer: <@{}> \
                     ",
-                    screenshare.creator, screenshare.in_question, closer
+                    screenshare.creator_id, screenshare.in_question, closer
                 ))
             })
         })
         .await?;
-
-    crate::consts::DATABASE.remove_entry("Screenshares", channel.0)?;
+    sqlx::query!("DELETE FROM screenshare WHERE channel_id = $1", channel.0 as i64)
+        .execute(&DATABASE.get())
+        .await?;
     channel.delete(&ctx).await?;
     Ok(())
 }

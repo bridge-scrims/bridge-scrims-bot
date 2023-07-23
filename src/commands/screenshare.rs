@@ -11,6 +11,8 @@ use serenity::{
 
 use bridge_scrims::interaction::*;
 
+use crate::consts::DATABASE;
+
 use super::close;
 
 lazy_static::lazy_static! {
@@ -64,13 +66,15 @@ impl InteractionHandler for Screenshare {
         command: &ApplicationCommandInteraction,
     ) -> InteractionResult {
         let in_question = UserId(command.get_str("user").unwrap().parse()?);
-        let screenshare = crate::consts::DATABASE.fetch_screenshares_for(command.user.id.0);
+        let screenshare = crate::consts::DATABASE
+            .fetch_screenshares_for(command.user.id.0)
+            .await?;
         if let Some(screenshare) = screenshare {
             return Err(ErrorResponse::with_title(
                 "One at a time please",
                 format!(
                     "You already have a screenshare request open at <#{}>.",
-                    screenshare.id
+                    screenshare.channel_id
                 ),
             ))?;
         }
@@ -100,8 +104,9 @@ impl InteractionHandler for Screenshare {
             return Err(Box::new(err));
         }
 
-        let res =
-            crate::consts::DATABASE.add_screenshare(channel.id.0, command.user.id.0, in_question.0);
+        let res = crate::consts::DATABASE
+            .add_screenshare(channel.id.0, command.user.id.0, in_question.0)
+            .await;
         if let Err(err) = res {
             let _ = channel
                 .send_message(
@@ -132,6 +137,8 @@ async fn ticket_timeout(ctx: Context, in_question: UserId, closer: UserId, chann
     sleep(Duration::from_secs(15 * 60)).await;
     let not_frozen = crate::consts::DATABASE
         .fetch_freezes_for(in_question.0)
+        .await
+        .unwrap_or(None)
         .is_none();
     if not_frozen {
         let result = close::close_ticket(&ctx, closer, channel).await;
@@ -156,12 +163,10 @@ async fn create_screenshare_ticket(
             "Screenshare category does not exist!",
         ))?;
 
-    let mut count: Option<i64> = None;
-    crate::consts::DATABASE.count_rows("Screenshares", "", |val| {
-        if let sqlite::Value::Integer(co) = val[0] {
-            count = Some(co);
-        }
-    });
+    let count = sqlx::query!("SELECT COUNT(*) FROM screenshare")
+        .fetch_one(&DATABASE.get())
+        .await?
+        .count;
 
     let guild_channel = crate::CONFIG
         .guild

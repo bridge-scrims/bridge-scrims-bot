@@ -75,8 +75,9 @@ impl InteractionHandler for ScrimUnban {
 
         let unban = DATABASE
             .fetch_scrim_unbans()
+            .await?
             .into_iter()
-            .find(|x| x.id == user_id.0)
+            .find(|x| x.uesr_id == user_id.0)
             .ok_or_else(|| ErrorResponse::message(format!("{} is not banned.", user)))?;
 
         let embed = scrim_unban(ctx, Some(command.user.id), &unban, reason).await?;
@@ -97,7 +98,7 @@ pub async fn scrim_unban(
     unban: &db::ScrimUnban,
     reason: String,
 ) -> crate::Result<CreateEmbed> {
-    let to_unban = UserId(unban.id).to_user(ctx).await?;
+    let to_unban = UserId(unban.user_id).to_user(ctx).await?;
 
     let mut fields = Vec::new();
 
@@ -153,9 +154,14 @@ pub async fn scrim_unban(
 
     let member = CONFIG.guild.member(ctx, to_unban.id).await;
     if let Ok(member) = member {
-        DATABASE.remove_entry("ScheduledScrimUnbans", unban.id)?;
+        sqlx::query!(
+            "DELETE FROM scheduled_scrim_unban WHERE user_id = $1",
+            unban.user_id as i64
+        )
+        .execute(&DATABASE.get())
+        .await?;
 
-        let taken_roles: Vec<RoleId> = db::Ids(unban.roles.0.clone()).into();
+        let taken_roles: Vec<RoleId> = unban.roles.iter().map(|r| RoleId(*r)).collect();
         let new_roles = taken_roles
             .into_iter()
             .chain([CONFIG.member_role].into_iter())
@@ -175,7 +181,8 @@ pub async fn scrim_unban(
         let res = member.edit(ctx, |m| m.roles(new_roles)).await;
         if res.is_err() {
             let _ = DATABASE
-                .add_scrim_unban(unban.id, unban.expires_at, &unban.roles)
+                .add_scrim_unban(unban.user_id, unban.expires_at, &unban.roles)
+                .await
                 .map_err(|err| {
                     tracing::error!(
                         "Failed to re-add scrim unban after giving back roles back failed: {}",
@@ -195,12 +202,12 @@ pub async fn scrim_unban(
         }
 
         log_unban.await?;
-        let _ = DATABASE
-            .exec(format!(
-                "UPDATE 'ScheduledScrimUnbans' SET time = NULL WHERE id = {}",
-                unban.id,
-            ))
-            .map_err(|err| tracing::error!("Failed to mark scrims ban as logged: {}", err));
+        sqlx::query!(
+            "UPDATE scheduled_scrim_unban SET expires_at = NULL WHERE user_id = $1",
+            unban.user_id as i64
+        )
+        .execute(&DATABASE.get())
+        .await;
     }
 
     Ok(embed)
@@ -209,16 +216,18 @@ pub async fn scrim_unban(
 async fn scrim_unban_update_loop(ctx: Context) {
     let database = &crate::consts::DATABASE;
     loop {
-        for unban in database.fetch_scrim_unbans() {
-            if unban.is_expired() {
-                let target = unban.id;
-                let res = scrim_unban(&ctx, None, &unban, String::from("Ban Expired")).await;
-                if let Err(err) = res {
-                    tracing::error!(
-                        "Failed to unban {} from scrims upon expiration: {}",
-                        target,
-                        err
-                    );
+        if let Ok(unbans) = database.fetch_scrim_unbans().await {
+            for unban in unbans {
+                if unban.is_expired() {
+                    let target = unban.user_id;
+                    let res = scrim_unban(&ctx, None, &unban, String::from("Ban Expired")).await;
+                    if let Err(err) = res {
+                        tracing::error!(
+                            "Failed to unban {} from scrims upon expiration: {}",
+                            target,
+                            err
+                        );
+                    }
                 }
             }
         }

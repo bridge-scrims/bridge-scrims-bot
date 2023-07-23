@@ -94,7 +94,7 @@ impl InteractionHandler for Notes {
                     .to_user(&ctx.http)
                     .await?;
                 let user_id = user.id;
-                let notes = crate::consts::DATABASE.fetch_notes_for(user_id.0);
+                let notes = crate::consts::DATABASE.fetch_notes_for(user_id.0).await?;
 
                 if notes.is_empty() {
                     command
@@ -180,9 +180,23 @@ impl InteractionHandler for Notes {
                 let now = OffsetDateTime::now_utc();
                 let note = cmd.get_str("note").unwrap();
 
-                let noteid =
-                    crate::consts::DATABASE.add_note(user_id.0, now, &note, command.user.id.0)?;
-                if noteid == -1 {
+                let res = crate::consts::DATABASE
+                    .add_note(user_id.0, now, &note, command.user.id.0)
+                    .await;
+                if let Ok(note_id) = res {
+                    command
+                        .edit_original_interaction_response(&ctx, |r| {
+                            r.embed(|e| {
+                                e.title("Note Added")
+                                    .description(format!(
+                                        "The note `{}` has been added to <@{}> with id {}.",
+                                        note, user_id.0, note_id
+                                    ))
+                                    .color(Color::BLURPLE)
+                            })
+                        })
+                        .await?;
+                } else {
                     command
                         .edit_original_interaction_response(&ctx, |r| {
                             r.embed(|e| {
@@ -195,18 +209,6 @@ impl InteractionHandler for Notes {
                         })
                         .await?;
                 }
-                command
-                    .edit_original_interaction_response(&ctx, |r| {
-                        r.embed(|e| {
-                            e.title("Note Added")
-                                .description(format!(
-                                    "The note `{}` has been added to <@{}> with id {}.",
-                                    note, user_id.0, noteid
-                                ))
-                                .color(Color::BLURPLE)
-                        })
-                    })
-                    .await?;
             }
             "remove" => {
                 let user = UserId(cmd.get_str("user").unwrap().parse()?)
@@ -216,7 +218,9 @@ impl InteractionHandler for Notes {
 
                 let noteid = cmd.get_u64("noteid").unwrap();
 
-                crate::consts::DATABASE.remove_note(user_id.0, noteid)?;
+                crate::consts::DATABASE
+                    .remove_note(user_id.0, noteid)
+                    .await?;
 
                 command
                     .edit_original_interaction_response(&ctx, |r| {

@@ -11,7 +11,7 @@ use serenity::{
     model::prelude::*,
 };
 
-use crate::{consts::CONFIG, db::Ids};
+use crate::consts::CONFIG;
 use bridge_scrims::{interaction::*, parse_durations::Duration as ParsedDuration};
 
 pub struct ScrimBan;
@@ -99,6 +99,7 @@ impl InteractionHandler for ScrimBan {
 
         if crate::consts::DATABASE
             .fetch_freezes_for(to_ban.0)
+            .await?
             .is_some()
         {
             super::unfreeze::unfreeze_user(ctx, to_ban)
@@ -162,8 +163,8 @@ pub async fn scrim_ban(
     reason: String,
 ) -> crate::Result<CreateEmbed> {
     let to_ban = to_ban_id.to_user(ctx).await?;
-    let bans = crate::consts::DATABASE.fetch_scrim_unbans();
-    let existing = bans.iter().find(|x| x.id == to_ban.id.0);
+    let bans = crate::consts::DATABASE.fetch_scrim_unbans().await?;
+    let existing = bans.iter().find(|x| x.user_id == to_ban.id.0);
 
     let mut author = CreateEmbedAuthor::default();
     author.icon_url(
@@ -179,7 +180,7 @@ pub async fn scrim_ban(
             "{}<t:{}:R>",
             existing.map_or(String::default(), |e| format!(
                 "{} **➔** ",
-                e.date.map_or(String::from("*Expired*"), |d| format!(
+                e.expires_at.map_or(String::from("*Expired*"), |d| format!(
                     "<t:{}:R>",
                     d.unix_timestamp()
                 ))
@@ -233,6 +234,7 @@ pub async fn scrim_ban(
             .iter()
             .map(|r| r.id)
             .filter(|r| !new_roles.contains(r))
+            .map(|r| r.0)
             .collect::<Vec<_>>();
 
         member.edit(&ctx, |m| m.roles(new_roles)).await?;
@@ -248,24 +250,20 @@ pub async fn scrim_ban(
             .color(0x0E87CC);
         dm_embed.title("Your Scrim Ban was Updated").color(0x0E87CC);
 
-        let all_removed = [ban.roles.0.clone(), Ids::from(removed_roles).0]
+        let all_removed = [ban.roles.clone(), removed_roles]
             .concat()
             .into_iter()
             .collect::<HashSet<_>>()
             .into_iter()
             .collect::<Vec<_>>();
 
-        crate::consts::DATABASE.modify_scrim_unban(
-            to_ban.id.0,
-            Some(unban_date),
-            &Ids(all_removed),
-        )?;
+        crate::consts::DATABASE
+            .modify_scrim_unban(to_ban.id.0, Some(unban_date), &all_removed)
+            .await?;
     } else {
-        crate::consts::DATABASE.add_scrim_unban(
-            to_ban.id.0,
-            Some(unban_date),
-            &removed_roles.into(),
-        )?;
+        crate::consts::DATABASE
+            .add_scrim_unban(to_ban.id.0, Some(unban_date), &removed_roles)
+            .await?;
     }
 
     let _ = CONFIG
