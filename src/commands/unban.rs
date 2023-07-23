@@ -77,7 +77,7 @@ impl InteractionHandler for ScrimUnban {
             .fetch_scrim_unbans()
             .await?
             .into_iter()
-            .find(|x| x.uesr_id == user_id.0)
+            .find(|x| x.user_id == user_id.0)
             .ok_or_else(|| ErrorResponse::message(format!("{} is not banned.", user)))?;
 
         let embed = scrim_unban(ctx, Some(command.user.id), &unban, reason).await?;
