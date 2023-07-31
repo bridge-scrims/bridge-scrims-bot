@@ -11,6 +11,7 @@ pub mod screenshare {
     pub mod unfreeze;
 }
 
+pub mod captains;
 pub mod council;
 pub mod notes;
 pub mod ping;

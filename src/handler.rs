@@ -28,6 +28,7 @@ lazy_static! {
         commands::notes::Notes::new(),
         commands::prefabs::Prefab::new(),
         commands::teams::TeamsCommand::new(),
+        commands::captains::CaptainsCommand::new(),
         commands::purge::Purge::new(),
         commands::reaction::Reaction::new(),
         commands::reaction::DelReaction::new(),

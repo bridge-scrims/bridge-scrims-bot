@@ -13,6 +13,8 @@ use bridge_scrims::discord_util::vc_members;
 use bridge_scrims::interaction::respond::RespondableInteraction;
 use bridge_scrims::interaction::*;
 
+use super::captains::command_vc;
+
 lazy_static::lazy_static! {
     static ref GAME_MODES: [String; 4] = ["1v1", "2v2", "3v3", "4v4"].map(String::from);
     static ref RANK_QUEUE_CATEGORIES: &'static Vec<Vec<ChannelId>> = &CONFIG.rank_queue_categories;
@@ -290,28 +292,4 @@ fn get_rank_team_call(
     from_team
         .or_else(|| channels.iter().find(|vc| vc_members(ctx, vc).is_empty()))
         .map(|vc| vc.id)
-}
-
-pub fn command_vc(
-    ctx: &Context,
-    guild_id: &Option<GuildId>,
-    user_id: &UserId,
-) -> crate::Result<GuildChannel> {
-    if let Some(guild) = guild_id {
-        if let Some(guild) = guild.to_guild_cached(ctx) {
-            if let Some(voice_state) = guild.voice_states.get(user_id) {
-                if let Some(vc) = voice_state.channel_id {
-                    if let Some(vc) = vc.to_channel_cached(ctx) {
-                        if let Some(vc) = vc.guild() {
-                            return Ok(vc);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Err(ErrorResponse::message(
-        "Please join a queue before using this command.",
-    ))?
 }
