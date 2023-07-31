@@ -8,14 +8,14 @@ pub struct ErrorResponse<'a>(pub CreateInteractionResponseData<'a>, pub String);
 
 pub type Result<'a, T> = std::result::Result<T, Box<ErrorResponse<'a>>>;
 
-impl ErrorResponse<'_> {
-    pub fn message<'a, S: ToString>(message: S) -> Box<ErrorResponse<'a>> {
+impl<'a> ErrorResponse<'a> {
+    pub fn message<S: ToString>(message: S) -> Box<ErrorResponse<'a>> {
         let mut resp = CreateInteractionResponseData::default();
         resp.embed(|e| e.description(message.to_string()).color(0xff003c));
         Box::new(ErrorResponse(resp, message.to_string()))
     }
 
-    pub fn with_title<'a, S: ToString, T: ToString>(
+    pub fn with_title<S: ToString, T: ToString>(
         title: S,
         description: T,
     ) -> Box<ErrorResponse<'a>> {
@@ -28,7 +28,7 @@ impl ErrorResponse<'_> {
         Box::new(ErrorResponse(resp, description.to_string()))
     }
 
-    pub fn with_footer<'a, S: ToString, T: ToString, U: ToString>(
+    pub fn with_footer<S: ToString, T: ToString, U: ToString>(
         title: S,
         description: T,
         footer: U,
