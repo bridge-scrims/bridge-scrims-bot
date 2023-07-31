@@ -1,6 +1,12 @@
+use std::collections::HashSet;
+
 use serenity::{
-    async_trait, builder::CreateInteractionResponseData, client::Context,
-    model::application::interaction::application_command::ApplicationCommandInteraction,
+    async_trait,
+    builder::{CreateAutocompleteResponse, CreateInteractionResponseData},
+    client::Context,
+    model::application::interaction::{
+        application_command::ApplicationCommandInteraction, autocomplete::AutocompleteInteraction,
+    },
     model::prelude::*,
 };
 
@@ -23,21 +29,49 @@ impl InteractionHandler for Reload {
                     .description("Reloads application commands.")
                     .default_member_permissions(Permissions::empty())
                     .create_option(|opt| {
-                        let opt = opt
-                            .name("command")
-                            .description("Which command to remove. Default: all")
+                        opt.name("command")
+                            .description("Command to remove [Default: all]")
                             .kind(command::CommandOptionType::String)
-                            .required(false);
-                        for command in crate::handler::HANDLERS.iter() {
-                            let name = command.name();
-                            opt.add_string_choice(&name, &name);
-                        }
-                        opt
+                            .set_autocomplete(true)
+                            .required(false)
                     })
             })
             .await?;
 
         Ok(())
+    }
+
+    async fn handle_autocomplete(
+        &self,
+        ctx: &Context,
+        interaction: &AutocompleteInteraction,
+        resp: &mut CreateAutocompleteResponse,
+    ) -> AutocompleteResult {
+        let focused = interaction.get_focused().unwrap();
+        let selected = focused
+            .value
+            .as_ref()
+            .map_or("", |v| v.as_str().unwrap_or(""));
+
+        if focused.name == "command" {
+            let commands = CONFIG.guild.get_application_commands(ctx).await?;
+
+            crate::handler::HANDLERS
+                .iter()
+                .map(|c| c.name())
+                .chain(commands.into_iter().map(|c| c.name))
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .filter(|name| name.contains(selected))
+                .take(25)
+                .for_each(|name| {
+                    resp.add_string_choice(&name, &name);
+                });
+
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 
     async fn handle_command(

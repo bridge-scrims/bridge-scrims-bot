@@ -474,9 +474,7 @@ pub async fn register_commands(ctx: Context) -> Result<(), String> {
         let name = handler.name();
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
-            if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone()))
-                && name.as_str() != "reload"
-            {
+            if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone())) {
                 continue;
             }
         }
