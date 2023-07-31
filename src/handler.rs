@@ -87,6 +87,17 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::Autocomplete(interaction) = &interaction {
+            if let Some(handler) = HANDLERS
+                .iter()
+                .find(|x| x.is_handler(interaction.data.name.clone()))
+            {
+                if let Err(err) = handler.on_autocomplete(&ctx, interaction).await {
+                    tracing::error!("{} autocomplete failed: {}", handler.name(), err);
+                }
+            }
+        }
+
         if let Interaction::ApplicationCommand(interaction) = &interaction {
             if let Some(handler) = HANDLERS
                 .iter()

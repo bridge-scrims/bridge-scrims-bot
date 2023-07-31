@@ -1,6 +1,7 @@
 use serde_json::{Map, Value};
 use serenity::model::application::interaction::application_command::ApplicationCommandInteraction as ACI;
 use serenity::model::application::interaction::application_command::CommandDataOption as CDO;
+use serenity::model::application::interaction::autocomplete::AutocompleteInteraction as AI;
 
 /// Extracts options from an `ApplicationCommandInteraction`
 /// Delegates [`serde_json::Value`] methods
@@ -50,6 +51,10 @@ pub trait InteractOpts: Sized {
     fn get_u64(&self, query: impl AsRef<str>) -> Option<u64> {
         self.get_map(query, |x| x.as_u64()).flatten()
     }
+
+    fn get_focused(&self) -> Option<&CDO> {
+        None
+    }
 }
 
 impl InteractOpts for ACI {
@@ -59,6 +64,20 @@ impl InteractOpts for ACI {
             .iter()
             .find(|x| x.name.as_str() == query.as_ref())
             .and_then(|x| x.value.clone().map(map))
+    }
+}
+
+impl InteractOpts for AI {
+    fn get_map<T>(&self, query: impl AsRef<str>, map: impl FnOnce(Value) -> T) -> Option<T> {
+        self.data
+            .options
+            .iter()
+            .find(|x| x.name.as_str() == query.as_ref())
+            .and_then(|x| x.value.clone().map(map))
+    }
+
+    fn get_focused(&self) -> Option<&CDO> {
+        self.data.options.iter().find(|x| x.focused)
     }
 }
 

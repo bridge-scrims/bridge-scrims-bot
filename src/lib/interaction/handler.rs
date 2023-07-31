@@ -3,10 +3,12 @@ use std::panic::AssertUnwindSafe;
 
 use serenity::{
     async_trait,
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
+    builder::{
+        CreateAutocompleteResponse, CreateInteractionResponse, CreateInteractionResponseData,
+    },
     client::Context,
     model::application::interaction::{
-        application_command::ApplicationCommandInteraction,
+        application_command::ApplicationCommandInteraction, autocomplete::AutocompleteInteraction,
         message_component::MessageComponentInteraction, MessageFlags,
     },
     model::prelude::*,
@@ -24,6 +26,7 @@ pub enum InitialInteractionResponse {
 }
 
 pub type InteractionResult<'a> = crate::Result<Option<CreateInteractionResponseData<'a>>>;
+pub type AutocompleteResult = crate::Result<bool>;
 
 #[async_trait]
 pub trait InteractionHandler: Send + Sync {
@@ -251,6 +254,56 @@ pub trait InteractionHandler: Send + Sync {
         _args: &[&str],
     ) -> InteractionResult {
         Ok(None)
+    }
+
+    async fn on_autocomplete(
+        &self,
+        ctx: &Context,
+        i: &AutocompleteInteraction,
+    ) -> crate::Result<()> {
+        let mut resp = CreateAutocompleteResponse::default();
+
+        let respond = match self
+            .verify_execution(ctx, &i.user, &i.member, &i.channel_id)
+            .await
+        {
+            Ok(_) => self._on_autocomplete(ctx, i, &mut resp).await?,
+            Err(_) => false,
+        };
+
+        if respond {
+            i.create_autocomplete_response(ctx, |x| {
+                x.0 = resp.0.clone();
+                x
+            })
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn _on_autocomplete(
+        &self,
+        ctx: &Context,
+        interaction: &AutocompleteInteraction,
+        resp: &mut CreateAutocompleteResponse,
+    ) -> AutocompleteResult {
+        let res = AssertUnwindSafe(self.handle_autocomplete(ctx, interaction, resp))
+            .catch_unwind()
+            .await;
+        match res {
+            Err(_) => Err(self.unexpected_error())?, // on panic
+            Ok(v) => v,
+        }
+    }
+
+    async fn handle_autocomplete(
+        &self,
+        _ctx: &Context,
+        _interaction: &AutocompleteInteraction,
+        _resp: &mut CreateAutocompleteResponse,
+    ) -> AutocompleteResult {
+        Ok(false)
     }
 
     fn new() -> Box<Self>
