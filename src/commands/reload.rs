@@ -59,7 +59,6 @@ impl InteractionHandler for Reload {
         }
 
         for c in &commands {
-            tracing::info!("Deleting command {}", c.name);
             CONFIG
                 .guild
                 .delete_application_command(&ctx.http, c.id)

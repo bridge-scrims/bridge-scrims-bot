@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use bridge_scrims::interaction::handler::InteractionHandler;
 
 use crate::commands;
-use crate::commands::unban::scrim_unban;
+use crate::commands::screenshare::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::{CustomReaction, Ids};
@@ -27,23 +27,22 @@ lazy_static! {
         commands::council::Council::new(),
         commands::notes::Notes::new(),
         commands::prefabs::Prefab::new(),
-        commands::timeout::Timeout::new(),
-        commands::ban::ScrimBan::new(),
-        commands::unban::ScrimUnban::new(),
         commands::teams::TeamsCommand::new(),
         commands::purge::Purge::new(),
         commands::reaction::Reaction::new(),
         commands::reaction::DelReaction::new(),
         commands::reaction::ListReactions::new(),
-        commands::screenshare::Screenshare::new(),
-        commands::close::Close::new(),
-        commands::freeze::Freeze::new(),
-        commands::unfreeze::Unfreeze::new(),
-        commands::ticket::Ticket::new(),
-        commands::list_bans::ListBans::new(),
-        commands::screensharers::Screensharers::new(),
         commands::reload::Reload::new(),
         commands::ping::Ping::new(),
+        commands::screenshare::ban::ScrimBan::new(),
+        commands::screenshare::unban::ScrimUnban::new(),
+        commands::screenshare::screenshare::Screenshare::new(),
+        commands::screenshare::close::Close::new(),
+        commands::screenshare::freeze::Freeze::new(),
+        commands::screenshare::unfreeze::Unfreeze::new(),
+        commands::screenshare::ticket::Ticket::new(),
+        commands::screenshare::list_bans::ListBans::new(),
+        commands::screenshare::screensharers::Screensharers::new(),
     ];
     pub static ref REACTIONS: Arc<Mutex<HashMap<String, CustomReaction>>> =
         Arc::new(Mutex::new(HashMap::new()));
@@ -461,7 +460,6 @@ pub async fn register_commands(ctx: Context) -> Result<(), String> {
 
     for handler in &*HANDLERS {
         let name = handler.name();
-        tracing::info!("Registering {}", name);
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
             if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone()))

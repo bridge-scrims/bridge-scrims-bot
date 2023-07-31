@@ -1,4 +1,5 @@
 pub mod cooldown;
+pub mod discord_util;
 pub mod interaction;
 pub mod parse_durations;
 pub mod print_embeds;

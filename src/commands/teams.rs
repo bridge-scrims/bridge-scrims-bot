@@ -9,6 +9,7 @@ use serenity::{
 };
 
 use crate::consts::CONFIG;
+use bridge_scrims::discord_util::vc_members;
 use bridge_scrims::interaction::respond::RespondableInteraction;
 use bridge_scrims::interaction::*;
 
@@ -291,17 +292,7 @@ fn get_rank_team_call(
         .map(|vc| vc.id)
 }
 
-fn vc_members(ctx: &Context, vc: &GuildChannel) -> Vec<UserId> {
-    vc.guild(ctx)
-        .unwrap()
-        .voice_states
-        .values()
-        .filter(|v| v.channel_id == Some(vc.id))
-        .map(|v| v.user_id)
-        .collect()
-}
-
-fn command_vc(
+pub fn command_vc(
     ctx: &Context,
     guild_id: &Option<GuildId>,
     user_id: &UserId,
@@ -319,6 +310,7 @@ fn command_vc(
             }
         }
     }
+
     Err(ErrorResponse::message(
         "Please join a queue before using this command.",
     ))?
