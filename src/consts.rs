@@ -11,12 +11,14 @@ pub struct MemberCount(ChannelId);
 
 impl MemberCount {
     pub async fn update(&self, ctx: &Context, guild_id: GuildId) -> crate::Result<()> {
-        let guild = guild_id.to_guild_cached(&ctx.cache).unwrap();
-        self.0
-            .edit(&ctx.http, |c| {
-                c.name(format!("Members: {}", guild.member_count))
-            })
-            .await?;
+        if guild_id == CONFIG.guild {
+            let guild = guild_id.to_guild_cached(&ctx.cache).unwrap();
+            self.0
+                .edit(&ctx.http, |c| {
+                    c.name(format!("Members: {}", guild.member_count))
+                })
+                .await?;
+        }
         Ok(())
     }
 }
@@ -61,6 +63,7 @@ pub struct Config {
     pub ss_logs: ChannelId,
     pub freeze_emoji: String,
     pub unfreeze_emoji: String,
+    pub shmill_emoji: EmojiId,
 
     pub upvote_downvote_channels: Vec<ChannelId>,
     pub like_react_channels: Vec<ChannelId>,

@@ -83,7 +83,9 @@ impl EventHandler for Handler {
     }
 
     async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
-        ExpandingChannels::on_voice_update(&ctx, old.as_ref(), &new).await;
+        if new.channel_id.is_none() || new.guild_id == Some(CONFIG.guild) {
+            ExpandingChannels::on_voice_update(&ctx, old.as_ref(), &new).await;
+        }
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
@@ -123,7 +125,7 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.author.bot || msg.guild_id.is_none() {
+        if msg.author.bot || msg.guild_id != Some(CONFIG.guild) {
             return;
         }
 
@@ -138,9 +140,12 @@ impl EventHandler for Handler {
                     &ctx,
                     CONFIG
                         .guild
-                        .emoji(&ctx, EmojiId(860966032952262716))
-                        .await
-                        .unwrap(),
+                        .to_guild_cached(&ctx)
+                        .unwrap()
+                        .emojis
+                        .get(&CONFIG.shmill_emoji)
+                        .unwrap()
+                        .clone(),
                 )
                 .await
             {
@@ -280,7 +285,6 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_addition(&self, ctx: Context, member: Member) {
-        // Give banned role to new members if they were scrims banned
         if let Err(err) = CONFIG.member_count.update(&ctx, member.guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
@@ -299,13 +303,15 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_update(&self, ctx: Context, _old_member: Option<Member>, member: Member) {
-        let _ = check_booster(&ctx, &member)
-            .await
-            .map_err(|err| tracing::error!("Error while checking for booster: {}", err));
+        if member.guild_id == CONFIG.guild {
+            let _ = check_booster(&ctx, &member)
+                .await
+                .map_err(|err| tracing::error!("Error while checking for booster: {}", err));
 
-        let _ = check_scrim_banned(&ctx, &member)
-            .await
-            .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
+            let _ = check_scrim_banned(&ctx, &member)
+                .await
+                .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
+        }
     }
 
     async fn channel_create(&self, ctx: Context, channel: &GuildChannel) {
