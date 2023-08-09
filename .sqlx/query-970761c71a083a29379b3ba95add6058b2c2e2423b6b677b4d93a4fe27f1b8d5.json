@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE scheduled_scrim_unban SET expires_at = $2, roles = $3 WHERE user_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "970761c71a083a29379b3ba95add6058b2c2e2423b6b677b4d93a4fe27f1b8d5"
+}

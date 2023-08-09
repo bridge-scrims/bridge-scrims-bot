@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE screensharer_stats SET freezes = $1 WHERE user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd3ae6fa9d3fea024a8f40e9ec07d084bcc4bafe4cb715b6b7fc63d76a4895f3"
+}

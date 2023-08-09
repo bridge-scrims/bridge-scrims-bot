@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM reaction WHERE trigger = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "emoji",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "trigger",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "032d7eb5f616e24792b60e625591bb53f45907fb5921f1fde269d66cbbaf9196"
+}

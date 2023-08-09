@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO scheduled_scrim_unban (user_id, expires_at, roles) VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "35cc704a2dd9dc58dd6cbcf1ee1bb804fb9d1f5f5e00b62e4d7de93de4917a54"
+}
