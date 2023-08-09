@@ -178,7 +178,7 @@ impl Database {
         note: &str,
         creator: u64,
     ) -> Result<usize> {
-        let mut count = query!("SELECT * FROM user_note WHERE user_id = $1", userid as i64)
+        let count = query!("SELECT * FROM user_note WHERE user_id = $1", userid as i64)
             .fetch_all(&self.get())
             .await?
             .len();
@@ -258,7 +258,7 @@ impl Database {
             freezes: r.freezes,
             user_id: r.user_id as u64,
         });
-        Ok(None)
+        Ok(records)
     }
 
     pub async fn set_screensharer(&self, sc: Screensharer) -> Result<()> {

@@ -58,7 +58,7 @@ impl InteractionHandler for Unfreeze {
 }
 
 pub async fn add_screensharer(sser: UserId) -> crate::Result<()> {
-    let _ = match DATABASE.get_screensharer(sser.0).await? {
+    match DATABASE.get_screensharer(sser.0).await? {
         None => {
             DATABASE
                 .set_screensharer(crate::db::Screensharer {
@@ -71,7 +71,7 @@ pub async fn add_screensharer(sser: UserId) -> crate::Result<()> {
             sser.freezes += 1;
             DATABASE.set_screensharer(sser).await?
         }
-    };
+    }
     Ok(())
 }
 
@@ -81,7 +81,7 @@ pub async fn unfreeze_user<'a>(ctx: &Context, user: UserId) -> InteractionResult
         .await?
         .ok_or_else(|| ErrorResponse::message(format!("{} is not frozen.", user.mention())))?;
 
-    let mut roles: Vec<RoleId> = freeze.roles.into_iter().map(|r| RoleId(r)).collect();
+    let mut roles: Vec<RoleId> = freeze.roles.into_iter().map(RoleId).collect();
     if !roles.contains(&CONFIG.member_role) {
         roles.push(CONFIG.member_role)
     }

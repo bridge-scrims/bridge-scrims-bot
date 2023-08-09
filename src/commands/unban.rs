@@ -202,7 +202,7 @@ pub async fn scrim_unban(
         }
 
         log_unban.await?;
-        sqlx::query!(
+        let _  = sqlx::query!(
             "UPDATE scheduled_scrim_unban SET expires_at = NULL WHERE user_id = $1",
             unban.user_id as i64
         )
