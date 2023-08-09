@@ -114,9 +114,12 @@ pub async fn close_ticket(ctx: &Context, closer: UserId, channel: ChannelId) -> 
             })
         })
         .await?;
-    sqlx::query!("DELETE FROM screenshare WHERE channel_id = $1", channel.0 as i64)
-        .execute(&DATABASE.get())
-        .await?;
+    sqlx::query!(
+        "DELETE FROM screenshare WHERE channel_id = $1",
+        channel.0 as i64
+    )
+    .execute(&DATABASE.get())
+    .await?;
     channel.delete(&ctx).await?;
     Ok(())
 }
