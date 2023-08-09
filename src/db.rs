@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use sqlx::{postgres::PgPoolOptions, query, query_as, PgPool};
+use sqlx::{postgres::PgPoolOptions, query, PgPool};
 use time::OffsetDateTime;
 
 pub use crate::model::*;
@@ -26,68 +26,103 @@ impl Database {
     }
 
     pub async fn fetch_scrim_unbans(&self) -> Result<Vec<ScrimUnban>> {
-        Ok(query_as!(ScrimUnban, "SELECT * FROM scheduled_scrim_unban")
+        Ok(query!("SELECT * FROM scheduled_scrim_unban")
             .fetch_all(&self.get())
-            .await?)
+            .await?
+            .into_iter()
+            .map(|r| ScrimUnban {
+                expires_at: r.expires_at,
+                roles: r.roles.iter().map(|r| *r as u64).collect(),
+                user_id: r.user_id as u64,
+            })
+            .collect())
     }
 
     pub async fn fetch_custom_reactions(&self) -> Result<Vec<CustomReaction>> {
-        Ok(query_as!(CustomReaction, "SELECT * FROM reaction")
+        Ok(query!("SELECT * FROM reaction")
             .fetch_all(&self.get())
-            .await?)
+            .await?
+            .into_iter()
+            .map(|r| CustomReaction {
+                emoji: r.emoji,
+                trigger: r.trigger,
+                user_id: r.user_id as u64,
+            })
+            .collect())
     }
 
     pub async fn fetch_custom_reactions_for(&self, userid: u64) -> Result<Vec<CustomReaction>> {
-        Ok(query_as!(
-            CustomReaction,
-            "SELECT * FROM reaction WHERE user_id = $1",
-            userid as i64
+        Ok(
+            query!("SELECT * FROM reaction WHERE user_id = $1", userid as i64)
+                .fetch_all(&self.get())
+                .await?
+                .into_iter()
+                .map(|r| CustomReaction {
+                    emoji: r.emoji,
+                    trigger: r.trigger,
+                    user_id: r.user_id as u64,
+                })
+                .collect(),
         )
-        .fetch_all(&self.get())
-        .await?)
     }
 
     pub async fn fetch_custom_reactions_with_trigger(
         &self,
         trigger: &str,
     ) -> Result<Vec<CustomReaction>> {
-        Ok(query_as!(
-            CustomReaction,
-            "SELECT * FROM reaction WHERE trigger = $1",
-            trigger
-        )
-        .fetch_all(&self.get())
-        .await?)
+        Ok(query!("SELECT * FROM reaction WHERE trigger = $1", trigger)
+            .fetch_all(&self.get())
+            .await?
+            .into_iter()
+            .map(|r| CustomReaction {
+                emoji: r.emoji,
+                trigger: r.trigger,
+                user_id: r.user_id as u64,
+            })
+            .collect())
     }
 
     pub async fn fetch_notes_for(&self, userid: u64) -> Result<Vec<Note>> {
-        Ok(query_as!(
-            Note,
-            "SELECT * FROM user_note WHERE user_id = $1",
-            userid as i64
+        Ok(
+            query!("SELECT * FROM user_note WHERE user_id = $1", userid as i64)
+                .fetch_all(&self.get())
+                .await?
+                .into_iter()
+                .map(|r| Note {
+                    created_at: r.created_at,
+                    creator: r.creator as u64,
+                    id: r.id as u64,
+                    note: r.note,
+                    user_id: r.user_id as u64,
+                })
+                .collect(),
         )
-        .fetch_all(&self.get())
-        .await?)
     }
 
     pub async fn fetch_screenshares_for(&self, id: u64) -> Result<Option<Screenshare>> {
-        Ok(query_as!(
-            Screenshare,
+        Ok(query!(
             "SELECT * FROM screenshare WHERE in_question = $1 OR creator_id = $1",
             id as i64
         )
         .fetch_optional(&self.get())
-        .await?)
+        .await?
+        .map(|r| Screenshare {
+            channel_id: r.channel_id as u64,
+            creator_id: r.creator_id as u64,
+            in_question: r.in_question as u64,
+        }))
     }
 
     pub async fn fetch_freezes_for(&self, id: u64) -> Result<Option<Freeze>> {
-        Ok(query_as!(
-            Freeze,
-            "SELECT * FROM freezes WHERE user_id = $1",
-            id as i64
+        Ok(
+            query!("SELECT * FROM freezes WHERE user_id = $1", id as i64)
+                .fetch_optional(&self.get())
+                .await?
+                .map(|r| Freeze {
+                    roles: r.roles.into_iter().map(|r| r as u64).collect(),
+                    user_id: r.user_id as u64,
+                }),
         )
-        .fetch_optional(&self.get())
-        .await?)
     }
 
     pub async fn add_custom_reaction(&self, id: u64, emoji: &str, trigger: &str) -> Result<()> {
@@ -200,19 +235,30 @@ impl Database {
     }
 
     pub async fn get_screensharers(&self) -> Result<Vec<Screensharer>> {
-        Ok(query_as!(Screensharer, "SELECT * FROM screensharer_stats")
+        let records = query!("SELECT * FROM screensharer_stats")
             .fetch_all(&self.get())
-            .await?)
+            .await?
+            .iter()
+            .map(|r| Screensharer {
+                freezes: r.freezes,
+                user_id: r.user_id as u64,
+            })
+            .collect();
+        Ok(records)
     }
 
     pub async fn get_screensharer(&self, user: u64) -> Result<Option<Screensharer>> {
-        Ok(query_as!(
-            Screensharer,
+        let records = query!(
             "SELECT * FROM screensharer_stats WHERE user_id = $1",
             user as i64,
         )
         .fetch_optional(&self.get())
-        .await?)
+        .await?
+        .map(|r| Screensharer {
+            freezes: r.freezes,
+            user_id: r.user_id as u64,
+        });
+        Ok(None)
     }
 
     pub async fn set_screensharer(&self, sc: Screensharer) -> Result<()> {
