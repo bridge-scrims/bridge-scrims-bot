@@ -102,4 +102,4 @@ lazy_static::lazy_static! {
     };
 }
 
-pub const DATABASE: Database = Database::new();
+pub static DATABASE: Database = Database::new();
