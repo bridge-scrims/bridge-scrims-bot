@@ -15,6 +15,10 @@ impl InteractionHandler for Unfreeze {
         String::from("unfreeze")
     }
 
+    fn allowed_roles(&self) -> Option<Vec<RoleId>> {
+        Some(vec![crate::CONFIG.ss_support])
+    }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         CONFIG
             .guild

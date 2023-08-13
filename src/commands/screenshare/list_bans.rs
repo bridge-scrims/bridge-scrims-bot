@@ -16,6 +16,14 @@ impl InteractionHandler for ListBans {
         String::from("list_bans")
     }
 
+    fn allowed_roles(&self) -> Option<Vec<RoleId>> {
+        Some(vec![
+            crate::CONFIG.ss_support,
+            crate::CONFIG.support,
+            crate::CONFIG.trial_support,
+        ])
+    }
+
     async fn register(&self, ctx: &Context) -> crate::Result<()> {
         crate::CONFIG
             .guild

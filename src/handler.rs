@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use bridge_scrims::interaction::handler::InteractionHandler;
 
 use crate::commands;
-use crate::commands::unban::scrim_unban;
+use crate::commands::screenshare::unban::scrim_unban;
 use crate::consts::CONFIG;
 use crate::consts::DATABASE as database;
 use crate::db::CustomReaction;
@@ -26,23 +26,23 @@ lazy_static! {
         commands::council::Council::new(),
         commands::notes::Notes::new(),
         commands::prefabs::Prefab::new(),
-        commands::timeout::Timeout::new(),
-        commands::ban::ScrimBan::new(),
-        commands::unban::ScrimUnban::new(),
         commands::teams::TeamsCommand::new(),
+        commands::captains::CaptainsCommand::new(),
         commands::purge::Purge::new(),
         commands::reaction::Reaction::new(),
         commands::reaction::DelReaction::new(),
         commands::reaction::ListReactions::new(),
-        commands::screenshare::Screenshare::new(),
-        commands::close::Close::new(),
-        commands::freeze::Freeze::new(),
-        commands::unfreeze::Unfreeze::new(),
-        commands::ticket::Ticket::new(),
-        commands::list_bans::ListBans::new(),
-        commands::screensharers::Screensharers::new(),
         commands::reload::Reload::new(),
         commands::ping::Ping::new(),
+        commands::screenshare::ban::ScrimBan::new(),
+        commands::screenshare::unban::ScrimUnban::new(),
+        commands::screenshare::screenshare::Screenshare::new(),
+        commands::screenshare::close::Close::new(),
+        commands::screenshare::freeze::Freeze::new(),
+        commands::screenshare::unfreeze::Unfreeze::new(),
+        commands::screenshare::ticket::Ticket::new(),
+        commands::screenshare::list_bans::ListBans::new(),
+        commands::screenshare::screensharers::Screensharers::new(),
     ];
     pub static ref REACTIONS: Arc<Mutex<HashMap<String, CustomReaction>>> =
         Arc::new(Mutex::new(HashMap::new()));
@@ -82,10 +82,23 @@ impl EventHandler for Handler {
     }
 
     async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
-        ExpandingChannels::on_voice_update(&ctx, old.as_ref(), &new).await;
+        if new.channel_id.is_none() || new.guild_id == Some(CONFIG.guild) {
+            ExpandingChannels::on_voice_update(&ctx, old.as_ref(), &new).await;
+        }
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Interaction::Autocomplete(interaction) = &interaction {
+            if let Some(handler) = HANDLERS
+                .iter()
+                .find(|x| x.is_handler(interaction.data.name.clone()))
+            {
+                if let Err(err) = handler.on_autocomplete(&ctx, interaction).await {
+                    tracing::error!("{} autocomplete failed: {}", handler.name(), err);
+                }
+            }
+        }
+
         if let Interaction::ApplicationCommand(interaction) = &interaction {
             if let Some(handler) = HANDLERS
                 .iter()
@@ -111,7 +124,7 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.author.bot || msg.guild_id.is_none() {
+        if msg.author.bot || msg.guild_id != Some(CONFIG.guild) {
             return;
         }
 
@@ -126,9 +139,12 @@ impl EventHandler for Handler {
                     &ctx,
                     CONFIG
                         .guild
-                        .emoji(&ctx, EmojiId(860966032952262716))
-                        .await
-                        .unwrap(),
+                        .to_guild_cached(&ctx)
+                        .unwrap()
+                        .emojis
+                        .get(&CONFIG.shmill_emoji)
+                        .unwrap()
+                        .clone(),
                 )
                 .await
             {
@@ -265,7 +281,6 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_addition(&self, ctx: Context, member: Member) {
-        // Give banned role to new members if they were scrims banned
         if let Err(err) = CONFIG.member_count.update(&ctx, member.guild_id).await {
             tracing::error!("Error when updating member count: {}", err)
         }
@@ -284,13 +299,15 @@ impl EventHandler for Handler {
     }
 
     async fn guild_member_update(&self, ctx: Context, _old_member: Option<Member>, member: Member) {
-        let _ = check_booster(&ctx, &member)
-            .await
-            .map_err(|err| tracing::error!("Error while checking for booster: {}", err));
+        if member.guild_id == CONFIG.guild {
+            let _ = check_booster(&ctx, &member)
+                .await
+                .map_err(|err| tracing::error!("Error while checking for booster: {}", err));
 
-        let _ = check_scrim_banned(&ctx, &member)
-            .await
-            .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
+            let _ = check_scrim_banned(&ctx, &member)
+                .await
+                .map_err(|err| tracing::error!("Error while checking for scrim banned: {}", err));
+        }
     }
 
     async fn channel_create(&self, ctx: Context, channel: &GuildChannel) {
@@ -466,12 +483,9 @@ pub async fn register_commands(ctx: Context) -> Result<(), String> {
 
     for handler in &*HANDLERS {
         let name = handler.name();
-        tracing::info!("Registering {}", name);
         // ignore any commands that we have already registered.
         if let Ok(ref cmds) = guild_commands {
-            if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone()))
-                && name.as_str() != "reload"
-            {
+            if cmds.iter().any(|cmd| handler.is_handler(cmd.name.clone())) {
                 continue;
             }
         }
