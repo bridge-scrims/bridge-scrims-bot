@@ -35,7 +35,7 @@ impl InteractionHandler for Council {
                     .description("Lists the council members for a given council")
                     .create_option(|o| {
                         o.name("council")
-                            .description("The council who's members to display")
+                            .description("The council whose members to display")
                             .required(true)
                             .kind(command::CommandOptionType::String);
                         for name in CONFIG.councils.keys() {
