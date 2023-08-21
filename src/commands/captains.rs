@@ -55,7 +55,7 @@ impl InteractionHandler for CaptainsCommand {
 
         members.shuffle(&mut rand::thread_rng());
 
-        command.create_interaction_response(ctx, |resp| 
+        command.create_interaction_response(ctx, |resp|
             resp.kind(interaction::InteractionResponseType::ChannelMessageWithSource)
                 .interaction_response_data(|d|
                     d.embed(|e| {
@@ -97,7 +97,7 @@ pub fn command_vc(
             }
         }
     }
-    
+
     Err(ErrorResponse::message(
         "Please join a queue before using this command.",
     ))?
