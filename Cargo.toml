@@ -34,7 +34,7 @@ features = ["local-offset"]
 version = "0.3.5"
 
 [dependencies.serenity]
-version = "0.11.5"
+version = "0.11.7"
 default-features = false
 features = [
     "builder",
