@@ -89,7 +89,12 @@ impl InteractionHandler for Reload {
         let mut commands = CONFIG.guild.get_application_commands(&ctx.http).await?;
 
         if let Some(cmd) = command.get_str("command") {
-            commands.retain(|x| x.name == cmd);
+            let handler = crate::handler::HANDLERS.iter().find(|h| h.name() == cmd);
+            if let Some(handler) = handler {
+                commands.retain(|x| handler.is_handler(x.name.clone()));
+            } else {
+                commands = vec![];
+            }
         }
 
         for c in &commands {

@@ -25,8 +25,8 @@ lazy_static::lazy_static! {
 #[non_exhaustive]
 struct TeamActions;
 impl TeamActions {
-    pub const REROLL: &str = "REROLL";
-    pub const JOIN_CALL: &str = "JOIN_CALL";
+    pub const REROLL: &'static str = "REROLL";
+    pub const JOIN_CALL: &'static str = "JOIN_CALL";
 }
 
 pub struct TeamsCommand;
